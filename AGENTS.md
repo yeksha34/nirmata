@@ -1,6 +1,6 @@
 # Agent guide
 
-Realmwright: build worlds, then host adventurers in them. Start at [docs/README.md](docs/README.md).
+Nirmata: build worlds, then host adventurers in them. Start at [docs/README.md](docs/README.md).
 
 - Skills live in `.agents/skills/` (canonical). To use them with Claude Code, expose them as `.claude/skills`:
   `New-Item -ItemType Junction -Path .claude\skills -Target .agents\skills` (PowerShell) or `ln -s ../.agents/skills .claude/skills`.

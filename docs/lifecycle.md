@@ -42,14 +42,14 @@ mind is a new ADR that links back.
 ## Status board
 
 Updated 2026-10-25. "Baseline" = exists in the code copied from the three source repos and works there,
-but has not been re-verified inside Realmwright.
+but has not been re-verified inside Nirmata.
 
 | ID | Feature | State | Branch / tag | Notes |
 |---|---|---|---|---|
 | F-01 | World library and creation wizard | Specified | | Template + example world exist; wizard UI not built |
-| F-02 | Card editor (lore/character/place/rule) | Baseline | `v0.1.0-scaffold` | Legacy vanilla-JS Studio in `apps/studio` |
-| F-03 | Keyword-triggered lorebook + token budget | Baseline | `v0.1.0-scaffold` | Legacy "context panel"; to be rebuilt in `packages/core` |
-| F-04 | Link graph and lint | Verified | `v0.1.0-scaffold` | `world-lint` skill runs clean on example world |
+| F-02 | Card editor (lore/character/place/rule) | Baseline | `v0.1.1-scaffold` | Legacy vanilla-JS Studio in `apps/studio` |
+| F-03 | Keyword-triggered lorebook + token budget | Baseline | `v0.1.1-scaffold` | Legacy "context panel"; to be rebuilt in `packages/core` |
+| F-04 | Link graph and lint | Verified | `v0.1.1-scaffold` | `world-lint` skill runs clean on example world |
 | F-05 | World rules authoring and checking | Baseline | | Needs path fixes, see TD-002 |
 | F-06 | Import / export (zip, ST lorebook, epub) | Baseline | | Python tools copied; ST import not built |
 | F-07 | Version-control drawer | Baseline | | Git diff viewer in legacy Studio |
@@ -60,7 +60,7 @@ but has not been re-verified inside Realmwright.
 | F-32 | Context builder with budget | Proposed | | Shares engine with F-03 |
 | F-33 | Persistent memory and summaries | Proposed | | |
 | F-34 | Player character, stats, inventory | Proposed | | |
-| F-35 | Model/provider settings | Specified | | See ADR-0003 |
+| F-35 | Model/provider settings | Specified | | See ADR-0003, ADR-0006 |
 | F-36 | Rules enforcement during play | Proposed | | Uses F-05 |
 | F-37 | Hosting other players (LAN / link) | Proposed | | Legacy peer-sync is the seed |
 | F-38 | Save, branch, export adventures | Proposed | | |

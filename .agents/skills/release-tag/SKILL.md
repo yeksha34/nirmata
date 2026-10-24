@@ -1,6 +1,6 @@
 ---
 name: release-tag
-description: Cut a tagged release branch for Realmwright, with the docs and status board consistent. Use when asked to "tag a release", "cut v0.x", "prepare the tagged branch", or "release the scaffold".
+description: Cut a tagged release branch for Nirmata, with the docs and status board consistent. Use when asked to "tag a release", "cut v0.x", "prepare the tagged branch", or "release the scaffold".
 ---
 
 # release-tag

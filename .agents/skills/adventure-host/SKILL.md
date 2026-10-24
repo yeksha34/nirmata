@@ -1,6 +1,6 @@
 ---
 name: adventure-host
-description: Act as the game master that hosts an adventurer in a Realmwright world - build turn context from world cards and rules, narrate, keep secrets, and log the turn. Use when asked to run, play, host, or test an adventure in a world, or when writing the prompt/behaviour spec for the host engine (packages/host).
+description: Act as the game master that hosts an adventurer in a Nirmata world - build turn context from world cards and rules, narrate, keep secrets, and log the turn. Use when asked to run, play, host, or test an adventure in a world, or when writing the prompt/behaviour spec for the host engine (packages/host).
 ---
 
 # adventure-host

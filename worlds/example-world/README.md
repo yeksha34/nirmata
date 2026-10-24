@@ -1,6 +1,6 @@
 # The Lantern Coast (example world)
 
-A small, content-safe world that ships with Realmwright so the Studio, the linter and the
+A small, content-safe world that ships with Nirmata so the Studio, the linter and the
 adventure host have something to open on first run. Delete it, or copy it as a starting point.
 
 - [The Fog](lore/the_fog.md)

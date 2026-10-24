@@ -1,6 +1,6 @@
 ---
 name: world-lint
-description: Run, check, validate, and navigate a Realmwright world (worlds/<name>/ markdown cards). Use when asked to run/check/validate/lint a world, find broken links or orphaned cards, get corpus stats, list or search lore/character/setting cards, or confirm an edit did not break the cross-reference web.
+description: Run, check, validate, and navigate a Nirmata world (worlds/<name>/ markdown cards). Use when asked to run/check/validate/lint a world, find broken links or orphaned cards, get corpus stats, list or search lore/character/setting cards, or confirm an edit did not break the cross-reference web.
 ---
 
 # world-lint

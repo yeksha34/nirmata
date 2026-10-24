@@ -37,7 +37,7 @@ suggest best tech stack.
 
 | Brief output | Where |
 |---|---|
-| Tagged branch: world-building management, then hosting adventurers | branch `scaffold/world-builder-host`, tag `v0.1.0-scaffold`; see [lifecycle](lifecycle.md) for what is built vs planned |
+| Tagged branch: world-building management, then hosting adventurers | branch `scaffold/world-builder-host`, tag `v0.1.1-scaffold`; see [lifecycle](lifecycle.md) for what is built vs planned |
 | This input text | this file |
 | Docs tracking requirements, bugs, decisions, feature lifecycle | [requirements](requirements.md), [bugs](bugs.md), [decisions/](decisions/), [lifecycle](lifecycle.md), [features/](features/) |
 | `.agents/skills` populated | [`.agents/skills/`](../.agents/skills/) |

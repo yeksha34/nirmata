@@ -1,4 +1,4 @@
-# Realmwright
+# Nirmata
 
 Build worlds. Then host adventurers in them.
 
@@ -9,7 +9,7 @@ A local-first toolkit with two halves:
 
 Design references: SillyTavern + KoboldAI (local control, lorebooks), AI Dungeon (turn UX, story cards), Janitor AI (card browsing). Goal: **easy UI/UX**, see [docs/ux-principles.md](docs/ux-principles.md).
 
-## Status: v0.1.0-scaffold
+## Status: v0.1.1-scaffold
 
 | Part | State |
 |---|---|
