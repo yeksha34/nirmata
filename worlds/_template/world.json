@@ -1,0 +1,19 @@
+{
+  "name": "my-world",
+  "title": "Untitled World",
+  "tagline": "One sentence a player would see on the world card.",
+  "genre": [
+    "fantasy"
+  ],
+  "tone": [
+    "adventurous"
+  ],
+  "contentRating": "everyone",
+  "perspective": "second-person",
+  "systems": {
+    "dice": "none",
+    "stats": [],
+    "inventory": true
+  },
+  "createdWith": "realmwright 0.1"
+}

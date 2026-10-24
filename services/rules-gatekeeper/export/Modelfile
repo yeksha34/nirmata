@@ -1,0 +1,10 @@
+FROM ../out/gguf/rules-gatekeeper.q4_k_m.gguf
+
+TEMPLATE """### Instruction:
+{{ .Prompt }}
+
+### Response:
+"""
+
+PARAMETER stop "### Instruction:"
+PARAMETER temperature 0.3

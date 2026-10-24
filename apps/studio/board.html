@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Storyboard — Cuntswell Corpus</title>
+<script>
+if (navigator.userAgent.indexOf('Electron') !== -1) document.documentElement.classList.add('electron-window');
+</script>
+<style>
+  :root { --bg:#14161a; --panel:#1b1e24; --panel2:#22262e; --border:#2c313a; --text:#e6e6e6;
+    --dim:#8b93a1; --accent:#c98bd1; --accent2:#7fb8e0; --core:#c98bd1; --peripheral:#4a5261; --rule:#e0a84a; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text);
+    font-family: -apple-system, Segoe UI, sans-serif; overflow:hidden; }
+  /* Same treatment as index.html: in the Electron shell (a genuinely
+     transparent BrowserWindow, see main.js) html/body stop painting
+     anything, and #app-shell -- not body -- carries both the real content
+     background and the inset that leaves room for the vine border to sit
+     in true transparency around it, rather than overlapping the header. */
+  html.electron-window, html.electron-window body { background: transparent; }
+  html.electron-window #app-shell { padding: 30px; }
+  #app-shell { height: 100%; background: var(--bg); }
+  header { display:flex; align-items:center; gap:12px; padding:8px 14px; border-bottom:1px solid var(--border);
+    background:var(--panel); flex-shrink:0; -webkit-app-region: drag; }
+  header h1 { font-size:14px; margin:0; color:var(--accent); }
+  header a, header select, header button { color:var(--accent2); font-size:12.5px; text-decoration:none; -webkit-app-region: no-drag; }
+  #window-controls { display:none; margin-left:auto; gap:2px; }
+  #window-controls.electron { display:flex; }
+  #window-controls button { background:transparent; border:none; color:var(--dim); width:32px; height:28px;
+    font-size:13px; cursor:pointer; border-radius:3px; line-height:1; }
+  #window-controls button:hover { background:var(--panel2); color:var(--text); }
+  #window-controls button.close:hover { background:#c04848; color:#fff; }
+  #layout { display:flex; height:calc(100% - 45px); }
+  #canvas-wrap { flex:1; position:relative; overflow:hidden; cursor:grab; }
+  #canvas-wrap.panning { cursor:grabbing; }
+  #canvas { position:absolute; top:0; left:0; transform-origin:0 0; }
+  svg#edges { position:absolute; top:0; left:0; overflow:visible; pointer-events:none; }
+  .node { position:absolute; width:170px; padding:8px 10px; background:var(--panel2);
+    border:1px solid var(--border); border-radius:6px; font-size:11.5px; cursor:grab; user-select:none;
+    box-shadow:0 1px 3px rgba(0,0,0,.4); overflow:hidden; isolation:isolate; }
+  /* Per-arc background art, set via --arc-bg inline on the node (see
+     assets/backgrounds/arcs/ARC_BACKGROUND_PROMPTS.md). Sits behind the
+     node's own text on a low-opacity layer so it reads as texture, not a
+     competing image -- text stays fully legible over any art dropped in. */
+  .node::before { content:''; position:absolute; inset:0; z-index:-1;
+    background-image:var(--arc-bg, none); background-size:cover; background-position:center;
+    opacity:.22; pointer-events:none; }
+  .node:hover { border-color:var(--accent2); }
+  .node.selected { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent) inset; }
+  .node .order { color:var(--dim); font-size:10px; }
+  .node .title { font-weight:600; margin:2px 0 4px; line-height:1.25; }
+  .node .path { color:var(--dim); font-size:9.5px; word-break:break-all; }
+  .node .badge { display:inline-block; font-size:9px; padding:1px 5px; border-radius:8px;
+    background:var(--border); color:var(--dim); margin-top:3px; }
+  .node .connector { position:absolute; right:-6px; top:50%; transform:translateY(-50%); width:12px; height:12px;
+    border-radius:50%; background:var(--accent); border:2px solid var(--bg); cursor:crosshair; opacity:0;
+    transition:opacity .1s; }
+  .node:hover .connector { opacity:1; }
+  #sidebar { width:320px; border-left:1px solid var(--border); background:var(--panel); overflow-y:auto;
+    flex-shrink:0; padding:12px; font-size:12.5px; }
+  #sidebar h2 { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--dim); margin:0 0 8px; }
+  #sidebar .empty { color:var(--dim); font-size:12px; }
+  .ctx-item { padding:6px 8px; border:1px solid var(--border); border-radius:5px; margin-bottom:6px; }
+  .ctx-item .t { font-weight:600; }
+  .ctx-item .p { color:var(--dim); font-size:10.5px; word-break:break-all; }
+  .ctx-item .role { display:inline-block; font-size:9.5px; padding:0 5px; border-radius:6px; margin-top:3px; }
+  .role-root { background:var(--accent); color:#1b1e24; }
+  .role-core, .role-selected { background:var(--core); color:#1b1e24; }
+  .role-rule { background:var(--rule); color:#1b1e24; }
+  .role-peripheral, .role-1 { background:var(--peripheral); color:var(--text); }
+  #controls { display:flex; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid var(--border);
+    background:var(--panel); font-size:11.5px; color:var(--dim); flex-shrink:0; flex-wrap:wrap; }
+  #controls button, #controls .stepper button { background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    border-radius:4px; padding:5px 9px; font-size:12px; cursor:pointer; }
+  #controls button.active { border-color:var(--accent); color:var(--accent); }
+  .stepper { display:inline-flex; border:1px solid var(--border); border-radius:4px; overflow:hidden; background:var(--panel2); }
+  .stepper button { border:none; width:22px; padding:5px 0; }
+  .stepper input { border:none; border-left:1px solid var(--border); border-right:1px solid var(--border);
+    background:transparent; color:var(--text); width:26px; text-align:center; font-size:12px; padding:5px 0; }
+  #hint { margin-left:auto; color:var(--dim); }
+  #zoom-pct { min-width:36px; text-align:center; }
+  #vine-frame { position: fixed; inset: 0; pointer-events: none; z-index: 2000;
+    border-style: solid; border-width: 30px;
+    border-image-source: url('assets/vine_frame.svg');
+    border-image-slice: 100 fill; border-image-repeat: round;
+    opacity: .8; }
+</style>
+</head>
+<body>
+<div id="vine-frame"></div>
+<div id="app-shell">
+<header>
+  <h1>Cuntswell Corpus — Storyboard</h1>
+  <select id="story-select" title="Switch active story" style="background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px;"></select>
+  <button type="button" id="btn-back-editor" style="background:none;border:none;color:var(--text);font-size:13px;cursor:pointer;padding:0;">← Editor</button>
+  <button type="button" id="btn-open-reader" style="background:none;border:none;color:var(--accent2);font-size:12.5px;cursor:pointer;padding:0;margin-left:10px;">Read the story ↗</button>
+  <button type="button" id="btn-open-reader-standalone" title="Single self-contained HTML file, every image embedded inline — ~140MB, no server or network needed to open it. Slower to build than the plain reader." style="background:none;border:none;color:var(--accent2);font-size:12.5px;cursor:pointer;padding:0;margin-left:10px;">Standalone ↗</button>
+  <span id="window-controls">
+    <button type="button" id="win-min" title="Minimize">−</button>
+    <button type="button" id="win-max" title="Maximize/Restore">▢</button>
+    <button type="button" id="win-close" class="close" title="Close">✕</button>
+  </span>
+</header>
+<div id="controls">
+  <button id="btn-reset-layout" title="Snap every node back into its timeline band (arcs sharing a leading number = same timeframe), left to right">Reset Layout</button>
+  <label style="display:flex;align-items:center;gap:6px;">context depth
+    <span class="stepper"><button id="depth-dec">−</button><input id="depth" value="2"><button id="depth-inc">+</button></span>
+  </label>
+  <button id="zoom-out">−</button><span id="zoom-pct">100%</span><button id="zoom-in">+</button>
+  <span id="hint">Columns are timeline bands (same leading arc number = same timeframe — multiple arcs can share one) · drag a node to move it · drag its dot onto another node to link them · click a node for its context · scroll to zoom · drag background to pan</span>
+</div>
+<div id="layout">
+  <div id="canvas-wrap">
+    <div id="canvas">
+      <svg id="edges"></svg>
+    </div>
+  </div>
+  <div id="sidebar">
+    <h2>Selected Arc's Context</h2>
+    <div id="sidebar-body" class="empty">Click an arc node to load the cards it actually pulls in via
+      /api/context — same traversal the drafting tool uses. Solid lines are direct arc-to-arc links;
+      the context list follows every real link (arc → card → card…) out to the depth set above,
+      whatever kind of card it lands on.</div>
+  </div>
+</div>
+</div>
+<script>window.WINDOW_KIND = 'board';</script>
+<script src="/msgbus.js"></script>
+<script src="/board.js"></script>
+</body>
+</html>

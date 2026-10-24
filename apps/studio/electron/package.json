@@ -1,0 +1,22 @@
+{
+  "name": "story-editor-electron",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Desktop shell for the Cuntswell corpus Story Editor (tools/story_editor/server.mjs)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.cuntswell.storyeditor",
+    "productName": "Story Editor",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js"],
+    "win": { "target": "portable" }
+  }
+}

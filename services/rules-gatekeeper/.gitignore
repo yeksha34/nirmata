@@ -1,0 +1,6 @@
+data/dataset.jsonl
+out/
+*.gguf
+__pycache__/
+*.pyc
+.env

@@ -1,0 +1,25 @@
+{
+  "name": "example-world",
+  "title": "The Lantern Coast",
+  "tagline": "A fogbound harbour town where every lighthouse keeps a different promise.",
+  "genre": [
+    "fantasy",
+    "mystery"
+  ],
+  "tone": [
+    "cozy",
+    "eerie"
+  ],
+  "contentRating": "everyone",
+  "perspective": "second-person",
+  "systems": {
+    "dice": "d20-lite",
+    "stats": [
+      "Wit",
+      "Grit",
+      "Charm"
+    ],
+    "inventory": true
+  },
+  "createdWith": "realmwright 0.1"
+}

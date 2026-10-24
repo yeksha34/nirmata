@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "rules-check-manual": {
+      "command": "node",
+      "args": [".agents/skills/rules-check-manual/mcp-server.mjs"]
+    }
+  }
+}

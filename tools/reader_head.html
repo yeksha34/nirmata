@@ -1,0 +1,385 @@
+<script>
+// Same synchronous UA sniff as index.html/board.html -- runs before first
+// paint so there's no flash of the wrong layout, and only the Electron
+// shell's genuinely transparent window (see main.js) gets the vine-ring
+// inset; a plain browser tab has no real window transparency to show
+// through it.
+if (navigator.userAgent.indexOf('Electron') !== -1) document.documentElement.classList.add('electron-window');
+</script>
+<style>
+:root {
+  --bg: #14100f;
+  --bg-raised: #1c1714;
+  --ink: #e8dfd2;
+  --ink-dim: #a89c8a;
+  --accent: #9a3324;
+  --accent-soft: #c9856f;
+  --rule: #3a2f28;
+  --written: #5f9a6f;
+}
+
+/* Matches the editor/storyboard's scrollbar treatment (same thin,
+   sepia-toned bar instead of the SugarCube default) so the reader feels
+   like the same product rather than a bare browser scrollbar dropped in. */
+* { scrollbar-width: thin; scrollbar-color: var(--rule) var(--bg); }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 6px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-soft); }
+::-webkit-scrollbar-corner { background: var(--bg); }
+
+/* html/body/#story no longer paint an opaque background directly -- that
+   would sit as the page's canvas background, painted before (and
+   therefore beneath) any negative-z-index layer regardless of z-index
+   value, which is exactly what was hiding the scene background below.
+   The scene art now lives on its own fixed layer at the very back
+   (body::after, z-index -2, full strength -- no opacity on the image
+   itself), with a translucent wash of the base color above it
+   (body::before, z-index -1) doing the muting, and ordinary content
+   above both. The color layer's own alpha is what makes the backdrop
+   read as subdued texture rather than the image's opacity. */
+html, body, #story {
+  background: transparent !important;
+  color: var(--ink) !important;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image: var(--scene-bg, none);
+  background-size: cover;
+  background-position: center;
+}
+html.electron-window body::after { inset: 30px; }
+
+body::before {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  background: rgba(20, 16, 15, 0.84); /* var(--bg) as rgba -- custom properties can't be used inside another color function here */
+  pointer-events: none;
+  /* Full-viewport by default; the electron-window rule below insets it so
+     the vine border below has a genuinely transparent ring to sit in
+     instead of this color showing through the gaps in the vine art. */
+  inset: 0;
+}
+
+/* Same vine-border treatment as the editor/storyboard (see #vine-frame in
+   index.html/board.html) -- reused here as a pseudo-element on <html>
+   rather than an actual DOM node, since --head only injects into <head>
+   and this file has no body markup of its own to add one to. Always
+   drawn; only the Electron shell (a genuinely transparent BrowserWindow,
+   see main.js's setWindowOpenHandler, which already covers every
+   same-origin popup including this one) gets the color layer above
+   inset far enough to leave a real transparent ring behind it -- a plain
+   browser tab just shows the vines layered over the solid color instead. */
+html::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  pointer-events: none;
+  border-style: solid;
+  border-width: 30px;
+  border-image-source: url('../story_editor/assets/vine_frame.svg');
+  border-image-slice: 100 fill;
+  border-image-repeat: round;
+  opacity: .8;
+}
+html.electron-window body::before { inset: 30px; }
+
+body, #story, #passages {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  font-size: 1.08em;
+  line-height: 1.65;
+}
+
+#passages {
+  max-width: 46em;
+  margin: 0 auto;
+  padding: 1.5em 1.25em 4em;
+}
+
+a, a:hover, a:active, a:visited {
+  color: var(--accent-soft);
+}
+
+/* ---- top nav bar ---- */
+.reader-bar {
+  font-size: 0.85em;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+  margin-bottom: 0.75em;
+}
+.reader-bar a {
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 2px;
+}
+
+/* ---- Table of Contents ---- */
+.toc-intro h1 {
+  font-family: "Trajan Pro", "Cinzel", "Iowan Old Style", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  font-size: 1.7em;
+  margin-bottom: 0.15em;
+  color: var(--ink);
+}
+.toc-tagline {
+  color: var(--ink-dim);
+  font-style: italic;
+  font-size: 0.95em;
+  margin-top: 0;
+  margin-bottom: 2em;
+  max-width: 34em;
+}
+
+.arc-group {
+  margin-bottom: 2.25em;
+}
+.arc-title {
+  font-size: 0.78em;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent-soft);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.4em;
+  margin-bottom: 1em;
+  font-weight: 600;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15em, 1fr));
+  gap: 0.9em;
+}
+
+.chapter-card {
+  position: relative;
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.9em 1em;
+  overflow: hidden;
+  isolation: isolate;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+/* Same setting art as the storyboard's node backgrounds (--card-bg set
+   inline per card in build_twee()) -- a chapter with no resolved scene
+   just has no --card-bg set, so this stays empty for it. */
+.chapter-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--card-bg, none);
+  background-size: cover;
+  background-position: center;
+  opacity: .3;
+  pointer-events: none;
+}
+.chapter-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+/* Written (prose) chapters get a distinct color from outline-only cards. */
+.chapter-card-written {
+  border-left: 3px solid var(--written);
+}
+.chapter-card-written:hover {
+  border-color: var(--written);
+}
+.card-title {
+  margin: 0 0 0.35em;
+  font-size: 1.02em;
+  font-weight: 600;
+}
+.card-title a {
+  text-decoration: none;
+  color: var(--ink);
+}
+/* Make the whole card clickable, not just the title text. */
+.card-title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.card-title a:hover {
+  color: var(--accent-soft);
+}
+.card-blurb {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--ink-dim);
+  line-height: 1.45;
+}
+.card-reading-order {
+  display: inline-block;
+  font-size: 0.7em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--written);
+  border: 1px solid var(--written);
+  border-radius: 3px;
+  padding: 0.05em 0.4em;
+  margin: 0 0.4em 0.4em 0;
+}
+/* Per-card label replacing the old arc-grouped TOC sections -- the reader is one flat
+   sequence in narrative order now, so arc is just a small tag on each card, not a heading
+   that reorders the list around itself. */
+.card-arc {
+  display: inline-block;
+  font-size: 0.7em;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+  margin: 0 0 0.4em;
+}
+.reading-order-label {
+  font-size: 0.72em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--written);
+  margin: 0 0 0.6em;
+}
+
+/* ---- chapter passages ---- */
+.arc-label {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72em;
+  color: var(--accent-soft);
+  margin: 0 0 0.1em;
+}
+#passages h1 {
+  font-family: "Trajan Pro", "Cinzel", "Iowan Old Style", Georgia, serif;
+  font-weight: 400;
+  font-size: 1.5em;
+  letter-spacing: 0.02em;
+  margin-top: 0.1em;
+  margin-bottom: 0.9em;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.4em;
+}
+
+/* Portrait cues: whenever Cuntessa's mood or Tittiana's form changes,
+   build_twine.py inserts one of these directly before the paragraph where
+   the change first shows up (see insert_portrait_cues() there). Kept
+   deliberately small and unobtrusive -- a marginal illustration, not a
+   full-bleed image breaking up the reading flow. */
+.portrait-cue {
+  display: flex;
+  justify-content: center;
+  margin: 1.4em 0;
+}
+.portrait-cue img {
+  max-width: 11em;
+  max-height: 14em;
+  width: auto;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid var(--rule);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.portrait-cue.portrait-cuntessa img { border-color: var(--accent-soft); }
+.portrait-cue.portrait-tittiana img { border-color: var(--written); }
+
+/* Scene backgrounds: PassageHeader's <<script>> (see build_twine.py's
+   build_twee()) sets --scene-bg to the current passage's setting art
+   whenever that passage carries a scene-<key> tag, and clears it
+   otherwise -- see the body::after/body::before layers defined near the
+   top of this file for how the image and the muting wash actually stack. */
+
+/* Inline scene-cue: same treatment as a portrait cue, shown once per
+   scene change rather than once per chapter -- see build_twee()'s
+   scene_changed check. */
+.scene-cue {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 1.4em;
+}
+.scene-cue img {
+  max-width: 100%;
+  max-height: 16em;
+  width: auto;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid var(--rule);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  opacity: .85;
+}
+
+.chapter-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2.5em;
+  padding-top: 1em;
+  border-top: 1px solid var(--rule);
+  font-size: 0.9em;
+}
+.chapter-nav a {
+  text-decoration: none;
+}
+.nav-spacer {
+  display: inline-block;
+}
+
+/* ---- inline phrase-level subtext: <span class="subtext" data-subtext="...">phrase</span> ---- */
+span.subtext {
+  border-bottom: 1px dotted var(--accent-soft);
+  cursor: help;
+  position: relative;
+}
+
+span.subtext::after {
+  content: attr(data-subtext);
+  display: none;
+  position: absolute;
+  left: 0;
+  bottom: 125%;
+  z-index: 20;
+  width: max-content;
+  max-width: min(28em, 80vw);
+  padding: 0.65em 0.85em;
+  border-radius: 4px;
+  background: #0b0908;
+  border: 1px solid var(--accent);
+  color: var(--ink);
+  font-style: italic;
+  font-size: 0.82em;
+  line-height: 1.45;
+  white-space: normal;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+span.subtext:hover::after,
+span.subtext:focus::after {
+  display: block;
+}
+</style>
+
+<script>window.WINDOW_KIND = 'reader';</script>
+<script src="/msgbus.js"></script>
+<script>
+// Cross-window nav: the editor/storyboard can ask this reader window to
+// jump to a chapter passage or step back, via CuntswellBus (msgbus.js).
+// SugarCube boots asynchronously, so wait for its ':storyready' event
+// before wiring anything that touches Engine/State.
+document.addEventListener('DOMContentLoaded', () => {
+  jQuery(document).one(':storyready', () => {
+    if (!window.CuntswellBus) return;
+    CuntswellBus.on('goto-passage', ({ slug, target }) => {
+      if (target && target !== 'reader') return;
+      if (slug && Story.has(slug)) Engine.play(slug);
+    });
+    CuntswellBus.on('go-back', ({ target }) => {
+      if (target && target !== 'reader') return;
+      if (State.length > 1) Engine.backward();
+    });
+    CuntswellBus.on('close', ({ target }) => { if (!target || target === 'reader') window.close(); });
+  });
+});
+</script>
