@@ -17,7 +17,8 @@ Design references: SillyTavern + KoboldAI (local control, lorebooks), AI Dungeon
 | Studio (legacy vanilla-JS editor, `apps/studio`) | Baseline, copied and runnable |
 | World linter (`.agents/skills/world-lint`) | Verified on the example world |
 | Rules judge (`services/rules-gatekeeper`) | Copied; training project, optional |
-| Adventure Host, React UI, provider layer | Planned, see [docs/lifecycle.md](docs/lifecycle.md) |
+| `packages/core` engine (cards, lorebook matching, context builder, event tree) | Built, 44 tests (F-30 in progress) |
+| Model providers, host orchestration, server, React UI | Planned, see [docs/lifecycle.md](docs/lifecycle.md) |
 
 ## Run the baseline Studio
 
@@ -28,6 +29,17 @@ node apps/studio/server.mjs --port 8787
 ```
 
 Open http://localhost:8787/. Worlds are read from `./worlds` (override with `WORLDS_DIR`).
+
+## Develop the engine
+
+Requires Node 22+ and pnpm (`corepack pnpm ...` works without installing it).
+
+```bash
+corepack pnpm install
+corepack pnpm test
+```
+
+See [packages/core/README.md](packages/core/README.md).
 
 ## Check a world
 
