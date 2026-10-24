@@ -1,3 +1,4 @@
+export * from "./compaction";
 export * from "./memory";
 export * from "./rules";
 export * from "./session";

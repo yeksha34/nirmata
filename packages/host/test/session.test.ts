@@ -176,19 +176,6 @@ describe("retry, continue, undo, edit", () => {
     expect(JSON.stringify(provider.requests[2]?.messages)).not.toContain("First.");
   });
 
-  it("retry does not remember a summary that was derived from the reply it replaces", async () => {
-    const script = (req: GenerateRequest) =>
-      systemContent(req).includes("running memory") ? reply("SUMMARY-OF-FIRST") : reply("A reply.");
-    const { session, provider } = rig(script, { settings: { summaryEvery: 1 } });
-    await run(session.submit({ mode: "do", text: "act" }));
-    expect(session.memory.summary).toBe("SUMMARY-OF-FIRST");
-
-    await run(session.retry());
-    const writing = provider.requests.filter((r) => !systemContent(r).includes("running memory"));
-    expect(writing).toHaveLength(2);
-    expect(systemContent(writing[1])).not.toContain("SUMMARY-OF-FIRST");
-  });
-
   it("retry on an empty adventure has nothing to do", async () => {
     const { session } = rig(reply("x"));
     expect(pick(await run(session.retry()), "error")[0]?.code).toBe("nothing_to_do");
@@ -265,41 +252,6 @@ describe("memory and branches", () => {
     expect(session.turns.map((t) => t.text)).toEqual(["Opening.", "go right", "Path B."]);
     // the other branch is still saved
     expect(sink.events.some((e) => e.text === "Path A.")).toBe(true);
-  });
-
-  it("refreshes the summary every N player turns and uses it afterwards", async () => {
-    const script = (req: GenerateRequest) =>
-      systemContent(req).includes("running memory") ? reply("SUMMARY ONE") : reply("A reply.");
-    const { session, provider, sink } = rig(script, { settings: { summaryEvery: 2 } });
-
-    const first = await run(session.submit({ mode: "do", text: "one" }));
-    expect(pick(first, "memory")).toEqual([]);
-
-    const second = await run(session.submit({ mode: "do", text: "two" }));
-    expect(types(second)).toEqual(["player", "context", "text", "reply", "memory", "done"]);
-    expect(sink.events.at(-1)).toMatchObject({ kind: "summary", text: "SUMMARY ONE" });
-
-    const summaryRequest = provider.requests.find((r) =>
-      systemContent(r).includes("running memory"),
-    );
-    expect(lastContent(summaryRequest)).toContain("(none yet)");
-    expect(lastContent(summaryRequest)).toContain("Player: one");
-
-    await run(session.submit({ mode: "do", text: "three" }));
-    const third = provider.requests.at(-1);
-    expect(systemContent(third)).toContain("Summary so far: SUMMARY ONE");
-  });
-
-  it("a failed summary only warns; the reply is already saved", async () => {
-    const script = (req: GenerateRequest) =>
-      systemContent(req).includes("running memory")
-        ? { error: new LlmError("server", "The model had a problem on its side.") }
-        : reply("A reply.");
-    const { session } = rig(script, { settings: { summaryEvery: 1 } });
-    const events = await run(session.submit({ mode: "do", text: "go" }));
-    expect(pick(events, "reply")).toHaveLength(1);
-    expect(pick(events, "warning")[0]?.message).toMatch(/memory summary could not be refreshed/);
-    expect(session.memory.summary).toBe("");
   });
 });
 

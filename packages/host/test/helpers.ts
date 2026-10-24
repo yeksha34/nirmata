@@ -16,6 +16,7 @@ import {
 } from "@nirmata/llm";
 import {
   AdventureSession,
+  defaultCompaction,
   defaultSettings,
   type EventSink,
   type HostEvent,
@@ -60,6 +61,7 @@ export function ruleCard(id: string, severity: "must" | "should", check: string)
       keywords: [],
       summary: "",
       always: false,
+      origin: "authored",
       rating: "everyone",
       scope: "adventure",
       severity,
@@ -113,7 +115,7 @@ export function rig(
   const sink = opts.sink ?? memorySink();
   const settings: HostSettings = {
     ...defaultSettings("fake-model"),
-    summaryEvery: 0,
+    compaction: { ...defaultCompaction, enabled: false },
     ruleCheck: "must",
     ...opts.settings,
   };

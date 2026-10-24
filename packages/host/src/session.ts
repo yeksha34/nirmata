@@ -6,10 +6,14 @@ import {
   type BuiltContext,
   buildContext,
   type Card,
+  type Chapter,
   ContextBudgetError,
+  chaptersOf,
+  contextTurnsOf,
   editEvent,
   emptyAdventure,
   gotoEvent,
+  liveCardsOf,
   type Memory,
   memoryOf,
   newEvent,
@@ -23,7 +27,7 @@ import {
   type WorldManifest,
 } from "@nirmata/core";
 import { type ChatMessage, LlmError, type Provider } from "@nirmata/llm";
-import { playerTurnsSinceSummary, refreshSummary, turnsSinceSummary } from "./memory";
+import { compactionDue, planSegment, runCompaction } from "./compaction";
 import { rulesToCheck } from "./rules";
 import {
   type EventSink,
@@ -46,8 +50,8 @@ export interface SessionDeps {
   judge?: RuleJudge | undefined;
   ports?: Ports | undefined;
   counter?: TokenCounter | undefined;
-  /** Use a different (cheaper) provider for summaries. Defaults to `provider`. */
-  summaryProvider?: Provider | undefined;
+  /** Use a different (cheaper) provider for compaction calls. Defaults to `provider`. */
+  compactionProvider?: Provider | undefined;
 }
 
 const defaultPorts: Ports = {
@@ -152,6 +156,14 @@ export class AdventureSession {
   }
   get memory(): Memory {
     return memoryOf(this._state);
+  }
+  /** Chapters written so far on the current branch. */
+  get chapters(): Chapter[] {
+    return chaptersOf(this._state);
+  }
+  /** Scene and state cards tracking this adventure on the current branch. */
+  get liveCards(): Card[] {
+    return liveCardsOf(this._state);
   }
   get isBusy(): boolean {
     return this.busy;
@@ -365,15 +377,16 @@ export class AdventureSession {
 
     let note: string | undefined;
     let saved = false;
+    let lastContext: BuiltContext | undefined;
 
     for (let attempt = 1; attempt <= attempts; attempt++) {
       if (attempt > 1) yield { type: "attempt", n: attempt };
 
       const context: BuiltContext = buildContext({
         world,
-        cards,
+        cards: [...cards, ...liveCardsOf(this._state, args.replyTo)],
         memory: memoryOf(this._state, args.replyTo),
-        turns: turnsOf(this._state, args.turnsAt),
+        turns: contextTurnsOf(this._state, args.turnsAt),
         input: args.input,
         budget: { maxTokens: settings.budget.maxTokens, reserveReply: reserve },
         ratingCeiling: this.ceiling(),
@@ -381,6 +394,7 @@ export class AdventureSession {
         ...(args.pinned ? { pinnedCards: args.pinned } : {}),
         ...(this.deps.counter ? { counter: this.deps.counter } : {}),
       });
+      lastContext = context;
       yield { type: "context", context };
 
       const messages = note ? withNote(context.messages, note) : context.messages;
@@ -461,35 +475,85 @@ export class AdventureSession {
       note = correctionNote(violations);
     }
 
-    if (saved) yield* this.maybeSummarize(signal);
+    if (
+      saved &&
+      compactionDue({ state: this._state, settings: settings.compaction, context: lastContext })
+    ) {
+      yield* this.compactNow(false, signal);
+    }
   }
 
-  private async *maybeSummarize(signal?: AbortSignal): AsyncGenerator<HostEvent> {
+  /**
+   * Close the current chapter on demand: compact everything except the newest few turns, even
+   * if no trigger has fired yet.
+   */
+  compact(signal?: AbortSignal): AsyncGenerator<HostEvent> {
+    return this.guarded(async function* (self) {
+      yield* self.compactNow(true, signal);
+    });
+  }
+
+  /**
+   * Fold older turns into a summary, a chapter and tracking-card updates (ADR-0007), saved as one
+   * `compact` event. If it cannot be done the story is left exactly as it was and will be tried
+   * again later; play never fails because of it.
+   */
+  private async *compactNow(force: boolean, signal?: AbortSignal): AsyncGenerator<HostEvent> {
     const { settings } = this.deps;
-    if (settings.summaryEvery <= 0) return;
-    if (playerTurnsSinceSummary(this._state) < settings.summaryEvery) return;
+    const cfg = settings.compaction;
+    const plan = planSegment(
+      contextTurnsOf(this._state),
+      cfg.keepRecent,
+      force ? Math.min(cfg.minTurns, 2) : cfg.minTurns,
+    );
+    if (!plan) {
+      if (force) {
+        yield { type: "warning", message: "There is not enough new story to close a chapter yet." };
+      }
+      return;
+    }
+
+    yield { type: "compacting", turns: plan.turns.length };
+    let result: Awaited<ReturnType<typeof runCompaction>>;
     try {
-      const text = await refreshSummary({
-        provider: this.deps.summaryProvider ?? this.deps.provider,
-        model: settings.model,
-        previous: memoryOf(this._state).summary,
-        turns: turnsSinceSummary(this._state),
+      result = await runCompaction({
+        provider: this.deps.compactionProvider ?? this.deps.provider,
+        model: cfg.model ?? settings.model,
+        state: this._state,
+        segment: plan.turns,
+        previousSummary: memoryOf(this._state).summary,
+        liveCards: liveCardsOf(this._state),
         signal,
       });
-      if (!text) {
-        yield {
-          type: "warning",
-          message: "The memory summary came back empty, so it was not updated.",
-        };
-        return;
-      }
-      const event = await this.appendMemory("summary", text);
-      yield { type: "memory", event };
     } catch (e) {
-      if (e instanceof HostError && e.code === "persist") throw e;
+      if (e instanceof LlmError && e.code === "aborted") return;
       const why = e instanceof LlmError ? e.userMessage : (e as Error).message;
-      yield { type: "warning", message: `The memory summary could not be refreshed: ${why}` };
+      yield {
+        type: "warning",
+        message: `The story could not be compacted this time (${why}). Play continues and it will be tried again.`,
+      };
+      return;
     }
+    for (const message of result.warnings) yield { type: "warning", message };
+
+    const event = newEvent({
+      id: this.ports.newId(),
+      parentId: this._state.head,
+      t: this.ports.now(),
+      kind: "compact",
+      text: result.summary,
+      covers: plan.covers,
+      chapter: { title: result.chapter.title, text: result.chapter.text },
+      cardUpdates: result.cardUpdates,
+      model: cfg.model ?? settings.model,
+    });
+    await this.commit(event);
+    yield {
+      type: "compacted",
+      event,
+      chapter: { number: result.chapter.number, title: result.chapter.title },
+      cardsUpdated: result.cardUpdates.map((u) => u.id),
+    };
   }
 
   /** Current path from the first event to the head, for callers that render history. */

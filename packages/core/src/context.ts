@@ -179,7 +179,8 @@ export function buildContext(input: ContextInput): BuiltContext {
   const ceilingRank = ratingRank(ceiling);
   const cards: Card[] = [];
   for (const card of [...input.cards].sort(byId)) {
-    if (card.fm.kind === "scene") continue;
+    // Authored scene cards are one-line beats for the writer; scenes recorded by play are not.
+    if (card.fm.kind === "scene" && card.fm.origin !== "adventure") continue;
     if (ratingRank(card.fm.rating) > ceilingRank) {
       excluded.push({ id: card.fm.id, label: card.fm.name, reason: "rating" });
     } else {
