@@ -55,16 +55,16 @@ but has not been re-verified inside Nirmata.
 | F-07 | Version-control drawer | Baseline | | Git diff viewer in legacy Studio |
 | F-08 | AI-assisted card generation | Proposed | | |
 | F-09 | Contradiction / consistency check | Baseline | | Legacy ops queue |
-| F-30 | Adventure host core (turn loop) | Specified | | See [features/F-30-adventure-host-core.md](features/F-30-adventure-host-core.md) |
-| F-31 | Retry / edit / undo / continue | Proposed | | |
-| F-32 | Context builder with budget | Proposed | | Shares engine with F-03 |
+| F-30 | Adventure host core (turn loop) | Building | `feat/F-30-adventure-host-core` | Core engine done (44 tests). llm, host orchestration, server and play screen pending. See [features/F-30](features/F-30-adventure-host-core.md) |
+| F-31 | Retry / edit / undo / continue | Building | `feat/F-30-adventure-host-core` | Undo, retry, edit, branch primitives done in `packages/core`; UI pending |
+| F-32 | Context builder with budget | Building | `feat/F-30-adventure-host-core` | Implemented and golden-tested in `packages/core`; budget meter UI pending |
 | F-33 | Persistent memory and summaries | Proposed | | |
 | F-34 | Player character, stats, inventory | Proposed | | |
 | F-35 | Model/provider settings | Specified | | See ADR-0003, ADR-0006 |
 | F-36 | Rules enforcement during play | Proposed | | Uses F-05 |
 | F-37 | Hosting other players (LAN / link) | Proposed | | Legacy peer-sync is the seed |
 | F-38 | Save, branch, export adventures | Proposed | | |
-| F-39 | Content-rating gate | Specified | | `contentRating` field exists in `world.json` |
+| F-39 | Content-rating gate | Building | `feat/F-30-adventure-host-core` | Gate enforced in the context builder; session-level setting UI pending |
 | F-50 | Guided first run + simple/advanced mode | Specified | | See [ux-principles.md](ux-principles.md) |
 | F-51 | Mobile-friendly PWA | Proposed | | |
 | F-52 | Accessibility and keyboard | Proposed | | |
