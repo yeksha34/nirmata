@@ -1,6 +1,6 @@
 ---
 name: track-feature
-description: Move a Realmwright feature through its lifecycle and keep requirements.md, docs/lifecycle.md and docs/features/ in sync. Use whenever starting, changing, reviewing, verifying or releasing a feature (F-xx), or when asked "what state is feature X in", "start work on F-30", "mark this verified", or "update the status board".
+description: Move a Nirmata feature through its lifecycle and keep requirements.md, docs/lifecycle.md and docs/features/ in sync. Use whenever starting, changing, reviewing, verifying or releasing a feature (F-xx), or when asked "what state is feature X in", "start work on F-30", "mark this verified", or "update the status board".
 ---
 
 # track-feature

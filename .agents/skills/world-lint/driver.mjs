@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Corpus driver for a Realmwright world (worlds/<name>/).
+// Corpus driver for a Nirmata world (worlds/<name>/).
 // There is no app here — the "running system" is 200+ interlinked markdown
 // cards. This is the harness that reaches into it.
 //

@@ -1,6 +1,6 @@
 ---
 name: world-builder
-description: Create or extend a Realmwright world (worlds/<name>/) - lore, characters, places, arcs and rules - from the template, keeping cards valid and linked. Use when asked to make a new world, add NPCs/places/lore/rules to a world, expand a card, or check that a world is ready to host an adventure.
+description: Create or extend a Nirmata world (worlds/<name>/) - lore, characters, places, arcs and rules - from the template, keeping cards valid and linked. Use when asked to make a new world, add NPCs/places/lore/rules to a world, expand a card, or check that a world is ready to host an adventure.
 ---
 
 # world-builder

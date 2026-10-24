@@ -1,6 +1,6 @@
 # ADR-0004: Electron shell and PWA for phones
 
-- Status: Proposed
+- Status: Superseded by [ADR-0006](0006-stack-revision.md)
 - Date: 2026-10-25
 - Related: [tech-stack](../tech-stack.md)
 

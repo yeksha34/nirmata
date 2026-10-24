@@ -1,6 +1,6 @@
 # ADR-0001: TypeScript, React + Vite, Hono, pnpm monorepo
 
-- Status: Proposed
+- Status: Proposed; stack parts superseded by [ADR-0006](0006-stack-revision.md)
 - Date: 2026-10-25
 - Related: [tech-stack](../tech-stack.md)
 

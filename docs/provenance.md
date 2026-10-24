@@ -1,6 +1,6 @@
 # Provenance: what came from where
 
-Realmwright was scaffolded on 2026-10-25 from three sibling projects. Nothing was moved; the originals
+Nirmata was scaffolded on 2026-10-25 from three sibling projects. Nothing was moved; the originals
 are untouched.
 
 | Source | Taken | Went to | Left behind, and why |
