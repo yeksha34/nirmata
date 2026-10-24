@@ -26,6 +26,8 @@ export interface ContextInput {
   ratingCeiling?: Rating;
   /** How many of the most recent turns are scanned for keywords, in addition to the input. */
   scanTurns?: number;
+  /** Cards to treat as always-on for this one turn only (an opening scene's arc, a manual pin). */
+  pinnedCards?: readonly string[];
 }
 
 export interface ChatMessage {
@@ -211,9 +213,11 @@ export function buildContext(input: ContextInput): BuiltContext {
 
   const renderedCanon = new Map<string, string>();
   const world = cards.filter((c) => c.fm.kind !== "rule");
-  for (const card of world.filter((c) => c.fm.always)) {
+  const forced = new Set(input.pinnedCards ?? []);
+  for (const card of world.filter((c) => c.fm.always || forced.has(c.fm.id))) {
     const text = renderCard(card);
-    if (admit("canon", card.fm.id, card.fm.name, "always on", text)) {
+    const why = card.fm.always ? "always on" : "pinned for this turn";
+    if (admit("canon", card.fm.id, card.fm.name, why, text)) {
       renderedCanon.set(card.fm.id, text);
     }
   }
@@ -236,7 +240,9 @@ export function buildContext(input: ContextInput): BuiltContext {
   }
 
   // Keyword-triggered cards, most recently triggered first.
-  const triggerable = world.filter((c) => !c.fm.always && c.fm.keywords.length > 0);
+  const triggerable = world.filter(
+    (c) => !c.fm.always && !forced.has(c.fm.id) && c.fm.keywords.length > 0,
+  );
   const matcher = buildMatcher(
     triggerable.map((c) => ({ cardId: c.fm.id, keywords: c.fm.keywords })),
   );

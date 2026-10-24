@@ -55,13 +55,13 @@ but has not been re-verified inside Nirmata.
 | F-07 | Version-control drawer | Baseline | | Git diff viewer in legacy Studio |
 | F-08 | AI-assisted card generation | Proposed | | |
 | F-09 | Contradiction / consistency check | Baseline | | Legacy ops queue |
-| F-30 | Adventure host core (turn loop) | Building | `feat/F-30-adventure-host-core` | Core engine and provider layer done (92 tests). Host orchestration, server and play screen pending. See [features/F-30](features/F-30-adventure-host-core.md) |
-| F-31 | Retry / edit / undo / continue | Building | `feat/F-30-adventure-host-core` | Undo, retry, edit, branch primitives done in `packages/core`; UI pending |
+| F-30 | Adventure host core (turn loop) | Building | `feat/F-30-adventure-host-core` | Engine, providers and host done (133 tests, fake provider only). Server routes and play screen pending. See [features/F-30](features/F-30-adventure-host-core.md) |
+| F-31 | Retry / edit / undo / continue | Building | `feat/F-30-adventure-host-core` | Done in `packages/host` (retry also recovers a failed turn); UI pending |
 | F-32 | Context builder with budget | Building | `feat/F-30-adventure-host-core` | Implemented and golden-tested in `packages/core`; budget meter UI pending |
-| F-33 | Persistent memory and summaries | Proposed | | |
+| F-33 | Persistent memory and summaries | Building | `feat/F-30-adventure-host-core` | Rolling summary and player pins done in `packages/host`, per-branch; auto-suggested story cards and memory panel pending |
 | F-34 | Player character, stats, inventory | Proposed | | |
 | F-35 | Model/provider settings | Building | `feat/F-30-adventure-host-core` | Provider layer, presets and test-connection logic done in `packages/llm` (see ADR-0003, ADR-0006); settings UI and key storage pending |
-| F-36 | Rules enforcement during play | Proposed | | Uses F-05 |
+| F-36 | Rules enforcement during play | Building | `feat/F-30-adventure-host-core` | LLM judge, automatic rewrite and flags done in `packages/host`; judge-model settings and the flag/Fix UI pending |
 | F-37 | Hosting other players (LAN / link) | Proposed | | Legacy peer-sync is the seed |
 | F-38 | Save, branch, export adventures | Proposed | | |
 | F-39 | Content-rating gate | Building | `feat/F-30-adventure-host-core` | Gate enforced in the context builder; session-level setting UI pending |

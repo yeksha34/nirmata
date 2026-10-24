@@ -29,6 +29,8 @@ export const AdventureEvent = z
     /** Card ids that were in the prompt that produced this host event. */
     cardsUsed: z.array(z.string()).default([]),
     model: z.string().optional(),
+    /** Host events only: ids of rules the reply was judged to break (empty when it passed). */
+    flags: z.array(z.string()).default([]),
     /** Set when this event is an edited replacement for an earlier sibling. */
     editOf: z.string().optional(),
     /** `goto` only: the node to make the head, or null for "before everything". */
@@ -142,9 +144,9 @@ export function pathTo(state: AdventureState, id: string | null = state.head): A
   return path.reverse();
 }
 
-/** The conversation the player currently sees, oldest first. */
-export function turnsOf(state: AdventureState): Turn[] {
-  return pathTo(state).flatMap((ev): Turn[] =>
+/** The conversation the player currently sees, oldest first (or as of node `at`). */
+export function turnsOf(state: AdventureState, at: string | null = state.head): Turn[] {
+  return pathTo(state, at).flatMap((ev): Turn[] =>
     ev.kind === "player"
       ? [{ id: ev.id, role: "player", mode: ev.mode, text: ev.text }]
       : ev.kind === "host"
@@ -153,10 +155,13 @@ export function turnsOf(state: AdventureState): Turn[] {
   );
 }
 
-/** Memory as of the head: last summary on the path, plus pins that were not later unpinned. */
-export function memoryOf(state: AdventureState): Memory {
+/**
+ * Memory as of the head (or node `at`): last summary on the path, plus pins that were not later
+ * unpinned. Asking "as of the parent" is how a retry avoids remembering the reply it replaces.
+ */
+export function memoryOf(state: AdventureState, at: string | null = state.head): Memory {
   const memory: Memory = { summary: "", pinned: [] };
-  for (const ev of pathTo(state)) {
+  for (const ev of pathTo(state, at)) {
     if (ev.kind === "summary") memory.summary = ev.text;
     else if (ev.kind === "pin") memory.pinned.push(ev.text);
     else if (ev.kind === "unpin") {

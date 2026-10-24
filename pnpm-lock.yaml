@@ -188,6 +188,15 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
 
+  packages/host:
+    dependencies:
+      '@nirmata/core':
+        specifier: workspace:*
+        version: link:../core
+      '@nirmata/llm':
+        specifier: workspace:*
+        version: link:../llm
+
   packages/llm:
     dependencies:
       '@nirmata/core':

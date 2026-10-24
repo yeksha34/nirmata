@@ -126,6 +126,17 @@ describe("buildContext", () => {
     expect(ids(strict, "canon")).toEqual([]);
   });
 
+  it("treats pinned cards as always-on for one turn without double-including them", () => {
+    const cards = [card("arc.opening", { keywords: ["opening"] }), card("lore.other")];
+    const c = buildContext(
+      input({ cards, pinnedCards: ["arc.opening"], input: { mode: "story", text: "opening" } }),
+    );
+    expect(c.included.filter((i) => i.id === "arc.opening")).toEqual([
+      expect.objectContaining({ section: "canon", reason: "pinned for this turn" }),
+    ]);
+    expect(ids(c, "lore")).toEqual([]);
+  });
+
   it("renders modes distinctly and strips quotes for speech", () => {
     const say = buildContext(input({ input: { mode: "say", text: '"Hello"' } }));
     expect(say.messages.at(-1)?.content).toBe('<player_input mode="say">"Hello"</player_input>');

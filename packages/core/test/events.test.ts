@@ -97,6 +97,32 @@ describe("event tree", () => {
     expect(memoryOf(earlier).pinned).toEqual(["Has a lamp"]);
   });
 
+  it("reads turns and memory as of an earlier node", () => {
+    n = 0;
+    const log = replay([
+      host(null, "Opening."),
+      player("e1", "Knock."),
+      host("e2", "Door opens."),
+      newEvent({ id: "s1", parentId: "e3", t: T, kind: "summary", text: "Door opened." }),
+    ]);
+    expect(turnsOf(log, "e2").map((t) => t.text)).toEqual(["Opening.", "Knock."]);
+    expect(memoryOf(log, "e2").summary).toBe("");
+    expect(memoryOf(log).summary).toBe("Door opened.");
+  });
+
+  it("defaults host event flags to none and keeps them when set", () => {
+    expect(host(null).flags).toEqual([]);
+    const flagged = newEvent({
+      id: "f",
+      parentId: null,
+      t: T,
+      kind: "host",
+      text: "x",
+      flags: ["rule.a"],
+    });
+    expect(parseLog(serializeEvent(flagged))[0]?.flags).toEqual(["rule.a"]);
+  });
+
   it("a goto to null shows an empty story", () => {
     const { state } = story();
     const cleared = applyEvent(state, gotoEvent("g", T, null));
