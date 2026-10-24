@@ -4,30 +4,38 @@ import {
   type AdventureState,
   applyEvent,
   type BuiltContext,
+  breakEvent,
   buildContext,
   type Card,
   type Chapter,
   ContextBudgetError,
+  cardsWithPlot,
   chaptersOf,
   contextTurnsOf,
   editEvent,
   emptyAdventure,
   gotoEvent,
-  liveCardsOf,
   type Memory,
+  manualPlotEvent,
   memoryOf,
   newEvent,
+  type PlotPoint,
   pathTo,
+  plotEvent,
+  plotPointsOf,
   replay,
   retryParent,
   type TokenCounter,
   type Turn,
   turnsOf,
+  turnsSincePlot,
   undoEvent,
+  undoLastPlotEvent,
+  unplotEvent,
   type WorldManifest,
 } from "@nirmata/core";
 import { type ChatMessage, LlmError, type Provider } from "@nirmata/llm";
-import { compactionDue, planSegment, runCompaction } from "./compaction";
+import { candidateCards, extractPlot, plotDue } from "./plot";
 import { rulesToCheck } from "./rules";
 import {
   type EventSink,
@@ -50,8 +58,8 @@ export interface SessionDeps {
   judge?: RuleJudge | undefined;
   ports?: Ports | undefined;
   counter?: TokenCounter | undefined;
-  /** Use a different (cheaper) provider for compaction calls. Defaults to `provider`. */
-  compactionProvider?: Provider | undefined;
+  /** Use a different (cheaper) provider for plot extraction. Defaults to `provider`. */
+  plotProvider?: Provider | undefined;
 }
 
 const defaultPorts: Ports = {
@@ -157,13 +165,13 @@ export class AdventureSession {
   get memory(): Memory {
     return memoryOf(this._state);
   }
-  /** Chapters written so far on the current branch. */
+  /** Chapters on the current branch: the turns that have left the context window, verbatim. */
   get chapters(): Chapter[] {
     return chaptersOf(this._state);
   }
-  /** Scene and state cards tracking this adventure on the current branch. */
-  get liveCards(): Card[] {
-    return liveCardsOf(this._state);
+  /** Plot points in force on the current branch. */
+  get plotPoints(): PlotPoint[] {
+    return plotPointsOf(this._state);
   }
   get isBusy(): boolean {
     return this.busy;
@@ -307,6 +315,64 @@ export class AdventureSession {
     await this.memoryEvent("unpin", fact);
   }
 
+  /** Attach a plot point to a card by hand. It never moves the automatic extraction forward. */
+  async addPlotPoint(card: string, text: string): Promise<AdventureEvent> {
+    this.assertIdle();
+    if (!this.deps.cards.some((c) => c.fm.id === card && c.fm.kind !== "rule")) {
+      throw new HostError("nothing_to_do", `There is no card "${card}" in this world.`);
+    }
+    if (!text.trim()) throw new HostError("nothing_to_do", "Write what happened first.");
+    if (this._state.head === null) {
+      throw new HostError("nothing_to_do", "Nothing has happened yet to attach a plot point to.");
+    }
+    const ev = manualPlotEvent(this._state, {
+      id: this.ports.newId(),
+      t: this.ports.now(),
+      card,
+      text: text.trim(),
+    });
+    await this.commit(ev);
+    return ev;
+  }
+
+  /** Take back one plot point. It is not re-extracted: the turns it came from were already read. */
+  async revokePlotPoint(pointId: string): Promise<void> {
+    this.assertIdle();
+    if (!plotPointsOf(this._state).some((p) => p.id === pointId)) {
+      throw new HostError("nothing_to_do", "That plot point is not in force on this branch.");
+    }
+    await this.commit(
+      unplotEvent(this._state, {
+        id: this.ports.newId(),
+        t: this.ports.now(),
+        revokes: [pointId],
+      }),
+    );
+  }
+
+  /** Take back the newest batch of plot points. Returns false when there is none. */
+  async undoLastPlot(): Promise<boolean> {
+    this.assertIdle();
+    const ev = undoLastPlotEvent(this._state, this.ports.newId(), this.ports.now());
+    if (!ev) return false;
+    await this.commit(ev);
+    return true;
+  }
+
+  /**
+   * Start a new chapter from here. Where chapters should break is decided elsewhere (and later);
+   * for now this is the only thing that creates a break.
+   */
+  async breakChapter(title?: string): Promise<AdventureEvent> {
+    this.assertIdle();
+    if (this._state.head === null) {
+      throw new HostError("nothing_to_do", "Nothing has happened yet to end a chapter.");
+    }
+    const ev = breakEvent(this._state, this.ports.newId(), this.ports.now(), title);
+    await this.commit(ev);
+    return ev;
+  }
+
   // ---- internals ------------------------------------------------------------------------
 
   private async memoryEvent(
@@ -384,7 +450,7 @@ export class AdventureSession {
 
       const context: BuiltContext = buildContext({
         world,
-        cards: [...cards, ...liveCardsOf(this._state, args.replyTo)],
+        cards: cardsWithPlot(cards, plotPointsOf(this._state, args.replyTo)),
         memory: memoryOf(this._state, args.replyTo),
         turns: contextTurnsOf(this._state, args.turnsAt),
         input: args.input,
@@ -452,6 +518,14 @@ export class AdventureSession {
         }
       }
 
+      // Turns this prompt left out are outside the window for good: record where it now begins.
+      const dropped = new Set(
+        context.excluded.filter((e) => e.reason === "budget").map((e) => e.id),
+      );
+      const shifted = contextTurnsOf(this._state, args.turnsAt)
+        .filter((t) => dropped.has(t.id))
+        .at(-1)?.id;
+
       const reply = newEvent({
         id: this.ports.newId(),
         parentId: args.replyTo,
@@ -463,6 +537,7 @@ export class AdventureSession {
           .map((i) => i.id),
         model: settings.model,
         flags: violations.map((v) => v.ruleId),
+        ...(shifted ? { shifted } : {}),
       });
       await this.commit(reply);
       saved = true;
@@ -475,54 +550,60 @@ export class AdventureSession {
       note = correctionNote(violations);
     }
 
-    if (
-      saved &&
-      compactionDue({ state: this._state, settings: settings.compaction, context: lastContext })
-    ) {
-      yield* this.compactNow(false, signal);
+    if (saved && plotDue(this._state, settings.plot)) {
+      yield* this.plotNow(false, lastContext, signal);
     }
   }
 
-  /**
-   * Close the current chapter on demand: compact everything except the newest few turns, even
-   * if no trigger has fired yet.
-   */
-  compact(signal?: AbortSignal): AsyncGenerator<HostEvent> {
+  /** Look for plot points in the recent turns right now, without waiting for the trigger. */
+  plot(signal?: AbortSignal): AsyncGenerator<HostEvent> {
     return this.guarded(async function* (self) {
-      yield* self.compactNow(true, signal);
+      yield* self.plotNow(true, undefined, signal);
     });
   }
 
   /**
-   * Fold older turns into a summary, a chapter and tracking-card updates (ADR-0007), saved as one
-   * `compact` event. If it cannot be done the story is left exactly as it was and will be tried
-   * again later; play never fails because of it.
+   * Read the turns written since the last look and attach what happened to the cards it affected
+   * (ADR-0008), saved as one `plot` event. A failure never breaks play; the same turns are read
+   * again next time.
    */
-  private async *compactNow(force: boolean, signal?: AbortSignal): AsyncGenerator<HostEvent> {
-    const { settings } = this.deps;
-    const cfg = settings.compaction;
-    const plan = planSegment(
-      contextTurnsOf(this._state),
-      cfg.keepRecent,
-      force ? Math.min(cfg.minTurns, 2) : cfg.minTurns,
-    );
-    if (!plan) {
+  private async *plotNow(
+    force: boolean,
+    context: BuiltContext | undefined,
+    signal?: AbortSignal,
+  ): AsyncGenerator<HostEvent> {
+    const { settings, cards } = this.deps;
+    const cfg = settings.plot;
+    const turns = turnsSincePlot(this._state).slice(-cfg.maxTurns);
+    const last = turns[turns.length - 1];
+    if (!last) {
       if (force) {
-        yield { type: "warning", message: "There is not enough new story to close a chapter yet." };
+        yield { type: "warning", message: "There is nothing new to read for plot points yet." };
+      }
+      return;
+    }
+    const candidates = candidateCards(cards, turns, context);
+    if (!candidates.length) {
+      if (force) {
+        yield {
+          type: "warning",
+          message:
+            "No card is mentioned in the recent story, so there is nothing to attach plot points to.",
+        };
       }
       return;
     }
 
-    yield { type: "compacting", turns: plan.turns.length };
-    let result: Awaited<ReturnType<typeof runCompaction>>;
+    yield { type: "plotting", turns: turns.length };
+    let points: Awaited<ReturnType<typeof extractPlot>>;
     try {
-      result = await runCompaction({
-        provider: this.deps.compactionProvider ?? this.deps.provider,
+      points = await extractPlot({
+        provider: this.deps.plotProvider ?? this.deps.provider,
         model: cfg.model ?? settings.model,
         state: this._state,
-        segment: plan.turns,
-        previousSummary: memoryOf(this._state).summary,
-        liveCards: liveCardsOf(this._state),
+        turns,
+        candidates,
+        maxPoints: cfg.maxPoints,
         signal,
       });
     } catch (e) {
@@ -530,29 +611,23 @@ export class AdventureSession {
       const why = e instanceof LlmError ? e.userMessage : (e as Error).message;
       yield {
         type: "warning",
-        message: `The story could not be compacted this time (${why}). Play continues and it will be tried again.`,
+        message: `Plot points could not be updated this time (${why}). Play continues and it will be tried again.`,
       };
       return;
     }
-    for (const message of result.warnings) yield { type: "warning", message };
 
-    const event = newEvent({
+    const event = plotEvent(this._state, {
       id: this.ports.newId(),
-      parentId: this._state.head,
       t: this.ports.now(),
-      kind: "compact",
-      text: result.summary,
-      covers: plan.covers,
-      chapter: { title: result.chapter.title, text: result.chapter.text },
-      cardUpdates: result.cardUpdates,
+      covers: last.id,
+      points,
       model: cfg.model ?? settings.model,
     });
     await this.commit(event);
     yield {
-      type: "compacted",
+      type: "plot",
       event,
-      chapter: { number: result.chapter.number, title: result.chapter.title },
-      cardsUpdated: result.cardUpdates.map((u) => u.id),
+      points: plotPointsOf(this._state).filter((p) => p.eventId === event.id),
     };
   }
 

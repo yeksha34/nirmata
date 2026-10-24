@@ -1,24 +1,15 @@
 import { z } from "zod";
-import type { Card } from "./cards";
-import {
-  CardFrontmatter,
-  CardUpdate,
-  formatIssues,
-  type Memory,
-  PlayerMode,
-  type Turn,
-} from "./schema";
+import { formatIssues, type Memory, PlayerMode, type Turn } from "./schema";
 
 /**
  * An adventure is an append-only log of events forming a tree.
  *
- * - Content events (`player`, `host`, `system`, `summary`, `compact`, `pin`, `unpin`) are tree nodes: each
- *   points at its `parentId`, and appending one makes it the new head.
+ * - Content events (`player`, `host`, `system`, `summary`, `plot`, `unplot`, `break`, `pin`,
+ *   `unpin`) are tree nodes: each points at its `parentId`, and appending one makes it the new head.
  * - A `goto` event moves the head without adding a node (undo, branch navigation).
- * - A `compact` event replaces older turns in the prompt with a summary, and carries the chapter
- *   written for them plus updates to the scene/state tracking cards (ADR-0007).
- * - The visible story is the path from a root to the head; memory is derived from that same path,
- *   so every branch has its own memory.
+ * - The visible story is the path from a root to the head. Everything else a branch knows (memory,
+ *   the context window, chapters, plot points) is derived from that same path, so undo, retry,
+ *   edit and branching keep all of it consistent (ADR-0008).
  *
  * Nothing here reads a clock or generates ids: callers supply `id` and `t`, which keeps the whole
  * module pure and replayable.
@@ -28,13 +19,22 @@ export const EVENT_KINDS = [
   "host",
   "system",
   "summary",
-  "compact",
+  "plot",
+  "unplot",
+  "break",
   "pin",
   "unpin",
   "goto",
 ] as const;
 export const EventKind = z.enum(EVENT_KINDS);
 export type EventKind = z.infer<typeof EventKind>;
+
+/** One plot point as carried in a `plot` event: something that happened, attached to a card. */
+export const PlotPointInput = z.object({
+  card: z.string().min(1),
+  text: z.string().trim().min(1),
+});
+export type PlotPointInput = z.output<typeof PlotPointInput>;
 
 export const AdventureEvent = z
   .object({
@@ -44,57 +44,39 @@ export const AdventureEvent = z
     t: z.string().min(1),
     kind: EventKind,
     mode: PlayerMode.optional(),
+    /** Turn text, summary, pinned fact, or (for `break`) the new chapter's title. */
     text: z.string().default(""),
     /** Card ids that were in the prompt that produced this host event. */
     cardsUsed: z.array(z.string()).default([]),
     model: z.string().optional(),
     /** Host events only: ids of rules the reply was judged to break (empty when it passed). */
     flags: z.array(z.string()).default([]),
+    /**
+     * Host events only: the newest turn that was already outside the context window when this
+     * reply was written. Everything up to and including it is in the chapter, not the prompt.
+     */
+    shifted: z.string().min(1).optional(),
+    /** `plot` only: the newest turn the extraction read (the extraction cursor). Absent when the points were added by hand. */
+    covers: z.string().min(1).optional(),
+    /** `plot` only: the points found. May be empty; the event still moves the cursor. */
+    points: z.array(PlotPointInput).default([]),
+    /** `unplot` only: ids (`<plot event id>:<index>`) of points to take back. */
+    revokes: z.array(z.string().min(1)).default([]),
     /** Set when this event is an edited replacement for an earlier sibling. */
     editOf: z.string().optional(),
-    /** `compact` only: id of the last turn folded into the summary (it is on this branch). */
-    covers: z.string().min(1).optional(),
-    /** `compact` only: the chapter written for the covered turns. */
-    chapter: z.object({ title: z.string().min(1), text: z.string().min(1) }).optional(),
-    /** `compact` only: tracking cards to add or replace (later wins per id). */
-    cardUpdates: z.array(CardUpdate).default([]),
     /** `goto` only: the node to make the head, or null for "before everything". */
     target: z.string().nullable().optional(),
   })
   .superRefine((e, ctx) => {
+    const issue = (path: string, message: string) =>
+      ctx.addIssue({ code: "custom", path: [path], message });
     if (e.kind === "goto") {
-      if (e.target === undefined) {
-        ctx.addIssue({ code: "custom", path: ["target"], message: "goto events need a target" });
-      }
-      if (e.parentId !== null) {
-        ctx.addIssue({ code: "custom", path: ["parentId"], message: "goto events have no parent" });
-      }
+      if (e.target === undefined) issue("target", "goto events need a target");
+      if (e.parentId !== null) issue("parentId", "goto events have no parent");
     }
-    if (e.kind === "compact") {
-      if (!e.covers) {
-        ctx.addIssue({ code: "custom", path: ["covers"], message: "compact events need covers" });
-      }
-      if (!e.text.trim()) {
-        ctx.addIssue({ code: "custom", path: ["text"], message: "compact events need a summary" });
-      }
-      if (!e.chapter) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["chapter"],
-          message: "compact events need a chapter",
-        });
-      }
-    }
-    if (e.kind === "player" && !e.mode) {
-      ctx.addIssue({ code: "custom", path: ["mode"], message: "player events need a mode" });
-    }
-    if (e.parentId === e.id) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["parentId"],
-        message: "an event cannot be its own parent",
-      });
-    }
+    if (e.kind === "player" && !e.mode) issue("mode", "player events need a mode");
+    if (e.kind === "unplot" && !e.revokes.length) issue("revokes", "unplot events need revokes");
+    if (e.parentId === e.id) issue("parentId", "an event cannot be its own parent");
   });
 export type AdventureEvent = z.output<typeof AdventureEvent>;
 export type AdventureEventInput = z.input<typeof AdventureEvent>;
@@ -144,6 +126,11 @@ function isAncestorOrSelf(
   return false;
 }
 
+/** Plot point ids look like `<plot event id>:<index>`. */
+export function plotPointId(eventId: string, index: number): string {
+  return `${eventId}:${index}`;
+}
+
 function reduce(draft: Draft, ev: AdventureEvent): void {
   if (draft.events.has(ev.id)) throw new Error(`duplicate event id "${ev.id}"`);
 
@@ -156,8 +143,27 @@ function reduce(draft: Draft, ev: AdventureEvent): void {
     if (ev.parentId !== null && !isNode(draft, ev.parentId)) {
       throw new Error(`event ${ev.id}: unknown parent "${ev.parentId}"`);
     }
-    if (ev.kind === "compact" && !isAncestorOrSelf(draft, ev.parentId, ev.covers)) {
-      throw new Error(`compact ${ev.id}: covers "${ev.covers}", which is not on its branch`);
+    for (const [field, target] of [
+      ["shifted", ev.shifted],
+      ["covers", ev.covers],
+    ] as const) {
+      if (target !== undefined && !isAncestorOrSelf(draft, ev.parentId, target)) {
+        throw new Error(`event ${ev.id}: ${field} "${target}" is not on its branch`);
+      }
+    }
+    for (const id of ev.revokes) {
+      const at = id.lastIndexOf(":");
+      const plot = at === -1 ? undefined : draft.events.get(id.slice(0, at));
+      const index = Number(id.slice(at + 1));
+      if (
+        plot?.kind !== "plot" ||
+        !Number.isInteger(index) ||
+        index < 0 ||
+        index >= plot.points.length ||
+        !isAncestorOrSelf(draft, ev.parentId, plot.id)
+      ) {
+        throw new Error(`unplot ${ev.id}: "${id}" is not a plot point on its branch`);
+      }
     }
     const siblings = draft.children.get(ev.parentId) ?? [];
     siblings.push(ev.id);
@@ -200,103 +206,26 @@ export function pathTo(state: AdventureState, id: string | null = state.head): A
   return path.reverse();
 }
 
+export function turnOf(ev: AdventureEvent): Turn | undefined {
+  if (ev.kind === "player") return { id: ev.id, role: "player", mode: ev.mode, text: ev.text };
+  if (ev.kind === "host") return { id: ev.id, role: "host", text: ev.text };
+  return undefined;
+}
+
 /** The conversation the player currently sees, oldest first (or as of node `at`). */
 export function turnsOf(state: AdventureState, at: string | null = state.head): Turn[] {
-  return pathTo(state, at).flatMap((ev): Turn[] =>
-    ev.kind === "player"
-      ? [{ id: ev.id, role: "player", mode: ev.mode, text: ev.text }]
-      : ev.kind === "host"
-        ? [{ id: ev.id, role: "host", text: ev.text }]
-        : [],
-  );
+  return pathTo(state, at).flatMap((ev) => turnOf(ev) ?? []);
 }
 
 /**
- * The turns that still belong in the prompt: everything after the last compaction's `covers`
- * (all of them if there has been none). The full conversation stays available from `turnsOf`.
- */
-export function contextTurnsOf(state: AdventureState, at: string | null = state.head): Turn[] {
-  const path = pathTo(state, at);
-  let from = 0;
-  for (let i = path.length - 1; i >= 0; i--) {
-    const ev = path[i];
-    if (ev?.kind === "compact") {
-      const covered = path.findIndex((p) => p.id === ev.covers);
-      from = covered + 1;
-      break;
-    }
-  }
-  return path
-    .slice(from)
-    .flatMap((ev): Turn[] =>
-      ev.kind === "player"
-        ? [{ id: ev.id, role: "player", mode: ev.mode, text: ev.text }]
-        : ev.kind === "host"
-          ? [{ id: ev.id, role: "host", text: ev.text }]
-          : [],
-    );
-}
-
-export interface Chapter {
-  number: number;
-  title: string;
-  text: string;
-  /** The compact event that produced it. */
-  eventId: string;
-  /** Last turn the chapter covers. */
-  covers: string;
-}
-
-/** Chapters written on this branch, in order. */
-export function chaptersOf(state: AdventureState, at: string | null = state.head): Chapter[] {
-  return pathTo(state, at)
-    .filter((ev) => ev.kind === "compact" && ev.chapter && ev.covers)
-    .map((ev, i) => ({
-      number: i + 1,
-      title: (ev.chapter as { title: string }).title,
-      text: (ev.chapter as { text: string }).text,
-      eventId: ev.id,
-      covers: ev.covers as string,
-    }));
-}
-
-/**
- * The tracking cards (scene and state) as of this point: every `compact` update folded in order,
- * a later update to the same id replacing the earlier one. These are an overlay on the world's
- * cards; they never modify them.
- */
-export function liveCardsOf(state: AdventureState, at: string | null = state.head): Card[] {
-  const byId = new Map<string, CardUpdate>();
-  for (const ev of pathTo(state, at)) {
-    if (ev.kind !== "compact") continue;
-    for (const update of ev.cardUpdates) byId.set(update.id, update);
-  }
-  return [...byId.values()].map(
-    (u): Card => ({
-      path: `adventure/cards/${u.id}.md`,
-      fm: CardFrontmatter.parse({
-        id: u.id,
-        kind: u.kind,
-        origin: "adventure",
-        name: u.name,
-        keywords: u.keywords,
-        summary: u.summary,
-        always: u.always,
-        ...(u.entity ? { entity: u.entity } : {}),
-      }),
-      body: u.body,
-    }),
-  );
-}
-
-/**
- * Memory as of the head (or node `at`): last summary on the path, plus pins that were not later
- * unpinned. Asking "as of the parent" is how a retry avoids remembering the reply it replaces.
+ * Memory as of the head (or node `at`): the last summary on the path, plus pins that were not
+ * later unpinned. Asking "as of the parent" is how a retry avoids remembering the reply it
+ * replaces.
  */
 export function memoryOf(state: AdventureState, at: string | null = state.head): Memory {
   const memory: Memory = { summary: "", pinned: [] };
   for (const ev of pathTo(state, at)) {
-    if (ev.kind === "summary" || ev.kind === "compact") memory.summary = ev.text;
+    if (ev.kind === "summary") memory.summary = ev.text;
     else if (ev.kind === "pin") memory.pinned.push(ev.text);
     else if (ev.kind === "unpin") {
       const i = memory.pinned.indexOf(ev.text);
@@ -315,8 +244,12 @@ export function siblingsOf(state: AdventureState, id: string): AdventureEvent[] 
   );
 }
 
-function lastOnPath(state: AdventureState, kind: EventKind): AdventureEvent | undefined {
-  const path = pathTo(state);
+export function lastOnPath(
+  state: AdventureState,
+  kind: EventKind,
+  at: string | null = state.head,
+): AdventureEvent | undefined {
+  const path = pathTo(state, at);
   for (let i = path.length - 1; i >= 0; i--) {
     if (path[i]?.kind === kind) return path[i];
   }
@@ -324,7 +257,8 @@ function lastOnPath(state: AdventureState, kind: EventKind): AdventureEvent | un
 }
 
 /**
- * Undo = take back the most recent player action and everything after it.
+ * Undo = take back the most recent player action and everything after it, including any plot
+ * points and window shifts that came with it.
  * Returns the `goto` event to append, or undefined when there is nothing to undo.
  */
 export function undoEvent(
@@ -371,6 +305,22 @@ export function editEvent(
 /** Move the head to any node: browsing branches, or forking from an earlier turn. */
 export function gotoEvent(id: string, t: string, target: string | null): AdventureEvent {
   return newEvent({ id, parentId: null, t, kind: "goto", target });
+}
+
+/** Start a new chapter here. Where breaks happen is decided by the caller. */
+export function breakEvent(
+  state: AdventureState,
+  id: string,
+  t: string,
+  title?: string,
+): AdventureEvent {
+  return newEvent({
+    id,
+    parentId: state.head,
+    t,
+    kind: "break",
+    ...(title?.trim() ? { text: title.trim() } : {}),
+  });
 }
 
 export function serializeEvent(ev: AdventureEvent): string {

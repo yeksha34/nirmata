@@ -18,7 +18,7 @@ Every streaming call is an async generator of `HostEvent`s and **never throws**:
 | `text` | A live token chunk |
 | `reply` | A reply was saved (with any rule `violations`) |
 | `rule-violation`, `attempt` | A reply broke a rule; a rewrite is starting, so clear the streamed text |
-| `compacting`, `compacted` | Older turns are being folded into a chapter, a summary and tracking cards / it was saved (chapter number and title, ids of cards updated) |
+| `plotting`, `plot` | The recent turns are being read for plot points / plot points were saved (`points` carry the ids used to revoke them) |
 | `warning` | Worth showing, did not stop the turn (cut-off reply, judge offline, ignored sampler settings) |
 | `stopped` | The caller aborted; `partial` was not saved |
 | `error` | `{ message, code, recoverable }` |
@@ -34,40 +34,42 @@ Every streaming call is an async generator of `HostEvent`s and **never throws**:
 | `continueStory()` | Extend the latest reply with no new player action |
 | `undo()`, `edit(id, text)`, `goto(id)` | Single saved events; nothing is ever deleted |
 | `pin(fact)`, `unpin(fact)` | Memory the player controls |
-| `compact()` | "Close this chapter" now, without waiting for a trigger |
+| `plot()` | Look for plot points now, without waiting for the trigger |
+| `addPlotPoint(card, text)`, `revokePlotPoint(id)`, `undoLastPlot()` | Plot points by hand, and their undo |
+| `breakChapter(title?)` | Start a new chapter here (the only thing that creates a break, for now) |
 
 ## Guarantees
 
 - **Save before apply.** An event reaches the sink before it changes state. A crash loses at most the reply being streamed; the player's action is already saved.
 - **One turn at a time.** A second call while a turn runs gets a `busy` error. Single-event operations throw `HostError("busy")`.
-- **Retry forgets the reply it replaces,** including any compaction written after it (memory, chapters and cards are read as of the parent node); the compaction is redone on the new branch.
+- **Retry forgets the reply it replaces,** including plot points and window shifts written after it (everything is read as of the parent node); the extraction is simply redone on the new branch.
 - **Rule checks never block play.** If the judge fails, the reply is kept and a `warning` is shown.
 
 ## Rule checking
 
 Set `judge` (for example `createLlmJudge(provider, { model })`) and `settings.ruleCheck` (`"must"` / `"all"` / `"off"`). After each reply the judge answers each rule's `**Check:**` question. A violating reply is saved with `flags`, then rewritten up to `maxRegenerations` times with an editor note listing what broke; the flagged draft stays in the log as a sibling. After the last attempt the reply is accepted, still flagged.
 
-## Compaction: chapters and live cards
+## The context window shifts into chapters
 
-Long stories are compacted so the prompt stays bounded ([ADR-0007](../../docs/decisions/0007-adventure-compaction.md), F-40). After a reply, when `settings.compaction` says so (enough player turns since the last compaction, or the last prompt used more than `pressure` of the budget), everything except the newest `keepRecent` turns (the kept tail always starts at a player action) is compacted by three model calls:
+There is no summarising ([ADR-0008](../../docs/decisions/0008-window-shift-and-plot-points.md), F-40). The prompt holds the recent turns that fit the budget. When a reply is written with some older turns left out, the reply records `shifted`: the newest turn that was outside the window. That cursor only moves forward on a branch, so a turn that has left the window never returns, even if the budget grows. Turns up to the cursor are the **chapter**, verbatim (`session.chapters`, and `projectAdventure(state)` in core for files). No model call is involved. Chapters split only at `breakChapter()`; where breaks should happen automatically is a later decision.
 
-1. **Summary**: the cumulative summary, which replaces those turns in the prompt.
-2. **Chapter**: a prose retelling of those turns, with a title.
-3. **Record** (JSON): a `scene` card for what happened, `state` cards for entities that changed (`state.marrow`), and the always-on `state.now` (where, when, who is present, goals, open threads).
+## Plot points on cards
 
-The result is one `compact` event. Chapters and cards are therefore on the branch: undo, retry and `goto` change which ones are current, and `projectAdventure(state)` (in core) turns them into files for the server to write. The world's own cards are never modified, and the compactor only ever sees the transcript plus the existing tracking cards, never host-only world cards.
+Long-term memory lives on the cards (F-42). Every `settings.plot.everyPlayerTurns` player turns, while those turns are still in the prompt, a model reads them and returns one-sentence, past-tense **plot points**, each attached to an existing card. They are saved in a `plot` event and appear under the card (newest eight) whenever the card is in a prompt. The world's own cards are never modified.
 
-Failure handling: if the summary or chapter step fails, nothing is saved and play carries on (the next reply tries again). If only the record fails (after one retry), the chapter and summary are saved without card updates and a `warning` says so. Aborting mid-compaction is silent.
+- The extractor is shown card **ids, names and kinds only**, never summaries or bodies, so host-only secrets cannot leak into something the player can read, and it can only attach points to cards it was offered (those mentioned recently, those in the last prompt, and every arc).
+- Failure never breaks play: a `warning` is shown and the same turns are read next time.
+- **Undo:** points are events on the branch, so undo, retry, edit and `goto` remove and restore them with the turns that produced them (including a revoke made after those turns, which time-travels too). On top of that, `revokePlotPoint(id)` takes one back, `undoLastPlot()` takes back the newest batch, and `addPlotPoint(card, text)` adds one by hand without moving the extraction cursor. A revoked point is not re-extracted because the turns it came from were already read.
 
 ```ts
-settings.compaction = { enabled: true, keepRecent: 4, minTurns: 6, everyPlayerTurns: 8, pressure: 0.7, model: "cheap-model" };
+settings.plot = { enabled: true, everyPlayerTurns: 3, maxPoints: 6, maxTurns: 12, model: "cheap-model" };
 ```
 
-Use `compactionProvider` in the deps to run these calls on a cheaper model or server.
+Use `plotProvider` in the deps to run extraction on a cheaper model or server.
 
 ## Memory
 
-Pinned facts are events on the branch, as is the summary written by each compaction, so every branch remembers only its own history.
+Pinned facts are events on the branch, so every branch remembers only its own.
 
 ## Not here yet
 - Server wiring, file persistence and the play screen (`apps/server`, React).

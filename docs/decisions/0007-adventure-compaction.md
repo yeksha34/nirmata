@@ -1,8 +1,8 @@
 # ADR-0007: Compaction is an event; chapters and tracking cards are projections
 
-- Status: Proposed
+- Status: Superseded by [ADR-0008](0008-window-shift-and-plot-points.md)
 - Date: 2026-10-25
-- Related: [ADR-0002](0002-storage-files-plus-sqlite-index.md), [ADR-0006](0006-stack-revision.md), [F-40](../features/F-40-adventure-compaction.md)
+- Related: [ADR-0002](0002-storage-files-plus-sqlite-index.md), [ADR-0006](0006-stack-revision.md), [ADR-0008](0008-window-shift-and-plot-points.md), which replaced this design before it was built upon
 
 ## Context
 Long adventures outgrow the context window. Dropping old turns loses the story; a plain summary loses detail and leaves no readable record. The owner wants the compacted conversation (1) to keep the live prompt small, (2) to be written out as a **chapter**, and (3) to update **cards that track scenes and live changes** (who is where, what each character now has or wants).

@@ -9,12 +9,7 @@ export function ratingRank(rating: Rating): number {
   return RATINGS.indexOf(rating);
 }
 
-/**
- * `scene` and `state` are what play produces: a scene card records what happened somewhere, a
- * state card tracks the live condition of an entity. Authored `scene` cards (one-line beats in a
- * world's `scenes/` folder) are not for prompts; adventure ones (`origin: adventure`) are.
- */
-export const CARD_KINDS = ["lore", "character", "place", "arc", "rule", "scene", "state"] as const;
+export const CARD_KINDS = ["lore", "character", "place", "arc", "rule", "scene"] as const;
 export const CardKind = z.enum(CARD_KINDS);
 export type CardKind = z.infer<typeof CardKind>;
 
@@ -45,8 +40,6 @@ export const CardFrontmatter = z
   .object({
     id: CardId,
     kind: CardKind,
-    /** `adventure` marks cards written by play (compaction), never authored by hand. */
-    origin: z.enum(["authored", "adventure"]).default("authored"),
     name: z.string().trim().min(1),
     keywords: Keywords,
     summary: z.string().trim().default(""),
@@ -60,23 +53,6 @@ export const CardFrontmatter = z
   })
   .passthrough();
 export type CardFrontmatter = z.infer<typeof CardFrontmatter>;
-
-/**
- * A tracking card as carried inside a `compact` event. Later updates to the same id replace
- * earlier ones, so a state card always holds its latest full content.
- */
-export const CardUpdate = z.object({
-  id: CardId,
-  kind: z.enum(["scene", "state"]),
-  name: z.string().trim().min(1),
-  keywords: z.array(z.string().trim().min(1)).default([]),
-  summary: z.string().trim().default(""),
-  body: z.string().default(""),
-  always: z.boolean().default(false),
-  /** What a state card tracks: character, place, item, quest, relationship, other. */
-  entity: z.string().optional(),
-});
-export type CardUpdate = z.output<typeof CardUpdate>;
 
 export const WorldManifest = z.object({
   name: z.string().min(1),
