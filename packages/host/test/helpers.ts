@@ -16,7 +16,7 @@ import {
 } from "@nirmata/llm";
 import {
   AdventureSession,
-  defaultCompaction,
+  defaultPlot,
   defaultSettings,
   type EventSink,
   type HostEvent,
@@ -61,7 +61,6 @@ export function ruleCard(id: string, severity: "must" | "should", check: string)
       keywords: [],
       summary: "",
       always: false,
-      origin: "authored",
       rating: "everyone",
       scope: "adventure",
       severity,
@@ -101,6 +100,8 @@ export function rig(
   scripts: FakeScript | FakeScript[] | ((req: GenerateRequest, call: number) => FakeScript),
   opts: {
     extraCards?: Card[];
+    /** Keep only the world cards this accepts (rules and extras are added after). */
+    filterCards?: (card: Card) => boolean;
     judge?: RuleJudge;
     settings?: Partial<HostSettings>;
     resumeFrom?: AdventureEvent[];
@@ -110,12 +111,12 @@ export function rig(
   } = {},
 ): Rig {
   const { world, cards: base } = loadWorld("example-world");
-  const cards = [...base, ...(opts.extraCards ?? [])];
+  const cards = [...base.filter(opts.filterCards ?? (() => true)), ...(opts.extraCards ?? [])];
   const provider = createFakeProvider(scripts);
   const sink = opts.sink ?? memorySink();
   const settings: HostSettings = {
     ...defaultSettings("fake-model"),
-    compaction: { ...defaultCompaction, enabled: false },
+    plot: { ...defaultPlot, enabled: false },
     ruleCheck: "must",
     ...opts.settings,
   };

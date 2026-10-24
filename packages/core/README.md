@@ -9,8 +9,10 @@ The pure engine behind both the Studio and the Host. No file, network or clock a
 | `normalize`, `matcher` | Case/accent/whitespace folding; Aho-Corasick keyword scan on word boundaries |
 | `tokens` | `TokenCounter` interface and a conservative fallback estimate |
 | `context` | `buildContext`: rules, always-on cards, keyword-triggered cards, memory and recent turns packed into a token budget, with an explanation for every inclusion and exclusion |
-| `events` | Append-only event tree: `replay`, `undoEvent`, `retryParent`, `editEvent`, `gotoEvent`, `parseLog`. Views of a branch, each readable "as of" any node: `turnsOf` (the transcript), `contextTurnsOf` (what is still in the prompt after compaction), `memoryOf`, `chaptersOf`, `liveCardsOf` (scene/state tracking cards). `compact` events carry the summary, chapter and card updates (ADR-0007); host events carry `flags`, the rules a reply was judged to break |
-| `projection` | `projectAdventure(state)`: the chapter, index and card files the current branch should have on disk, as pure data |
+| `events` | Append-only event tree: `replay`, `undoEvent`, `retryParent`, `editEvent`, `gotoEvent`, `breakEvent`, `parseLog`. `turnsOf` is the transcript, `memoryOf` the pins; both (and everything below) can be read "as of" any node. Host events carry `flags` (rules a reply broke) and `shifted` (the window cursor) |
+| `window` | `windowCursor`, `contextTurnsOf` (what may still be in the prompt), `chaptersOf` (the turns outside the window, verbatim, split at `break` events), `renderTurn` |
+| `plot` | `plotPointsOf`, `plotCursor`, `turnsSincePlot`, `cardsWithPlot` (appends a card's points to its body), and event makers `plotEvent`, `unplotEvent`, `undoLastPlotEvent`, `manualPlotEvent` |
+| `projection` | `projectAdventure(state)`: the `chapters/` and `plot/` files the current branch should have on disk, as pure data |
 
 ## Context priority
 

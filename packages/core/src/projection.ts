@@ -1,5 +1,7 @@
 import { stringify } from "yaml";
-import { type AdventureState, chaptersOf, liveCardsOf } from "./events";
+import type { AdventureState } from "./events";
+import { plotPointsOf } from "./plot";
+import { chaptersOf } from "./window";
 
 export interface ProjectedFile {
   /** Relative to the adventure's folder, forward slashes. */
@@ -28,49 +30,46 @@ function frontmatter(data: Record<string, unknown>): string {
 }
 
 /**
- * The files an adventure's current branch should have on disk: one markdown file per chapter, an
- * index of them, and one card file per tracking card. A pure function of the event log, so the
- * server can rewrite them after every change (and delete any it no longer lists) and nothing is
- * lost if they are removed. Cards use the same format as the world's, so the editor and linter
- * read them unchanged.
+ * The files an adventure's current branch should have on disk: one markdown file per chapter (the
+ * turns that have left the context window, verbatim), an index of them, and one file per card
+ * that has plot points. A pure function of the event log, so the server can rewrite them after
+ * every change (deleting any it no longer lists) and nothing is lost if they are removed.
+ *
+ * `cardNames` lets plot files show a card's name instead of only its id.
  */
 export function projectAdventure(
   state: AdventureState,
-  at: string | null = state.head,
+  options: { at?: string | null; cardNames?: ReadonlyMap<string, string> } = {},
 ): ProjectedFile[] {
+  const at = options.at === undefined ? state.head : options.at;
   const files: ProjectedFile[] = [];
 
   const chapters = chaptersOf(state, at);
   for (const c of chapters) {
     files.push({
       path: chapterPath(c.number, c.title),
-      content: `${frontmatter({ title: c.title, chapter: c.number, covers: c.covers, event: c.eventId })}\n# ${c.title}\n\n${c.text.trim()}\n`,
+      content: `${frontmatter({ title: c.title, chapter: c.number, open: c.open, through: c.through })}\n# ${c.title}\n\n${c.text}\n`,
     });
   }
   if (chapters.length) {
     const list = chapters
       .map(
         (c) =>
-          `${c.number}. [${c.title}](${chapterPath(c.number, c.title).replace("chapters/", "")})`,
+          `${c.number}. [${c.title}](${chapterPath(c.number, c.title).replace("chapters/", "")})${c.open ? " (still being written)" : ""}`,
       )
       .join("\n");
     files.push({ path: "chapters/index.md", content: `# Chapters\n\n${list}\n` });
   }
 
-  for (const card of liveCardsOf(state, at).sort((a, b) => (a.fm.id < b.fm.id ? -1 : 1))) {
-    const fm = card.fm;
+  const byCard = new Map<string, string[]>();
+  for (const p of plotPointsOf(state, at)) {
+    byCard.set(p.card, [...(byCard.get(p.card) ?? []), p.text]);
+  }
+  for (const [card, texts] of [...byCard].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    const name = options.cardNames?.get(card);
     files.push({
-      path: `cards/${fm.id}.md`,
-      content: `${frontmatter({
-        id: fm.id,
-        kind: fm.kind,
-        origin: fm.origin,
-        name: fm.name,
-        keywords: fm.keywords,
-        summary: fm.summary,
-        always: fm.always,
-        ...(typeof fm.entity === "string" ? { entity: fm.entity } : {}),
-      })}\n# ${fm.name}\n\n${card.body.trim()}\n`,
+      path: `plot/${card}.md`,
+      content: `${frontmatter({ card, ...(name ? { name } : {}) })}\n# ${name ?? card}\n\n${texts.map((t) => `- ${t}`).join("\n")}\n`,
     });
   }
   return files;
