@@ -9,7 +9,7 @@ The pure engine behind both the Studio and the Host. No file, network or clock a
 | `normalize`, `matcher` | Case/accent/whitespace folding; Aho-Corasick keyword scan on word boundaries |
 | `tokens` | `TokenCounter` interface and a conservative fallback estimate |
 | `context` | `buildContext`: rules, always-on cards, keyword-triggered cards, memory and recent turns packed into a token budget, with an explanation for every inclusion and exclusion |
-| `events` | Append-only event tree: `replay`, `undoEvent`, `retryParent`, `editEvent`, `gotoEvent`, `memoryOf`, `turnsOf`, `parseLog` |
+| `events` | Append-only event tree: `replay`, `undoEvent`, `retryParent`, `editEvent`, `gotoEvent`, `memoryOf`, `turnsOf` (both can read "as of" any node), `parseLog`. Host events carry `flags`, the rule ids a reply was judged to break |
 
 ## Context priority
 

@@ -1,0 +1,12 @@
+{
+  "name": "@nirmata/host",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The game master: runs adventure turns (context, streaming, rule checks, retries, memory) on top of core and llm. All I/O goes through injected ports.",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@nirmata/core": "workspace:*",
+    "@nirmata/llm": "workspace:*"
+  }
+}
