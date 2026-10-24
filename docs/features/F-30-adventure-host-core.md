@@ -24,7 +24,7 @@ adventurers in created worlds".
 
 ## Progress
 - [x] `packages/core`: card/world schemas and parsing, Aho-Corasick keyword matcher, deterministic context builder with token budget and rating gate, event-tree adventure log (undo, retry, edit, branch, per-branch memory). 44 tests including a golden prompt for the example world.
-- [ ] `packages/llm`: provider adapters (OpenAI-compatible, Anthropic), fake replay provider, plain-language connection errors ([ADR-0003](../decisions/0003-llm-provider-abstraction.md), [ADR-0006](../decisions/0006-stack-revision.md)).
+- [x] `packages/llm`: OpenAI-compatible and Anthropic streaming adapters, SSE reader, fake replay provider, presets, plain-language errors ([ADR-0003](../decisions/0003-llm-provider-abstraction.md), [ADR-0006](../decisions/0006-stack-revision.md)). 48 tests, including real-socket streaming, error and abort cases.
 - [ ] `packages/host`: turn orchestration (build context, stream, rule check, append events, summary refresh).
 - [ ] `apps/server`: Hono routes, SSE streaming, file loading and watching, `events.jsonl` persistence.
 - [ ] Play screen (React): input modes, streaming render, retry/edit/undo controls, cards-in-context drawer.
@@ -42,9 +42,11 @@ adventurers in created worlds".
 | Date | What was run | Result |
 |---|---|---|
 | 2026-10-25 | `pnpm exec vitest run`, `pnpm exec tsc -b`, `pnpm exec biome check packages` | 44 tests pass, no type or lint errors. Covers the core slice only; no acceptance bullet is fully verified until server and UI exist. |
+| 2026-10-25 | Same three commands after adding `packages/llm` | 92 tests pass (core 44, llm 48), clean. Providers tested against mocked fetch and a real local HTTP server; **not yet tested against a live KoboldCpp, Ollama or Anthropic endpoint**. |
 
 ## History
 | Date | Change |
 |---|---|
 | 2026-10-25 | Specified during scaffold |
 | 2026-10-25 | ADR-0001/0002/0006 accepted; branch created; `packages/core` implemented |
+| 2026-10-25 | `packages/llm` implemented |

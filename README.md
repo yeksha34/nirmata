@@ -18,7 +18,8 @@ Design references: SillyTavern + KoboldAI (local control, lorebooks), AI Dungeon
 | World linter (`.agents/skills/world-lint`) | Verified on the example world |
 | Rules judge (`services/rules-gatekeeper`) | Copied; training project, optional |
 | `packages/core` engine (cards, lorebook matching, context builder, event tree) | Built, 44 tests (F-30 in progress) |
-| Model providers, host orchestration, server, React UI | Planned, see [docs/lifecycle.md](docs/lifecycle.md) |
+| `packages/llm` model providers (OpenAI-compatible, Anthropic, fake) | Built, 48 tests; not yet tried against a live model |
+| Host orchestration, server, React UI | Planned, see [docs/lifecycle.md](docs/lifecycle.md) |
 
 ## Run the baseline Studio
 
