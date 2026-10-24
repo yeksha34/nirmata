@@ -1,0 +1,11 @@
+{
+  "name": "@nirmata/llm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Model providers behind one streaming interface: OpenAI-compatible (KoboldCpp, Ollama, LM Studio, OpenRouter, OpenAI), Anthropic, and a deterministic fake for tests.",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "@nirmata/core": "workspace:*"
+  }
+}
