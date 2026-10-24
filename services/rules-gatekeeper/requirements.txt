@@ -1,0 +1,7 @@
+torch
+transformers
+peft
+bitsandbytes
+datasets
+huggingface_hub
+accelerate

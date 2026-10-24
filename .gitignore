@@ -1,0 +1,32 @@
+# dependencies and build output
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+
+# secrets - never commit
+.env
+.env.*
+*.local.json
+
+# generated / personal
+apps/studio/state/**
+!apps/studio/state/.gitignore
+apps/studio/assets/
+.cache/
+*.sqlite
+*.sqlite-journal
+sanitized_output/
+tools/twine/build/
+tools/twine/reader*.html
+tools/vendor/
+services/rules-gatekeeper/data/dataset.jsonl
+services/rules-gatekeeper/data/rule_groups.json
+services/rules-gatekeeper/data/rule_scopes.json
+
+# adventure saves are personal by default; remove this line to version them
+worlds/*/adventures/*
+!worlds/*/adventures/.gitkeep
+
+.claude/worktrees/
