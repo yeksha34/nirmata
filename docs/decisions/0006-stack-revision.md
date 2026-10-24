@@ -1,6 +1,6 @@
 # ADR-0006: Stack revision: headless core, event-sourced adventures, own model adapters, no desktop shell
 
-- Status: Proposed
+- Status: Accepted 2026-10-25
 - Date: 2026-10-25
 - Supersedes: the stack choices in [ADR-0001](0001-tech-stack.md) (state and API layer), [ADR-0003](0003-llm-provider-abstraction.md) (use of the Vercel AI SDK) and [ADR-0004](0004-desktop-shell-and-mobile.md) (Electron shell)
 - Related: [tech-stack](../tech-stack.md)

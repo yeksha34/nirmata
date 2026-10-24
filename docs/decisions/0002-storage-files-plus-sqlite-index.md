@@ -1,6 +1,6 @@
 # ADR-0002: Markdown files in git as source of truth, SQLite as rebuildable index
 
-- Status: Proposed
+- Status: Accepted 2026-10-25
 - Date: 2026-10-25
 - Related: [tech-stack](../tech-stack.md)
 
