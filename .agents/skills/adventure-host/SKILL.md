@@ -27,5 +27,5 @@ Spec of the host's behaviour. The engine (feature F-30..F-36) implements the sam
 ## Per turn
 1. Build context, produce the reply, check it against `must` rules, regenerate once if violated.
 2. Append events to `worlds/<name>/adventures/<id>/events.jsonl`: `{t, turn, kind, mode, text, cardsUsed, model}`.
-3. Every ~10 turns update the rolling summary; propose (never silently add) new story cards for recurring new facts.
+3. **Compact** when the story outgrows the prompt (about every 8 player turns, or when the prompt is over ~70% full, or on request): keep the newest 4 turns verbatim, and for the older ones write (a) a cumulative summary under 150 words, (b) a prose chapter retelling them, (c) a `scene` card for what happened and `state` cards for each entity whose condition changed, plus an always-on `state.now` (where, when, who is present, goals, open threads). Write these as one `compact` event; never edit the world's own cards. Give the compactor only the transcript and existing tracking cards, never host-only cards.
 4. Undo = append an `undo` event and rebuild state from the log; never delete lines.

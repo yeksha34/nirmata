@@ -11,7 +11,7 @@ Layers, from source of truth outward (see `.agents/skills/story-direction`):
 | `plot/arcs/` | Story arcs and beats a host can steer toward |
 | `scenes/` | One-line events |
 | `drafts/`, `chapters/` | Prose, for authored stories |
-| `adventures/` | Saved play sessions (hosted runs of this world), see docs/requirements.md F-30..F-39 |
+| `adventures/<id>/` | One hosted run: `events.jsonl` (the truth), plus files rebuilt from it: `chapters/` (the story so far, as prose) and `cards/` (scene and state cards tracking what changed). Never edit the rebuilt files by hand; see docs/decisions/0007-adventure-compaction.md |
 | `.agents/rules/` | Hard rules the AI host/writer must obey in this world |
 | `assets/` | Portraits and backgrounds |
 

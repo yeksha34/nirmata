@@ -51,4 +51,5 @@ adventurers in created worlds".
 | 2026-10-25 | Specified during scaffold |
 | 2026-10-25 | ADR-0001/0002/0006 accepted; branch created; `packages/core` implemented |
 | 2026-10-25 | `packages/llm` implemented |
+| 2026-10-25 | Compaction added (F-40, ADR-0007); replaces the plain summary refresh |
 | 2026-10-25 | `packages/host` implemented; core gained `pinnedCards`, event `flags`, and `turnsOf`/`memoryOf` at a node |

@@ -1,5 +1,6 @@
 import { type Card, ratingRank, stripTitle } from "@nirmata/core";
 import { generateText, type Provider, type SamplerParams } from "@nirmata/llm";
+import { extractJson } from "./json";
 import { HostError, type RuleJudge, type Violation } from "./types";
 
 /** Rule cards that apply to a play session, filtered to the severity being checked. */
@@ -54,17 +55,7 @@ export function judgePrompt(text: string, rules: readonly Card[]): string {
  * was not asked about, and throws a HostError when there is no usable JSON at all.
  */
 export function parseVerdict(raw: string, rules: readonly Card[]): Violation[] {
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start === -1 || end <= start) {
-    throw new HostError("judge_failed", "The rule checker did not return JSON.");
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw.slice(start, end + 1));
-  } catch {
-    throw new HostError("judge_failed", "The rule checker returned JSON that could not be read.");
-  }
+  const parsed = extractJson(raw, "The rule checker", "judge_failed");
   const list = (parsed as { violations?: unknown })?.violations;
   if (!Array.isArray(list)) {
     throw new HostError("judge_failed", 'The rule checker answer had no "violations" list.');
