@@ -15,7 +15,7 @@ Roles (host, player) needed a meaning in real use. The owner: *there is no compl
 ## Consequences
 + Nothing to build or maintain for identity; joining is instant.
 - No authentication: anyone can use any free nickname, and a host cannot tell people apart across sessions. Acceptable on a trusted network or with a shared link; moderation tools (kick, mute, rename) are a later question.
-- Several players can send input at once while the session handles one reply at a time. The server will have to queue them; **the turn order rule (free-for-all when idle, strict round-robin, host approval) is undecided** ([open-questions](../open-questions.md)).
+- Several players can send input at once while the session handles one reply at a time. Turn order is settled by the shared board ([ADR-0013](0013-shared-board.md)); moderation by [ADR-0015](0015-moderation-in-the-story-voice.md); the age check by [ADR-0014](0014-age-confirmation-production-only.md).
 - Public access to the server is the host's responsibility (their own tunnel or network), as in ADR-0006.
 
 ## Alternatives considered

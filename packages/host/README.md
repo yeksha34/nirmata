@@ -71,6 +71,28 @@ A refused call yields an `error` event (or rejects) with `code: "forbidden"` and
 
 Set `judge` (for example `createLlmJudge(provider, { model })`) and `settings.ruleCheck` (`"must"` / `"all"` / `"off"`). After each reply the judge answers each rule's `**Check:**` question. A violating reply is saved with `flags`, then rewritten up to `maxRegenerations` times with an editor note listing what broke; the flagged draft stays in the log as a sibling. After the last attempt the reply is accepted, still flagged.
 
+## The shared board
+
+([ADR-0013](../../docs/decisions/0013-shared-board.md).) `Board` is where several people write a turn together before the story answers. It is plain state: a server connects people to it and calls it; it has no timers or network.
+
+```ts
+const board = new Board({ host: "Dana" });
+board.join("Sam"); board.play("Sam");           // IRC-style: a nickname, no account
+board.setDraft("Sam", "do", "I knock on the door.");
+board.object("Robin", "Sam", "Marrow is asleep behind it.");   // visible to everyone; answered when Sam edits
+board.ready("Sam");
+const lines = board.takeRound();                // only once the story is idle and everyone who wrote is ready
+if (lines) for await (const ev of session.submitRound(lines)) render(ev);
+```
+
+Spectators see the board but cannot write. While the story is writing (`setBusy(true)`) players can prepare the next turn, but the round does not close. The host can `closeRound` early. `view()` is the same snapshot for everyone.
+
+**Age confirmation** ([ADR-0014](../../docs/decisions/0014-age-confirmation-production-only.md)): `join(nick, { confirmedAdult: true })` is required only when `NODE_ENV` is `production` (`isProduction()`); never in development or tests.
+
+**Moderation** ([ADR-0015](../../docs/decisions/0015-moderation-in-the-story-voice.md)): the host can `kick`, `mute`, `unmute` and `rename`. Each returns an in-fiction line ("A strip of black tape seals Robin's mouth.") in the style `spell`, `tape`, `weapon` or `trap` (rotating if not chosen), kept as a board notice. A muted player cannot write, remark or object, and their draft is not submitted. The host cannot be targeted.
+
+Several lines answered by one reply are saved as separate attributed turns that share a `round`; undo and retry treat them as one.
+
 ## Host settings
 
 Changed with `updateSettings` (host only):

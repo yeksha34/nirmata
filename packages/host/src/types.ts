@@ -111,6 +111,8 @@ export type HostEvent =
 export interface TurnInput {
   mode: PlayerMode;
   text: string;
+  /** Who wrote it, when several people play (their nickname on the board). */
+  by?: string | undefined;
 }
 
 export class HostError extends Error {
@@ -124,7 +126,10 @@ export class HostError extends Error {
       | "judge_failed"
       | "plot_failed"
       | "forbidden"
-      | "invalid_card",
+      | "invalid_card"
+      | "age_unconfirmed"
+      | "bad_nickname"
+      | "board",
     message: string,
   ) {
     super(message);

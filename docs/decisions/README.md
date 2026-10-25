@@ -17,5 +17,8 @@ Use `.agents/skills/record-decision`.
 | [0010](0010-adults-only.md) | Nirmata is for adults; there are no rating tiers | Accepted |
 | [0011](0011-irc-style-joining.md) | Joining a story works like IRC: no accounts | Accepted |
 | [0012](0012-player-input-is-not-fact.md) | Player input is never fact; the rules checker only judges generated text | Accepted |
+| [0013](0013-shared-board.md) | Turns are written on a shared board | Accepted |
+| [0014](0014-age-confirmation-production-only.md) | Age confirmation exists, and is asked only in production | Accepted |
+| [0015](0015-moderation-in-the-story-voice.md) | Moderation is told in the story's voice | Accepted |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.

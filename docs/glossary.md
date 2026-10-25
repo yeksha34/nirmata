@@ -9,6 +9,8 @@
 | **Host** | Whoever runs the story's server. In solo play, also the player. |
 | **Player** | Anyone who has joined and opted to play. |
 | **Spectator** | Someone who has joined but not opted to play; sees only the public story. |
+| **Table (board)** | Where a turn is written before the story answers: each player has their own lines, everyone sees them, and players can object or discuss. |
+| **Round** | The lines written together on the board and answered by one reply. One turn of the story. |
 | **Turn** | One player action or one host reply. |
 | **Context window** | The recent turns that fit the prompt. Older turns have left it for good. |
 | **Chapter** | The turns that have left the window, written out word for word. Breaks are manual for now. |

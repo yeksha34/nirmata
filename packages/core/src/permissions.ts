@@ -28,6 +28,8 @@ const ALLOWED = {
   "plot.revoke": ["host"],
   "chapter.break": ["host"],
   "settings.change": ["host"],
+  /** Kick, mute or rename someone at the table, and close a round early. */
+  "board.moderate": ["host"],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Action = keyof typeof ALLOWED;
@@ -46,6 +48,7 @@ const REFUSAL: Record<Action, string> = {
   "plot.revoke": "Only the host can take back plot points.",
   "chapter.break": "Only the host can start a new chapter.",
   "settings.change": "Only the host can change settings.",
+  "board.moderate": "Only the host can wield that power.",
 };
 
 export function can(actor: Actor, action: Action): boolean {

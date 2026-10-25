@@ -27,6 +27,7 @@ import {
   plotPointsOf,
   replay,
   retryParent,
+  roundLines,
   type StoryEvent,
   type StoryState,
   sourceOf,
@@ -139,7 +140,8 @@ interface GenerateArgs {
   replyTo: string | null;
   /** Prior turns are read from the path ending here (the pending player input is excluded). */
   turnsAt: string | null;
-  input: TurnInput;
+  /** One player's input, or the lines several players wrote together for one reply. */
+  input: TurnInput | readonly TurnInput[];
   pinned?: readonly string[];
 }
 
@@ -225,10 +227,23 @@ export class StorySession {
 
   /** The player acts; the host answers. */
   submit(input: TurnInput, signal?: AbortSignal): AsyncGenerator<HostEvent> {
+    return this.submitRound([input], signal);
+  }
+
+  /**
+   * Several players' lines, written together on the shared board (ADR-0013), answered by one
+   * reply. Each line is saved as its own turn, attributed to who wrote it, all sharing a round so
+   * that undo and retry treat them as one.
+   */
+  submitRound(inputs: readonly TurnInput[], signal?: AbortSignal): AsyncGenerator<HostEvent> {
     return this.guarded(async function* (self) {
       self.require("story.play");
-      if (!input.text.trim())
+      const lines = inputs
+        .map((i) => ({ ...i, text: i.text.trim() }))
+        .filter((i) => i.text.length > 0);
+      if (!lines.length) {
         throw new HostError("nothing_to_do", "Type something to do or say first.");
+      }
       if (!self._state.log.length) {
         if (!can(self.actor, "story.start")) {
           throw new HostError("forbidden", "The host has not started this story yet.");
@@ -237,37 +252,38 @@ export class StorySession {
         yield { type: "begun", event: begin, cards: begin.cards.length };
       }
       const turnsAt = self._state.head;
-      const player = newEvent({
-        id: self.ports.newId(),
-        parentId: turnsAt,
-        t: self.ports.now(),
-        kind: "player",
-        mode: input.mode,
-        text: input.text.trim(),
-      });
-      await self.commit(player);
-      yield { type: "player", event: player };
-      yield* self.generate({ replyTo: player.id, turnsAt, input }, signal);
+      const round = lines.length > 1 ? self.ports.newId() : undefined;
+      let parent = turnsAt;
+      for (const line of lines) {
+        const player = newEvent({
+          id: self.ports.newId(),
+          parentId: parent,
+          t: self.ports.now(),
+          kind: "player",
+          mode: line.mode,
+          text: line.text,
+          ...(line.by ? { by: line.by } : {}),
+          ...(round ? { round } : {}),
+        });
+        await self.commit(player);
+        yield { type: "player", event: player };
+        parent = player.id;
+      }
+      yield* self.generate({ replyTo: parent, turnsAt, input: lines }, signal);
     });
   }
 
   /**
    * Write a different reply. Works after a finished reply (the old one stays reachable as a
-   * sibling), and also when the last attempt failed and the player's input has no reply yet.
+   * sibling), and also when the last attempt failed and the players' input has no reply yet.
+   * When several players wrote the turn, the new reply answers all of their lines.
    */
   retry(signal?: AbortSignal): AsyncGenerator<HostEvent> {
     return this.guarded(async function* (self) {
       self.require("story.play");
       const head = self._state.head === null ? undefined : self._state.events.get(self._state.head);
       if (head?.kind === "player") {
-        yield* self.generate(
-          {
-            replyTo: head.id,
-            turnsAt: head.parentId,
-            input: { mode: head.mode ?? "do", text: head.text },
-          },
-          signal,
-        );
+        yield* self.answer(head.id, signal);
         return;
       }
       const target = retryParent(self._state);
@@ -287,15 +303,27 @@ export class StorySession {
       if (player?.kind !== "player") {
         throw new HostError("bad_state", "The reply to retry does not follow a player action.");
       }
-      yield* self.generate(
-        {
-          replyTo: player.id,
-          turnsAt: player.parentId,
-          input: { mode: player.mode ?? "do", text: player.text },
-        },
-        signal,
-      );
+      yield* self.answer(player.id, signal);
     });
+  }
+
+  /** Write the reply to the turn whose last line is `lastLineId`, however many people wrote it. */
+  private async *answer(lastLineId: string, signal?: AbortSignal): AsyncGenerator<HostEvent> {
+    const lines = roundLines(this._state, lastLineId);
+    const first = lines[0];
+    if (!first) throw new HostError("bad_state", "There is no turn to answer.");
+    yield* this.generate(
+      {
+        replyTo: lastLineId,
+        turnsAt: first.parentId,
+        input: lines.map((l) => ({
+          mode: l.mode ?? "do",
+          text: l.text,
+          ...(l.by ? { by: l.by } : {}),
+        })),
+      },
+      signal,
+    );
   }
 
   /** Add more to the latest reply without the player saying anything. */

@@ -20,7 +20,18 @@ const KNOWN_PER_CARD = 3;
 
 /** Player turns written since the plot extraction last ran. */
 export function playerTurnsSincePlot(state: StoryState): number {
-  return turnsSincePlot(state).filter((t) => t.role === "player").length;
+  // lines written together on the board count once: they are one turn of the story
+  let count = 0;
+  let lastRound: string | undefined;
+  for (const t of turnsSincePlot(state)) {
+    if (t.role !== "player") {
+      lastRound = undefined;
+      continue;
+    }
+    if (!t.round || t.round !== lastRound) count++;
+    lastRound = t.round;
+  }
+  return count;
 }
 
 export function plotDue(state: StoryState, settings: PlotSettings): boolean {
@@ -100,7 +111,11 @@ export function plotMessages(
     .map((p) => `- ${p.card}: ${p.text}`)
     .join("\n");
   const log = turns
-    .map((t) => (t.role === "player" ? `Player (${t.mode ?? "do"}): ${t.text}` : `Host: ${t.text}`))
+    .map((t) =>
+      t.role === "player"
+        ? `${t.by ? `Player ${t.by}` : "Player"} (${t.mode ?? "do"}): ${t.text}`
+        : `Host: ${t.text}`,
+    )
     .join("\n\n");
   return [
     { role: "system" as const, content: PLOT_SYSTEM(maxPoints) },
