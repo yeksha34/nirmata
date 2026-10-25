@@ -9,5 +9,6 @@ export * from "./plot";
 export * from "./projection";
 export * from "./schema";
 export * from "./situation";
+export * from "./templates";
 export * from "./tokens";
 export * from "./window";

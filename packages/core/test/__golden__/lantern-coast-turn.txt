@@ -12,28 +12,35 @@ Player input arrives in <player_input mode="...">: "do" is the character acting,
 </host>
 <rules>
 ### [should] Host tone
-**Rule:** Keep the narration cozy-eerie: unease through atmosphere, never gore.
-
-**Check:** Does the passage create unease through atmosphere rather than graphic violence?
-
-**Why:** Sets the world tone so every host model plays it consistently.
+- **Rule:** Keep the narration cozy-eerie: unease through atmosphere, never gore.
+- **Check:** Does the passage create unease through atmosphere rather than graphic violence?
+- **Why:** Sets the world tone so every host model plays it consistently.
 </rules>
 <lore_in_play>
 ### Marrow
-- **Appearance:** weathered, oilskin coat, one lamp-blind eye.
-- **Manner / Voice:** terse, answers questions with questions.
-- **Wants:** the fourth light put out before the town notices it.
-- **Secrets:** (host-only) Marrow lit the fourth light himself. See The Fog.
+- **Kind:** Human, a lighthouse keeper.
+- **Position:** Keeper of the north light of Saltmere.
+- **Appearance:** Weathered, oilskin coat, one lamp-blind eye.
+- **Manner:** Terse; answers questions with questions.
+- **Wants:** The fourth light put out before the town notices it.
+- **Secrets:** Host-only. Marrow lit the fourth light himself.
+- **Relations:** Bargains with The Fog.
 
 ### The Fourth Light
+- **Premise:** Someone lit a light where no tower stands, and something is following it in.
+- **Opening situation:** A strange light is seen from the harbour.
+- **Who is involved:** Marrow, who deflects; the Fog, which repeats something it should not know.
+**Beats:**
 1. A strange light is seen from the harbour.
 2. Marrow deflects; the Fog repeats something it should not know.
-3. The light is traced to a sunken tower. Choice: douse it, or let what it calls come ashore.
+3. The light is traced to a sunken tower.
+- **Possible endings:** Douse the light, or let what it calls come ashore.
 
 ### Harbour of Saltmere
-- **Look & feel:** wet slate roofs, rope smell, lamps that never quite reach the water.
+- **Kind:** A crooked fishing harbour.
+- **Look and feel:** Wet slate roofs, rope smell, lamps that never quite reach the water.
 - **Who is here:** Marrow, netmenders, a ferryman who will not cross at night.
-- **Hooks:** a fourth light was seen last night, where no tower stands. Related: The Fog.
+- **Hooks:** A fourth light was seen last night, where no tower stands. Related: The Fog.
 </lore_in_play>
 <memory>
 Summary so far: The player arrived at Saltmere at dusk.
@@ -48,13 +55,13 @@ Dusk settles over Saltmere. A fourth light flickers beyond the breakwater.
 === included ===
 host	host	always	374
 input	input	current turn	24
-rules	rule.host-tone	should rule	77
+rules	rule.host-tone	should rule	78
 history	h1	recent turn	26
-lore	char.marrow	keyword "marrow" in your input	80
-lore	arc.fourth-light	keyword "fourth light" in host turn h1	65
-lore	place.saltmere	keyword "saltmere" in host turn h1	80
+lore	char.marrow	keyword "marrow" in your input	112
+lore	arc.fourth-light	keyword "fourth light" in host turn h1	148
+lore	place.saltmere	keyword "saltmere" in host turn h1	92
 memory	pin-1	pinned	10
 memory	summary	summary	16
 === excluded ===
 === tokens ===
-777/3584 (max 4096)
+905/3584 (max 4096)

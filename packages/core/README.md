@@ -5,9 +5,10 @@ The pure engine behind both the Studio and the Host. No file, network or clock a
 | Module | What it does |
 |---|---|
 | `schema` | Zod schemas for a card's fields, `world.json`, player modes |
-| `cards` | `parseCard` (XML+MD or older YAML), `serializeCard` (XML+MD), `parseWorldManifest`, `checkCards` (duplicate ids), `plainLinks` |
+| `cards` | `parseCard` (XML+MD or older YAML), `cardBody` (a card's parts and body as the storyteller reads them), `serializeCard` (XML+MD), `parseWorldManifest`, `checkCards` (duplicate ids), `plainLinks` |
 | `normalize`, `matcher` | Case/accent/whitespace folding; Aho-Corasick keyword scan on word boundaries |
 | `tokens` | `TokenCounter` interface and a conservative fallback estimate |
+| `templates` | `CARD_TEMPLATES` (person, creature, place, custom, group ...), `templateFor`, `fieldLabel`: the named parts a card of each kind usually has |
 | `context` | `buildContext`: rules, always-on cards, keyword-triggered cards, memory and recent turns packed into a token budget, with an explanation for every inclusion and exclusion |
 | `events` | Append-only event tree rooted at a `begin` event (`beginEvent`, `sourceOf`): a deep copy of the world and every source card. `replay`, `undoEvent`, `retryParent`, `editEvent`, `gotoEvent`, `breakEvent`, `parseLog`. `turnsOf` is the transcript, `memoryOf` the pins; both (and everything below) can be read "as of" any node. Player turns carry `by` (who wrote it) and `round` (lines written together; `roundLines`, and undo takes a whole round back). Host events carry `flags` (rules a reply broke) and `shifted` (the window cursor) |
 | `window` | `windowCursor`, `contextTurnsOf` (what may still be in the prompt), `chaptersOf` (the turns outside the window, verbatim, split at `break` events), `renderTurn` |

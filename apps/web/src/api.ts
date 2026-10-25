@@ -1,5 +1,6 @@
 import type {
   CardForm,
+  CardTemplate,
   Mode,
   Perspective,
   RecentStory,
@@ -131,6 +132,8 @@ export const api = {
       patch,
     ).then((r) => r.world),
   archiveWorld: (name: string) => post(`/api/worlds/${encodeURIComponent(name)}/archive`),
+  cardTemplates: () =>
+    get<{ templates: CardTemplate[] }>("/api/card-templates").then((r) => r.templates),
   // the story manager: a world's cards, as the form's fields or as the file's own text
   saveCard: (
     name: string,

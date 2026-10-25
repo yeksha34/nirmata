@@ -1,4 +1,4 @@
-import { CARD_KINDS, PlayerMode } from "@nirmata/core";
+import { CARD_KINDS, CARD_TEMPLATES, PlayerMode } from "@nirmata/core";
 import { FLAVOR_STYLES } from "@nirmata/host";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -154,6 +154,8 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
     );
     return c.json({ world: await table.createWorld(seat, body) }, 201);
   });
+  // the starting shapes for cards (a person, a place, a custom ...): the same for everyone
+  app.get("/api/card-templates", (c) => c.json({ templates: CARD_TEMPLATES }));
   app.get("/api/recent", async (c) => c.json({ stories: await table.recent(seatOf(c)) }));
   app.get("/api/worlds/:name", async (c) =>
     c.json(await table.worldDetail(seatOf(c), c.req.param("name"))),
@@ -189,6 +191,7 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
             keywords: z.array(z.string().trim().min(1).max(60)).max(40).default([]),
             summary: z.string().trim().max(300).default(""),
             always: z.boolean().default(false),
+            fields: z.record(z.string(), z.string().max(8000)).default({}),
             role: z.string().trim().max(40).optional(),
             scope: z.enum(["chapter", "story", "both"]).optional(),
             severity: z.enum(["must", "should"]).optional(),

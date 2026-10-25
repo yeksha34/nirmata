@@ -1,4 +1,4 @@
-import { type Card, plainLinks, stripTitle } from "./cards";
+import { type Card, cardBody, plainLinks } from "./cards";
 import { buildMatcher, type KeywordHit } from "./matcher";
 import type { Memory, PlayerInput, PlayerMode, Turn, WorldManifest } from "./schema";
 import { estimateTokens, type TokenCounter } from "./tokens";
@@ -91,7 +91,7 @@ export function formatPlayerInput(mode: PlayerMode, text: string, by?: string): 
   return `<player_input mode="${mode}"${who}>${body}</player_input>`;
 }
 
-const cardText = (card: Card): string => plainLinks(stripTitle(card.body)) || card.fm.summary;
+const cardText = (card: Card): string => plainLinks(cardBody(card)) || card.fm.summary;
 
 function renderCard(card: Card): string {
   return `### ${card.fm.name}\n${cardText(card)}`;

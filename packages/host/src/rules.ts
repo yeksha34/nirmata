@@ -1,4 +1,4 @@
-import { type Card, stripTitle } from "@nirmata/core";
+import { type Card, cardBody } from "@nirmata/core";
 import { generateText, type Provider, type SamplerParams } from "@nirmata/llm";
 import { extractJson } from "./json";
 import { HostError, type RuleJudge, type Violation } from "./types";
@@ -18,15 +18,10 @@ export function rulesToCheck(cards: readonly Card[], mode: "off" | "must" | "all
 
 /** The yes/no question a judge answers, taken from the card's `**Check:**` line. */
 export function checkQuestion(rule: Card): string {
-  const m = /\*\*Check:\*\*\s*(.+)/.exec(rule.body);
+  const text = cardBody(rule);
+  const m = /\*\*Check:\*\*\s*(.+)/.exec(text);
   if (m?.[1]) return m[1].trim();
-  return (
-    rule.fm.summary ||
-    stripTitle(rule.body)
-      .split(/\n\s*\n/)[0]
-      ?.trim() ||
-    rule.fm.name
-  );
+  return rule.fm.summary || text.split(/\n\s*\n/)[0]?.trim() || rule.fm.name;
 }
 
 const JUDGE_SYSTEM = [

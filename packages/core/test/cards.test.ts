@@ -3,13 +3,20 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  CARD_KINDS,
+  CARD_TEMPLATES,
   CardFrontmatter,
+  cardBody,
   checkCards,
+  fieldLabel,
+  isFieldId,
   parseCard,
   parseWorldManifest,
   plainLinks,
   serializeCard,
   stripTitle,
+  templateFor,
+  templatesFor,
 } from "../src";
 import { card, loadWorld } from "./helpers";
 
@@ -268,5 +275,113 @@ describe("the card templates", () => {
       const r = parseCard(f, readFileSync(join(root, f), "utf8"));
       expect(r.ok, f).toBe(true);
     }
+  });
+});
+
+describe("named parts (fields) in a card", () => {
+  const FIELDS = `<card id="char.marrow" kind="character" name="Marrow">
+  <keywords>marrow</keywords>
+  <age>61</age>
+  <appearance>
+  Weathered, oilskin coat.
+
+  One lamp-blind eye.
+  </appearance>
+  <life-outside-the-story>Mends nets.</life-outside-the-story>
+  <voice/>
+
+# Marrow
+
+Extra notes.
+</card>
+`;
+
+  it("reads each part as markdown, in the order written, and the rest as the body", () => {
+    const r = parseCard("characters/marrow.md", FIELDS);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(Object.keys(r.card.fm.fields)).toEqual(["age", "appearance", "life-outside-the-story"]);
+    expect(r.card.fm.fields.appearance).toBe("Weathered, oilskin coat.\n\nOne lamp-blind eye.");
+    expect(r.card.body).toBe("# Marrow\n\nExtra notes.\n");
+  });
+
+  it("writes them back as tags, short ones on one line, and round trips", () => {
+    const first = parseCard("characters/marrow.md", FIELDS);
+    if (!first.ok) throw new Error(first.errors.join("; "));
+    const text = serializeCard(first.card);
+    expect(text).toContain("  <age>61</age>\n");
+    expect(text).toContain("  <appearance>\nWeathered, oilskin coat.");
+    expect(parseCard("characters/marrow.md", text)).toEqual(first);
+  });
+
+  it("leaves a body that starts with ordinary HTML alone, and refuses a part written twice", () => {
+    const html = parseCard(
+      "x.md",
+      '<card id="lore.a" kind="lore" name="A">\n<details>x</details>\n</card>',
+    );
+    expect(html.ok && html.card.body).toBe("<details>x</details>\n");
+    expect(html.ok && html.card.fm.fields).toEqual({});
+    const twice = parseCard(
+      "x.md",
+      '<card id="lore.a" kind="lore" name="A">\n<age>1</age><age>2</age>\n</card>',
+    );
+    expect(twice.ok ? [] : twice.errors.join(" ")).toMatch(/<age> is written twice/);
+  });
+
+  it("puts the parts, with their labels, ahead of the body in what the storyteller reads", () => {
+    const r = parseCard("characters/marrow.md", FIELDS);
+    if (!r.ok) throw new Error(r.errors.join("; "));
+    expect(cardBody(r.card)).toBe(
+      "- **Age:** 61\n**Appearance:**\nWeathered, oilskin coat.\n\nOne lamp-blind eye.\n- **Life outside the story:** Mends nets.\n\nExtra notes.",
+    );
+  });
+});
+
+describe("card templates", () => {
+  it("have unique ids, valid field names, and a blank for every kind", () => {
+    const ids = CARD_TEMPLATES.map((t) => t.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const t of CARD_TEMPLATES) {
+      const names = t.fields.map((x) => x.id);
+      expect(new Set(names).size, t.id).toBe(names.length);
+      for (const n of names) expect(isFieldId(n), `${t.id}.${n}`).toBe(true);
+      expect(t.id.startsWith(`${t.kind}.`)).toBe(true);
+    }
+    for (const kind of CARD_KINDS)
+      expect(templatesFor(kind).some((t) => t.fields.length === 0)).toBe(true);
+  });
+
+  it("call the same field by the same name wherever it appears", () => {
+    const seen = new Map<string, string>();
+    for (const t of CARD_TEMPLATES) {
+      for (const x of t.fields) {
+        expect(seen.get(x.id) ?? x.label, `${t.id}.${x.id}`).toBe(x.label);
+        seen.set(x.id, x.label);
+      }
+    }
+  });
+
+  it("are valid cards once filled in, whatever their kind", () => {
+    for (const t of CARD_TEMPLATES) {
+      const fields = Object.fromEntries(t.fields.map((x) => [x.id, `A ${x.label}.`]));
+      const r = parseCard(
+        "x.md",
+        serializeCard({
+          path: "x.md",
+          fm: CardFrontmatter.parse({ id: "lore.x", kind: t.kind, name: "X", fields }),
+          body: "",
+        }),
+      );
+      expect(r.ok, t.id).toBe(true);
+      if (r.ok) expect(r.card.fm.fields).toEqual(fields);
+    }
+  });
+
+  it("offer a card the template that fits the parts it already has", () => {
+    expect(templateFor("character", ["kind", "domain", "followers"]).id).toBe("character.power");
+    expect(templateFor("character", ["wants", "voice"]).id).toBe("character.person");
+    expect(templateFor("place", []).id).toBe("place.blank");
+    expect(fieldLabel("offscreen")).toBe("Life outside the story");
+    expect(fieldLabel("trade-routes")).toBe("Trade routes");
   });
 });
