@@ -1,16 +1,18 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import { useAct } from "../app-context";
+import { useAct, useApp } from "../app-context";
 import { ago, list } from "../format";
 import type { Card, RecentStory, StorySummary, WorldDetail, WorldSummary } from "../types";
 import { Empty, Modal, Panel } from "../ui";
 
 /**
- * The host's front door. Everything in every world is reachable from here without opening
- * anything first: pick up the story you were in, explore a world, start a story in it, make a new
- * world, change its details or put it away. Starting or continuing a story opens its world.
+ * The host's page behind the story window. Everything in every world is reachable from here
+ * without opening anything first: pick up the story you were in, explore a world, start a story
+ * in it, make a new world, change its details or put it away. Starting or continuing a story
+ * opens its world, and the story appears in the window. While one is open, starting or
+ * continuing another waits until it is put away.
  */
-export function Portal() {
+export function Worlds() {
   const [page, setPage] = useState<string>();
   return page ? (
     <WorldPage name={page} onBack={() => setPage(undefined)} />
@@ -21,8 +23,31 @@ export function Portal() {
 
 // ---- the home page: where you left off, and every world ------------------------------------
 
-function Home({ onOpen }: { onOpen: (name: string) => void }) {
+/** Shown while a story is open in the window: why starting another waits, and how to free it. */
+function OpenStoryNotice() {
+  const { state } = useApp();
   const { act, busy } = useAct();
+  if (!state.story) return null;
+  const writing = state.streaming !== null || state.story.busy || state.board?.busy === true;
+  return (
+    <Panel title="A story is open">
+      <p>
+        {state.world
+          ? `A story in ${state.world.title} is open in the window.`
+          : "A story is open."}{" "}
+        Put it away (it stays saved) to start or continue a different one.
+      </p>
+      <button type="button" disabled={busy || writing} onClick={() => act(api.closeStory)}>
+        Put the story away
+      </button>
+    </Panel>
+  );
+}
+
+function Home({ onOpen }: { onOpen: (name: string) => void }) {
+  const { state } = useApp();
+  const { act, busy } = useAct();
+  const locked = state.story !== null;
   const [recent, setRecent] = useState<RecentStory[]>();
   const [worlds, setWorlds] = useState<WorldSummary[]>();
   const [creating, setCreating] = useState(false);
@@ -33,7 +58,8 @@ function Home({ onOpen }: { onOpen: (name: string) => void }) {
   }, [act]);
 
   return (
-    <div className="portal">
+    <div className="worlds">
+      <OpenStoryNotice />
       <Panel title="Pick up where you left off">
         {!recent ? (
           <Empty>Looking for your stories…</Empty>
@@ -49,7 +75,7 @@ function Home({ onOpen }: { onOpen: (name: string) => void }) {
                 key={`${s.world}/${s.id}`}
                 story={s}
                 world={s.worldTitle}
-                busy={busy}
+                busy={busy || locked}
                 onContinue={() => act(() => api.resumeStoryIn(s.world, s.id))}
               />
             ))}
@@ -228,7 +254,9 @@ const KIND_LABEL: Record<string, string> = {
 const KIND_ORDER = Object.keys(KIND_LABEL);
 
 function WorldPage({ name, onBack }: { name: string; onBack: () => void }) {
+  const { state } = useApp();
   const { act, busy } = useAct();
+  const locked = state.story !== null;
   /** undefined while loading; null when it could not be loaded. */
   const [detail, setDetail] = useState<WorldDetail | null>();
   const [editing, setEditing] = useState(false);
@@ -244,13 +272,13 @@ function WorldPage({ name, onBack }: { name: string; onBack: () => void }) {
 
   if (detail === undefined)
     return (
-      <div className="portal">
+      <div className="worlds">
         <Empty>Opening the world…</Empty>
       </div>
     );
   if (detail === null)
     return (
-      <div className="portal">
+      <div className="worlds">
         <button type="button" className="plain back" onClick={onBack}>
           ← All worlds
         </button>
@@ -262,10 +290,11 @@ function WorldPage({ name, onBack }: { name: string; onBack: () => void }) {
   const arcs = cards.filter((c) => c.fm.kind === "arc");
 
   return (
-    <div className="portal">
+    <div className="worlds">
       <button type="button" className="plain back" onClick={onBack}>
         ← All worlds
       </button>
+      <OpenStoryNotice />
       <div className="world-head">
         <div>
           <h1>{world.title}</h1>
@@ -291,7 +320,7 @@ function WorldPage({ name, onBack }: { name: string; onBack: () => void }) {
         </Panel>
       ) : (
         <>
-          <StartStory name={name} arcs={arcs} />
+          <StartStory name={name} arcs={arcs} locked={locked} />
           <Panel title="Saved stories">
             {stories.length === 0 ? (
               <Empty>No stories in {world.title} yet. Start one above.</Empty>
@@ -301,7 +330,7 @@ function WorldPage({ name, onBack }: { name: string; onBack: () => void }) {
                   <StoryRow
                     key={s.id}
                     story={s}
-                    busy={busy}
+                    busy={busy || locked}
                     onContinue={() => act(() => api.resumeStoryIn(name, s.id))}
                   />
                 ))}
@@ -336,8 +365,9 @@ function WorldPage({ name, onBack }: { name: string; onBack: () => void }) {
   );
 }
 
-function StartStory({ name, arcs }: { name: string; arcs: Card[] }) {
-  const { act, busy } = useAct();
+function StartStory({ name, arcs, locked }: { name: string; arcs: Card[]; locked: boolean }) {
+  const { act, busy: working } = useAct();
+  const busy = working || locked;
   const [arc, setArc] = useState("");
   return (
     <Panel title="Start a new story">
@@ -479,7 +509,9 @@ function PutAway({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { state } = useApp();
   const { act, busy } = useAct();
+  const inUse = state.story !== null && state.world?.name === world.name;
   return (
     <Modal titleId="put-away-title" onClose={onClose}>
       <h2 id="put-away-title">Put “{world.title}” away?</h2>
@@ -488,6 +520,11 @@ function PutAway({
         {world.stories === 1 ? "story" : "stories"}. Nothing is deleted: its folder is renamed to
         start with <code>_archived-</code>, and renaming it back brings it back.
       </p>
+      {inUse && (
+        <p className="error">
+          A story in this world is open at the table. It closes for everyone, and stays saved.
+        </p>
+      )}
       <div className="dialog-actions">
         <button type="button" onClick={onClose}>
           Keep it

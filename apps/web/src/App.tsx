@@ -3,10 +3,11 @@ import { api, seat } from "./api";
 import { AppProvider } from "./app-context";
 import { useLive } from "./live";
 import { Join } from "./screens/Join";
-import { Portal } from "./screens/Portal";
 import { TableScreen } from "./screens/Table";
 import { Waiting } from "./screens/Waiting";
+import { Worlds } from "./screens/Worlds";
 import { initialState, reducer, screenFor } from "./store";
+import { StoryWindow } from "./story-window";
 import type { TableInfo } from "./types";
 import { HeaderBar, Toasts } from "./ui";
 
@@ -97,10 +98,17 @@ export function App() {
         <div className="shell">
           <HeaderBar />
           <main>
-            {screen === "portal" && <Portal />}
+            {screen === "worlds" && <Worlds />}
             {(screen === "waiting-world" || screen === "waiting-story") && <Waiting />}
-            {screen === "table" && <TableScreen />}
           </main>
+          {state.story && (
+            <StoryWindow
+              title={state.world?.title ?? "Story"}
+              working={state.streaming !== null || state.story.busy}
+            >
+              <TableScreen />
+            </StoryWindow>
+          )}
         </div>
       )}
       <Toasts />

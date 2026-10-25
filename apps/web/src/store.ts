@@ -166,12 +166,14 @@ export function waitingFor(board: BoardMessage | undefined): string[] {
   return board ? board.drafts.filter((d) => !d.ready).map((d) => d.nick) : [];
 }
 
-/** Which screen to show for someone who has joined. */
-export type Screen = "waiting-world" | "portal" | "waiting-story" | "table";
+/**
+ * The page behind the story window, for someone who has joined. The story itself is not a page:
+ * it floats over whichever page this is, whenever a story is open.
+ */
+export type Screen = "waiting-world" | "worlds" | "waiting-story";
 
 export function screenFor(state: State): Screen {
   const host = state.you?.host === true;
-  if (state.story) return "table";
-  if (host) return "portal";
+  if (host) return "worlds";
   return state.world ? "waiting-story" : "waiting-world";
 }

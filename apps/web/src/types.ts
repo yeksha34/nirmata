@@ -128,7 +128,7 @@ export interface Card {
   body: string;
 }
 
-/** A saved story with the world it belongs to: what the portal offers to pick up. */
+/** A saved story with the world it belongs to: what the worlds page offers to pick up. */
 export interface RecentStory extends StorySummary {
   world: string;
   worldTitle: string;

@@ -46,7 +46,7 @@ Everything is JSON. Errors are always `{ "error": { "code", "message" } }` with 
 | `PUT /api/board/draft` `{mode,text}`; `POST /api/board/ready`, `/unready`, `/remark`, `/object`; `DELETE /api/board/remarks/:id` | the shared board |
 | `POST /api/board/close`, `/api/board/moderate` | host: close a round early; kick, mute, unmute, rename |
 | `GET /api/worlds`, `POST /api/worlds/open` `{name}` | host: list the library, open a world (the only world opens by itself) |
-| `GET /api/recent` | host: the latest saved stories across every world, newest first ([F-53](../../docs/features/F-53-world-portal.md)) |
+| `GET /api/recent` | host: the latest saved stories across every world, newest first ([F-53](../../docs/features/F-53-worlds-page.md)) |
 | `POST /api/worlds` `{title, tagline?, premise?}` | host: make a world (`201`); the folder name follows the title; it is not opened |
 | `GET /api/worlds/:name`, `PATCH /api/worlds/:name` `{title?, tagline?}` | host: a world's details, saved stories and cards without opening it; change its title or tagline |
 | `POST /api/worlds/:name/archive` | host: put a world away (its folder is renamed to start with `_archived-`, nothing is deleted) |
