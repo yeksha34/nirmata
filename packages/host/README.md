@@ -3,7 +3,7 @@
 The game master. Runs an adventure on top of [`@nirmata/core`](../core/README.md) (prompt building, event tree) and [`@nirmata/llm`](../llm/README.md) (models). It does no I/O of its own: saving goes through an `EventSink`, ids and time through `Ports`, so sessions are testable and replayable.
 
 ```ts
-const session = AdventureSession.create({ world, cards, provider, sink, settings, judge });
+const session = AdventureSession.create({ world, cards, provider, sink, settings, judge, actor });
 
 for await (const ev of session.start({ arcId: "arc.fourth-light" })) render(ev);
 for await (const ev of session.submit({ mode: "say", text: "Marrow, what is that light?" })) render(ev);
@@ -14,6 +14,7 @@ Every streaming call is an async generator of `HostEvent`s and **never throws**:
 | Event | Meaning |
 |---|---|
 | `context` | The prompt inputs for this attempt (powers the "why is this card here" drawer) |
+| `begun` | The adventure took its copy of the source cards (always the first event of a new one) |
 | `player` | The player's action was saved |
 | `text` | A live token chunk |
 | `reply` | A reply was saved (with any rule `violations`) |
@@ -23,6 +24,27 @@ Every streaming call is an async generator of `HostEvent`s and **never throws**:
 | `stopped` | The caller aborted; `partial` was not saved |
 | `error` | `{ message, code, recoverable }` |
 | `done` | Last event; carries the new state |
+
+## Adventures play on a copy of the source cards
+
+([ADR-0009](../../docs/decisions/0009-adventure-copies-and-source-permissions.md), F-43.) `world` and `cards` in the deps are the **source**. `start()` copies them once into a `begin` event, the root of the adventure, and from then on the session reads its own copy from the log: prompts, rule checks, plot extraction and plot points all use it. Editing or deleting a source card later changes nothing in a running adventure, two adventures never affect each other, and a saved adventure resumes from its log alone (leave `world` and `cards` out). An older log without a `begin` still works, using the source it is given.
+
+Note that the copy contains host-only text (Secrets). The log and the card copies are for the host's server; players get turns, chapters and plot points, never the cards.
+
+## Who may do what
+
+([F-44](../../docs/features/F-43-adventure-copies-and-source-permissions.md).) A session acts for one `actor` (`{ id, role: "host" | "player" }`, default a host running their own adventure); the server decides who is who. The table is in core's `permissions.ts`:
+
+| | Host | Player |
+|---|:-:|:-:|
+| Edit or remove **source cards** | yes | **no** |
+| Start an adventure | yes | no |
+| Act, retry, continue, undo, edit own turn, pin a fact | yes | yes |
+| Jump to another branch, add or revoke plot points, break a chapter, run plot extraction, change settings | yes | no |
+
+A refused call yields an `error` event (or rejects) with `code: "forbidden"` and a plain message such as "Only the host can add plot points.", and saves nothing. Plot extraction that happens as part of play is not a player action and is never blocked.
+
+**Source cards** are only written through `SourceCards` (`update`, `editFromText`, `remove`), which checks the role first, validates the card (and refuses duplicate ids) and then calls your `SourceBackend` (files on disk, a database). Anyone can read through it; only a host can write or take the `snapshot` that starts an adventure.
 
 ## Operations
 

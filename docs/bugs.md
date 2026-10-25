@@ -20,6 +20,7 @@ Severity: **S1** data loss / security / cannot start. **S2** feature unusable. *
 | TD-004 | Studio (partly addressed: `packages/llm` now exists) | Prose drafting is wired to one provider (Mistral agents API) and a manual "Claude worker" queue. | Provider abstraction, [ADR-0003](decisions/0003-llm-provider-abstraction.md). |
 | TD-005 | Studio | `electron/` shell expects `npm install` for ~460 MB of dependencies and is not installed here. [ADR-0006](decisions/0006-stack-revision.md) drops the desktop shell from the first releases. | Delete when the React UI replaces the Studio. |
 | TD-006 | tools/*.py | Python utilities still mention the old `stories-repo` / Mentor names in comments and help text; `rewrite_chapter_mistral.py` is single-provider. | Rename on touch; fold into `packages/llm` where they remain useful. |
+| TD-008 | Server (future) | An adventure's `begin` event, and so its `events.jsonl`, contains every source card **including host-only Secrets**. The server must never send the log or card copies to players; player views are built only from turns, chapters and plot points, and any card view for players must redact Secrets. Whether players may read source cards at all is undecided. | Carry into F-37 and the server design; see ADR-0009. |
 | TD-007 | Terminology | Code still says "story" where Nirmata says "world" (`story_paths.py`, `.active_story.json`, `listStories`). | Rename when the Studio is rebuilt; do not rename in the baseline copy (risk without tests). |
 
 ## Closed

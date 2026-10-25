@@ -7,6 +7,10 @@ description: Act as the game master that hosts an adventurer in a Nirmata world 
 
 Spec of the host's behaviour. The engine (feature F-30..F-36) implements the same contract; this skill lets an agent play it by hand and is the reference when writing engine tests.
 
+## Before the first turn
+- **Duplicate the source cards.** An adventure begins by copying the world and every source card into its own log, and plays only on that copy. Never write to the source cards while playing; only the host edits them, and players never do.
+- Know the role you act for: a **host** may start the adventure, branch, add or revoke plot points and break chapters; a **player** may act, retry, continue, undo, edit their own turn and pin a fact.
+
 ## Context order for each turn (top to bottom, trimmed from the bottom first)
 1. Host instructions + `world.json` (tone, perspective, rating).
 2. **Rules** with `scope: adventure|both` (all `must` first).

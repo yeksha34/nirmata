@@ -31,7 +31,7 @@ Long adventures stay playable without any summarising: the prompt holds the rece
 ## Verification log
 | Date | What was run | Result |
 |---|---|---|
-| 2026-10-25 | `pnpm exec vitest run`, `tsc -b`, `biome check packages` | 207 tests pass (core 81, llm 48, host 78). Window: cursor validated and monotonic, chapters equal the turns outside the window and window turns plus chapter turns equal the transcript, breaks, undo, retry, budget growth never re-admits a turn, no extra model call per turn. Fake provider only. |
+| 2026-10-25 | `pnpm exec vitest run`, `tsc -b`, `biome check packages` | 207 tests pass at the time (240 after F-43) (core 81, llm 48, host 78). Window: cursor validated and monotonic, chapters equal the turns outside the window and window turns plus chapter turns equal the transcript, breaks, undo, retry, budget growth never re-admits a turn, no extra model call per turn. Fake provider only. |
 | open | Files on disk | The projection is pure data and tested; writing it to `adventures/<id>/` is the server's job and is not built yet. |
 
 ## History

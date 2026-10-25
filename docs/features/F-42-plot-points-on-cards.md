@@ -30,7 +30,7 @@ Cards stay true to the story: once something affecting a character, place or arc
 ## Verification log
 | Date | What was run | Result |
 |---|---|---|
-| 2026-10-25 | `pnpm exec vitest run`, `tsc -b`, `biome check packages` | 207 tests pass. Plot: extraction trigger and cursor, unknown cards dropped, duplicates dropped, secrets and summaries never sent to the extractor, points shown under recalled cards only, failures and aborts, undo / retry / goto, single revoke, undo newest batch, time-travel of a later revoke, manual add, busy guard, plot files. Fake provider only. |
+| 2026-10-25 | `pnpm exec vitest run`, `tsc -b`, `biome check packages` | 207 tests pass at the time (240 after F-43). Plot: extraction trigger and cursor, unknown cards dropped, duplicates dropped, secrets and summaries never sent to the extractor, points shown under recalled cards only, failures and aborts, undo / retry / goto, single revoke, undo newest batch, time-travel of a later revoke, manual add, busy guard, plot files. Fake provider only. |
 | open | Real model quality | **Not verified:** that a real model writes faithful, non-repeating, past-tense points and attaches them to the right cards. Needs a live-model review. |
 
 ## History

@@ -51,7 +51,9 @@ Status is the lifecycle state from [lifecycle.md](lifecycle.md); the board there
 | F-38 | S | **Save, branch, export**: fork from any turn; export transcript as markdown or epub. | Branch leaves the original untouched |
 | F-40 | M | **Live context-window shifting.** No summarising: the prompt holds the recent turns that fit, and turns that fall out of the window are written verbatim to the adventure's **chapter** as they leave. Chapter breaks are decided later ([ADR-0008](decisions/0008-window-shift-and-plot-points.md)). | Chapter text equals the exact turns outside the window; follows undo and branches |
 | F-42 | M | **Plot points on cards, with undo.** After something affecting a card has happened in the adventure, that plot point is added to the card (adventure-scoped) and recalled with it. Points can be revoked or added by hand, and follow undo and branches. | Points appear in later prompts under their card; undoing the turn removes them |
-| F-41 | C | **Promote to world.** Copy a chosen adventure chapter or tracking card into the world as authored content. | Promoted content appears in `worlds/<name>/` and lints clean |
+| F-43 | M | **Adventure copies.** Each adventure begins by duplicating the source cards (and world manifest) into its own log; play uses and changes only the copy ([ADR-0009](decisions/0009-adventure-copies-and-source-permissions.md)). | Editing the source after the start changes nothing in a running adventure |
+| F-44 | M | **Source permissions.** Source cards can be edited by whoever hosts them, never by players. | A player's edit is refused and nothing is written |
+| F-41 | C | **Promote to the source.** A host copies a chosen adventure chapter or card (with its plot points) back into the source cards, and can pull source changes into a running adventure. | Promoted content appears in `worlds/<name>/` and lints clean |
 | F-39 | M | **Content rating gate**: `contentRating` on the world and a per-session ceiling; the host prompt and rule checker honour it. | Setting a session to "everyone" never loads cards marked above it |
 
 ### C. UX

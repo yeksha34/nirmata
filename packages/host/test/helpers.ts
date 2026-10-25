@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  type Actor,
   type AdventureEvent,
   type Card,
   parseCard,
@@ -70,19 +71,27 @@ export function ruleCard(id: string, severity: "must" | "should", check: string)
 }
 
 export interface MemorySink extends EventSink {
+  /** The story's events: everything saved except the `begin` copy of the source cards. */
   events: AdventureEvent[];
+  /** Everything saved, `begin` included. Use this to resume. */
+  all: AdventureEvent[];
+  /** The `begin` event, once saved. */
+  begin?: AdventureEvent;
   failNext?: boolean;
 }
 
 export function memorySink(): MemorySink {
   const sink: MemorySink = {
     events: [],
+    all: [],
     async append(event) {
       if (sink.failNext) {
         sink.failNext = false;
         throw new Error("disk full");
       }
-      sink.events.push(event);
+      sink.all.push(event);
+      if (event.kind === "begin") sink.begin = event;
+      else sink.events.push(event);
     },
   };
   return sink;
@@ -94,6 +103,7 @@ export interface Rig {
   sink: MemorySink;
   settings: HostSettings;
   cards: Card[];
+  world: WorldManifest;
 }
 
 export function rig(
@@ -108,6 +118,10 @@ export function rig(
     sink?: MemorySink;
     /** Distinguishes ids when two sessions share one saved adventure. */
     idPrefix?: string;
+    /** Who the session acts for; defaults to a host. */
+    actor?: Actor;
+    /** Do not give the session the source cards (resume from the log's own copy). */
+    withoutSource?: boolean;
   } = {},
 ): Rig {
   const { world, cards: base } = loadWorld("example-world");
@@ -123,8 +137,8 @@ export function rig(
   let n = 0;
   const session = AdventureSession.create(
     {
-      world,
-      cards,
+      ...(opts.withoutSource ? {} : { world, cards }),
+      ...(opts.actor ? { actor: opts.actor } : {}),
       provider,
       sink,
       settings,
@@ -133,7 +147,7 @@ export function rig(
     },
     opts.resumeFrom,
   );
-  return { session, provider, sink, settings, cards };
+  return { session, provider, sink, settings, cards, world };
 }
 
 export async function run(gen: AsyncGenerator<HostEvent>): Promise<HostEvent[]> {

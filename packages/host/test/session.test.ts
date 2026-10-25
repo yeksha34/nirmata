@@ -1,7 +1,17 @@
 import { type GenerateRequest, LlmError } from "@nirmata/llm";
 import { describe, expect, it } from "vitest";
 import { HostError, type RuleJudge } from "../src";
-import { lastContent, memorySink, pick, rig, ruleCard, run, systemContent, types } from "./helpers";
+import {
+  lastContent,
+  loadWorld,
+  memorySink,
+  pick,
+  rig,
+  ruleCard,
+  run,
+  systemContent,
+  types,
+} from "./helpers";
 
 const reply = (...chunks: string[]) => ({ chunks });
 
@@ -10,7 +20,8 @@ describe("start", () => {
     const { session, sink, provider } = rig(reply("Dusk ", "settles."));
     const events = await run(session.start({ arcId: "arc.fourth-light" }));
 
-    expect(types(events)).toEqual(["context", "text", "text", "reply", "done"]);
+    expect(types(events)).toEqual(["begun", "context", "text", "text", "reply", "done"]);
+    expect(pick(events, "begun")[0]?.cards).toBe(loadWorld("example-world").cards.length);
     const ctx = pick(events, "context")[0]?.context;
     expect(ctx?.included.find((i) => i.id === "arc.fourth-light")?.reason).toBe(
       "pinned for this turn",
@@ -18,7 +29,7 @@ describe("start", () => {
     const saved = pick(events, "reply")[0]?.event;
     expect(saved).toMatchObject({
       kind: "host",
-      parentId: null,
+      parentId: sink.begin?.id,
       text: "Dusk settles.",
       model: "fake-model",
     });
@@ -83,7 +94,7 @@ describe("failures", () => {
     const { session, sink } = rig([{ error: down }, reply("Better now.")]);
 
     const failed = await run(session.submit({ mode: "do", text: "I wait." }));
-    expect(types(failed)).toEqual(["player", "context", "error", "done"]);
+    expect(types(failed)).toEqual(["begun", "player", "context", "error", "done"]);
     expect(pick(failed, "error")[0]).toMatchObject({
       code: "unreachable",
       message: "Can't reach the model at http://localhost:5001.",
@@ -185,7 +196,7 @@ describe("retry, continue, undo, edit", () => {
     const { session, sink } = rig([reply("Opening A."), reply("Opening B.")]);
     await run(session.start());
     await run(session.retry());
-    expect(sink.events.map((e) => e.parentId)).toEqual([null, null]);
+    expect(sink.events.map((e) => e.parentId)).toEqual([sink.begin?.id, sink.begin?.id]);
     expect(session.turns.map((t) => t.text)).toEqual(["Opening B."]);
   });
 
@@ -278,6 +289,7 @@ describe("rule checking", () => {
 
     const events = await run(session.submit({ mode: "do", text: "attack" }));
     expect(types(events)).toEqual([
+      "begun",
       "player",
       "context",
       "text",
@@ -376,7 +388,7 @@ describe("resume", () => {
     await run(first.session.submit({ mode: "do", text: "act" }));
 
     const resumed = rig(reply("Carried on."), {
-      resumeFrom: first.sink.events,
+      resumeFrom: first.sink.all,
       idPrefix: "r",
     });
     expect(resumed.session.state.head).toBe(first.session.state.head);

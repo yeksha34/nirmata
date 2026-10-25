@@ -1,14 +1,18 @@
 import { randomUUID } from "node:crypto";
 import {
+  type Action,
+  type Actor,
   type AdventureEvent,
   type AdventureState,
   applyEvent,
   type BuiltContext,
+  beginEvent,
   breakEvent,
   buildContext,
   type Card,
   type Chapter,
   ContextBudgetError,
+  can,
   cardsWithPlot,
   chaptersOf,
   contextTurnsOf,
@@ -25,6 +29,7 @@ import {
   plotPointsOf,
   replay,
   retryParent,
+  sourceOf,
   type TokenCounter,
   type Turn,
   turnsOf,
@@ -35,6 +40,7 @@ import {
   type WorldManifest,
 } from "@nirmata/core";
 import { type ChatMessage, LlmError, type Provider } from "@nirmata/llm";
+import { requireCan, SOLO_HOST } from "./access";
 import { candidateCards, extractPlot, plotDue } from "./plot";
 import { rulesToCheck } from "./rules";
 import {
@@ -49,9 +55,15 @@ import {
 } from "./types";
 
 export interface SessionDeps {
-  world: WorldManifest;
-  /** Every card in the world, rules included. */
-  cards: readonly Card[];
+  /**
+   * The source world and its cards, copied once when the adventure begins (ADR-0009). After that
+   * the session reads the adventure's own copy from its log, so these may be left out when
+   * resuming a saved adventure.
+   */
+  world?: WorldManifest | undefined;
+  cards?: readonly Card[] | undefined;
+  /** Who this session acts for. Defaults to a host running their own adventure. */
+  actor?: Actor | undefined;
   provider: Provider;
   sink: EventSink;
   settings: HostSettings;
@@ -142,6 +154,7 @@ export class AdventureSession {
   private _state: AdventureState;
   private busy = false;
   private readonly ports: Ports;
+  private readonly actor: Actor;
 
   private constructor(
     private readonly deps: SessionDeps,
@@ -149,6 +162,7 @@ export class AdventureSession {
   ) {
     this._state = state;
     this.ports = deps.ports ?? defaultPorts;
+    this.actor = deps.actor ?? SOLO_HOST;
   }
 
   /** Start a new adventure, or resume one from its saved events. */
@@ -178,24 +192,28 @@ export class AdventureSession {
   }
 
   updateSettings(patch: Partial<HostSettings>): void {
+    this.require("settings.change");
     Object.assign(this.deps.settings, patch);
   }
 
   // ---- streaming operations -------------------------------------------------------------
 
-  /** Write the opening scene of a fresh adventure. */
+  /** Take the copy of the source cards, then write the opening scene. */
   start(options: { arcId?: string } = {}, signal?: AbortSignal): AsyncGenerator<HostEvent> {
     return this.guarded(async function* (self) {
+      self.require("adventure.start");
       if (self._state.log.length) {
         throw new HostError("bad_state", "This adventure has already started.");
       }
+      const begin = await self.begin();
+      yield { type: "begun", event: begin, cards: begin.cards.length };
       const arc = options.arcId
-        ? self.deps.cards.find((c) => c.fm.id === options.arcId)
+        ? self.adventure().cards.find((c) => c.fm.id === options.arcId)
         : undefined;
       yield* self.generate(
         {
-          replyTo: null,
-          turnsAt: null,
+          replyTo: begin.id,
+          turnsAt: begin.id,
           input: { mode: "story", text: openingInstruction(arc?.fm.name) },
           ...(arc ? { pinned: [arc.fm.id] } : {}),
         },
@@ -207,8 +225,16 @@ export class AdventureSession {
   /** The player acts; the host answers. */
   submit(input: TurnInput, signal?: AbortSignal): AsyncGenerator<HostEvent> {
     return this.guarded(async function* (self) {
+      self.require("adventure.play");
       if (!input.text.trim())
         throw new HostError("nothing_to_do", "Type something to do or say first.");
+      if (!self._state.log.length) {
+        if (!can(self.actor, "adventure.start")) {
+          throw new HostError("forbidden", "The host has not started this adventure yet.");
+        }
+        const begin = await self.begin();
+        yield { type: "begun", event: begin, cards: begin.cards.length };
+      }
       const turnsAt = self._state.head;
       const player = newEvent({
         id: self.ports.newId(),
@@ -230,6 +256,7 @@ export class AdventureSession {
    */
   retry(signal?: AbortSignal): AsyncGenerator<HostEvent> {
     return this.guarded(async function* (self) {
+      self.require("adventure.play");
       const head = self._state.head === null ? undefined : self._state.events.get(self._state.head);
       if (head?.kind === "player") {
         yield* self.generate(
@@ -244,9 +271,13 @@ export class AdventureSession {
       }
       const target = retryParent(self._state);
       if (!target) throw new HostError("nothing_to_do", "There is no reply to retry yet.");
-      if (target.parentId === null) {
+      if (target.parentId === null || self._state.events.get(target.parentId)?.kind === "begin") {
         yield* self.generate(
-          { replyTo: null, turnsAt: null, input: { mode: "story", text: openingInstruction() } },
+          {
+            replyTo: target.parentId,
+            turnsAt: target.parentId,
+            input: { mode: "story", text: openingInstruction() },
+          },
           signal,
         );
         return;
@@ -269,6 +300,7 @@ export class AdventureSession {
   /** Add more to the latest reply without the player saying anything. */
   continueStory(signal?: AbortSignal): AsyncGenerator<HostEvent> {
     return this.guarded(async function* (self) {
+      self.require("adventure.play");
       if (!retryParent(self._state))
         throw new HostError("nothing_to_do", "There is nothing to continue yet.");
       const at = self._state.head;
@@ -284,6 +316,7 @@ export class AdventureSession {
   /** Take back the last player action and everything after it. Returns false if there is none. */
   async undo(): Promise<boolean> {
     this.assertIdle();
+    this.require("adventure.undo");
     const ev = undoEvent(this._state, this.ports.newId(), this.ports.now());
     if (!ev) return false;
     await this.commit(ev);
@@ -296,6 +329,7 @@ export class AdventureSession {
    */
   async edit(targetId: string, text: string): Promise<AdventureEvent> {
     this.assertIdle();
+    this.require("adventure.edit-turn");
     const ev = editEvent(this._state, targetId, text, this.ports.newId(), this.ports.now());
     await this.commit(ev);
     return ev;
@@ -304,7 +338,12 @@ export class AdventureSession {
   /** Jump to any saved moment (browse a branch, or fork from an earlier turn). */
   async goto(target: string | null): Promise<void> {
     this.assertIdle();
-    await this.commit(gotoEvent(this.ports.newId(), this.ports.now(), target));
+    this.require("adventure.branch");
+    // "Before everything" is the beginning of the story, not before the copy of the cards.
+    const root =
+      this._state.log[0] === undefined ? undefined : this._state.events.get(this._state.log[0]);
+    const to = target ?? (root?.kind === "begin" ? root.id : null);
+    await this.commit(gotoEvent(this.ports.newId(), this.ports.now(), to));
   }
 
   async pin(fact: string): Promise<void> {
@@ -318,7 +357,8 @@ export class AdventureSession {
   /** Attach a plot point to a card by hand. It never moves the automatic extraction forward. */
   async addPlotPoint(card: string, text: string): Promise<AdventureEvent> {
     this.assertIdle();
-    if (!this.deps.cards.some((c) => c.fm.id === card && c.fm.kind !== "rule")) {
+    this.require("plot.add");
+    if (!this.adventure().cards.some((c) => c.fm.id === card && c.fm.kind !== "rule")) {
       throw new HostError("nothing_to_do", `There is no card "${card}" in this world.`);
     }
     if (!text.trim()) throw new HostError("nothing_to_do", "Write what happened first.");
@@ -338,6 +378,7 @@ export class AdventureSession {
   /** Take back one plot point. It is not re-extracted: the turns it came from were already read. */
   async revokePlotPoint(pointId: string): Promise<void> {
     this.assertIdle();
+    this.require("plot.revoke");
     if (!plotPointsOf(this._state).some((p) => p.id === pointId)) {
       throw new HostError("nothing_to_do", "That plot point is not in force on this branch.");
     }
@@ -353,6 +394,7 @@ export class AdventureSession {
   /** Take back the newest batch of plot points. Returns false when there is none. */
   async undoLastPlot(): Promise<boolean> {
     this.assertIdle();
+    this.require("plot.revoke");
     const ev = undoLastPlotEvent(this._state, this.ports.newId(), this.ports.now());
     if (!ev) return false;
     await this.commit(ev);
@@ -365,6 +407,7 @@ export class AdventureSession {
    */
   async breakChapter(title?: string): Promise<AdventureEvent> {
     this.assertIdle();
+    this.require("chapter.break");
     if (this._state.head === null) {
       throw new HostError("nothing_to_do", "Nothing has happened yet to end a chapter.");
     }
@@ -380,6 +423,7 @@ export class AdventureSession {
     text: string,
   ): Promise<AdventureEvent> {
     this.assertIdle();
+    this.require("adventure.pin");
     return this.appendMemory(kind, text);
   }
 
@@ -396,6 +440,36 @@ export class AdventureSession {
     });
     await this.commit(ev);
     return ev;
+  }
+
+  private require(action: Action): void {
+    requireCan(this.actor, action);
+  }
+
+  /**
+   * The world and cards this adventure plays on: its own copy from the log. Only an adventure
+   * that has not begun yet (or a legacy log without a copy) falls back to the source.
+   */
+  private adventure(at: string | null = this._state.head): {
+    world: WorldManifest;
+    cards: readonly Card[];
+  } {
+    const own = sourceOf(this._state, at);
+    if (own) return own;
+    if (this.deps.world && this.deps.cards)
+      return { world: this.deps.world, cards: this.deps.cards };
+    throw new HostError("bad_state", "This adventure has no cards to play with.");
+  }
+
+  /** Duplicate the source cards into the log. The root of every new adventure. */
+  private async begin(): Promise<AdventureEvent> {
+    const { world, cards } = this.deps;
+    if (!world || !cards) {
+      throw new HostError("bad_state", "There are no source cards to start this adventure from.");
+    }
+    const event = beginEvent({ id: this.ports.newId(), t: this.ports.now(), world, cards });
+    await this.commit(event);
+    return event;
   }
 
   private assertIdle(): void {
@@ -431,13 +505,15 @@ export class AdventureSession {
     yield { type: "done", state: this._state };
   }
 
-  private ceiling() {
-    return this.deps.settings.ratingCeiling ?? this.deps.world.contentRating;
+  private ceiling(world: WorldManifest) {
+    return this.deps.settings.ratingCeiling ?? world.contentRating;
   }
 
   private async *generate(args: GenerateArgs, signal?: AbortSignal): AsyncGenerator<HostEvent> {
-    const { settings, provider, world, cards, judge } = this.deps;
-    const rules = judge ? rulesToCheck(cards, settings.ruleCheck, this.ceiling()) : [];
+    const { settings, provider, judge } = this.deps;
+    const { world, cards } = this.adventure(args.replyTo ?? this._state.head);
+    const ceiling = this.ceiling(world);
+    const rules = judge ? rulesToCheck(cards, settings.ruleCheck, ceiling) : [];
     const attempts = 1 + (rules.length ? Math.max(0, settings.maxRegenerations) : 0);
     const reserve = settings.budget.reserveReply ?? settings.params.maxTokens ?? 350;
 
@@ -455,7 +531,7 @@ export class AdventureSession {
         turns: contextTurnsOf(this._state, args.turnsAt),
         input: args.input,
         budget: { maxTokens: settings.budget.maxTokens, reserveReply: reserve },
-        ratingCeiling: this.ceiling(),
+        ratingCeiling: ceiling,
         ...(settings.scanTurns !== undefined ? { scanTurns: settings.scanTurns } : {}),
         ...(args.pinned ? { pinnedCards: args.pinned } : {}),
         ...(this.deps.counter ? { counter: this.deps.counter } : {}),
@@ -558,6 +634,7 @@ export class AdventureSession {
   /** Look for plot points in the recent turns right now, without waiting for the trigger. */
   plot(signal?: AbortSignal): AsyncGenerator<HostEvent> {
     return this.guarded(async function* (self) {
+      self.require("plot.extract");
       yield* self.plotNow(true, undefined, signal);
     });
   }
@@ -572,7 +649,8 @@ export class AdventureSession {
     context: BuiltContext | undefined,
     signal?: AbortSignal,
   ): AsyncGenerator<HostEvent> {
-    const { settings, cards } = this.deps;
+    const { settings } = this.deps;
+    const { cards } = this.adventure();
     const cfg = settings.plot;
     const turns = turnsSincePlot(this._state).slice(-cfg.maxTurns);
     const last = turns[turns.length - 1];

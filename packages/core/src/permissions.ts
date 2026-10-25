@@ -1,0 +1,68 @@
+/**
+ * Who may do what (ADR-0009). Two roles:
+ * - `host`: whoever runs the adventure or owns the world. In solo play that is the player too.
+ * - `player`: everyone else taking part.
+ * The caller (the server) decides who holds which role; this module only answers questions.
+ */
+export type Role = "host" | "player";
+
+export interface Actor {
+  id: string;
+  role: Role;
+}
+
+/** The one table. The first row is a rule from the owner; the rest are defaults to adjust. */
+const ALLOWED = {
+  /** Edit or remove the world's source cards. Never a player. */
+  "source.edit": ["host"],
+  /** Take the copy of the source cards and begin an adventure. */
+  "adventure.start": ["host"],
+  "adventure.play": ["host", "player"],
+  "adventure.undo": ["host", "player"],
+  "adventure.edit-turn": ["host", "player"],
+  "adventure.pin": ["host", "player"],
+  /** Jump to another branch of the story. */
+  "adventure.branch": ["host"],
+  "plot.extract": ["host"],
+  "plot.add": ["host"],
+  "plot.revoke": ["host"],
+  "chapter.break": ["host"],
+  "settings.change": ["host"],
+} as const satisfies Record<string, readonly Role[]>;
+
+export type Action = keyof typeof ALLOWED;
+export const ACTIONS = Object.keys(ALLOWED) as Action[];
+
+const REFUSAL: Record<Action, string> = {
+  "source.edit": "Only the host can edit the source cards.",
+  "adventure.start": "Only the host can start an adventure.",
+  "adventure.play": "You can't take part in this adventure.",
+  "adventure.undo": "You can't undo in this adventure.",
+  "adventure.edit-turn": "You can't edit turns in this adventure.",
+  "adventure.pin": "You can't pin facts in this adventure.",
+  "adventure.branch": "Only the host can jump to another branch of the story.",
+  "plot.extract": "Only the host can update plot points.",
+  "plot.add": "Only the host can add plot points.",
+  "plot.revoke": "Only the host can take back plot points.",
+  "chapter.break": "Only the host can start a new chapter.",
+  "settings.change": "Only the host can change settings.",
+};
+
+export function can(actor: Actor, action: Action): boolean {
+  return (ALLOWED[action] as readonly Role[]).includes(actor.role);
+}
+
+export class PermissionError extends Error {
+  constructor(
+    readonly action: Action,
+    readonly role: Role,
+  ) {
+    super(REFUSAL[action]);
+    this.name = "PermissionError";
+  }
+}
+
+/** Throws a PermissionError, whose message is safe to show the player, unless `actor` may. */
+export function assertCan(actor: Actor, action: Action): void {
+  if (!can(actor, action)) throw new PermissionError(action, actor.role);
+}
