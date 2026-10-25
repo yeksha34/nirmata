@@ -12,6 +12,8 @@
 Nothing is configured outside the screen: the host lands in the app, sees the worlds on their computer, picks one, starts a story or continues a saved one, and saves a story as a new world. Everyone else joins with a name and plays on the shared board.
 
 ## Acceptance criteria
+The server side of each item is tested. How the screens behave has been built and type-checked but not yet run in a browser, so the on-screen items under **Playing** stay open until someone has used them.
+
 **Choosing and continuing (the host)**
 - [x] The server takes a folder of worlds, not a world: which one to play is chosen on screen. There is no `NIRMATA_WORLD`. If the folder holds exactly one world it opens by itself.
 - [x] The library lists every world with its title, tagline and how many stories it holds; a world that cannot be read is shown with the reason and cannot be opened.
@@ -23,11 +25,11 @@ Nothing is configured outside the screen: the host lands in the app, sees the wo
 - [x] The story is shown as saved automatically.
 
 **Playing**
-- [x] Joining asks for a name (and the adult confirmation in production); coming back in the same tab returns to the same seat; the host takes the host's seat from the link the server prints. (The server also opens that link in the browser; that step has not been run.)
-- [x] Spectators watch and can join in; players write their turn in the composer (Do / Say / Story); everyone sees each draft as it is typed; Ready sends it when everyone who wrote is ready; the host can send it early.
-- [x] People can object to a draft and talk; objections stay visible until answered; the host can hush, rename or send away, and the in-fiction notices show.
-- [x] The reply streams in live; Stop, Try again, Keep going and Undo are one tap; the hushed and spectators see why they cannot write.
-- [x] A lost connection is shown and recovers by itself; errors appear in the server's own plain words.
+- [ ] Joining asks for a name (and the adult confirmation in production); coming back in the same tab returns to the same seat; the host takes the host's seat from the link the server prints. (The server also opens that link in the browser; that step has not been run.)
+- [ ] Spectators watch and can join in; players write their turn in the composer (Do / Say / Story); everyone sees each draft as it is typed; Ready sends it when everyone who wrote is ready; the host can send it early.
+- [ ] People can object to a draft and talk; objections stay visible until answered; the host can hush, rename or send away, and the in-fiction notices show.
+- [ ] The reply streams in live; Stop, Try again, Keep going and Undo are one tap; the hushed and spectators see why they cannot write.
+- [ ] A lost connection is shown and recovers by itself; errors appear in the server's own plain words.
 - [ ] Works from phone width up; light and dark; keyboard reachable; honours reduced motion. (Written for it; not yet checked by eye.)
 
 ## Non-goals
