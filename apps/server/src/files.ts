@@ -17,6 +17,7 @@ import {
   parseLog,
   parseWorldManifest,
   type StoryEvent,
+  type StoryWorld,
   serializeCard,
   serializeEvent,
   type WorldManifest,
@@ -117,21 +118,85 @@ export class WorldFiles implements SourceBackend {
     if (found) await rm(this.cardFile(found.path), { force: true });
   }
 
-  /** A card's file: markdown, in one of the card folders, never starting with "_". */
-  private cardFile(path: string): string {
-    const rel = path.replaceAll("\\", "/");
-    const ok =
-      rel.endsWith(".md") &&
-      !basename(rel).startsWith("_") &&
-      CARD_DIRS.some((d) => rel.startsWith(`${d}/`));
-    if (!ok) {
-      throw new HostError(
-        "invalid_card",
-        `A card's path must be a .md file inside ${CARD_DIRS.join(", ")} (got "${path}").`,
-      );
-    }
-    return inside(this.root, rel);
+  /** The folder that holds this world and its siblings. */
+  get parent(): string {
+    return dirname(this.root);
   }
+
+  private cardFile(path: string): string {
+    return inside(this.root, cardPath(path));
+  }
+}
+
+/** A card's world-relative path: markdown, in one of the card folders, never starting with "_". */
+export function cardPath(path: string): string {
+  const rel = path.replaceAll("\\", "/");
+  const ok =
+    rel.endsWith(".md") &&
+    !basename(rel).startsWith("_") &&
+    CARD_DIRS.some((d) => rel.startsWith(`${d}/`));
+  if (!ok) {
+    throw new HostError(
+      "invalid_card",
+      `A card's path must be a .md file inside ${CARD_DIRS.join(", ")} (got "${path}").`,
+    );
+  }
+  return rel;
+}
+
+/** Names a world folder may have: lowercase letters, digits and hyphens. */
+export const WORLD_NAME = /^[a-z0-9][a-z0-9-]{1,39}$/;
+
+/**
+ * Write a world made from a story as a new folder next to the others. Nothing is overwritten: a
+ * name already in use is refused. The folder is built aside and moved into place, so a failure
+ * leaves no half-made world behind.
+ */
+export async function writeNewWorld(
+  parent: string,
+  made: StoryWorld,
+): Promise<{ name: string; cards: number; chapters: number }> {
+  const name = made.manifest.name;
+  if (!WORLD_NAME.test(name)) {
+    throw new HostError(
+      "bad_state",
+      "A world's name uses lowercase letters, digits and hyphens, 2 to 40 characters.",
+    );
+  }
+  const target = inside(parent, name);
+  if (
+    await stat(target).then(
+      () => true,
+      () => false,
+    )
+  ) {
+    throw new HostError(
+      "bad_state",
+      `There is already a world called "${name}". Pick another name.`,
+    );
+  }
+  const temp = `${target}.tmp-${randomBytes(3).toString("hex")}`;
+  try {
+    await writeAtomic(
+      join(temp, "world.json"),
+      `${JSON.stringify(made.manifest, null, 2)}
+`,
+    );
+    for (const card of made.cards) {
+      await writeAtomic(inside(temp, cardPath(card.path)), serializeCard(card));
+    }
+    for (const file of made.files) await writeAtomic(inside(temp, file.path), file.content);
+    await writeAtomic(join(temp, "stories", ".gitkeep"), "");
+    await rename(temp, target);
+  } catch (e) {
+    await rm(temp, { recursive: true, force: true });
+    throw e;
+  }
+  return {
+    name,
+    cards: made.cards.length,
+    chapters: made.files.filter((f) => f.path !== "chapters/index.md").length,
+  };
 }
 
 export interface StorySummary {

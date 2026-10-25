@@ -4,6 +4,7 @@ import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { describeError, HttpError } from "./errors";
+import { WORLD_NAME } from "./files";
 import type { Seat, Send, Table } from "./table";
 
 const Nick = z.string().trim().min(1).max(64);
@@ -244,6 +245,20 @@ export function createApp({ table, log }: AppOptions): Hono {
     const body = await json(c, z.object({ title: z.string().trim().min(1).max(120).optional() }));
     await table.breakChapter(seat, body.title);
     return ok(c);
+  });
+  app.post("/api/story/save-as-world", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(
+      c,
+      z.object({
+        name: z
+          .string()
+          .regex(WORLD_NAME, "A world's name uses lowercase letters, digits and hyphens."),
+        title: z.string().trim().min(1).max(120).optional(),
+        at: z.string().min(1).optional(),
+      }),
+    );
+    return c.json({ world: await table.saveAsWorld(seat, body) }, 201);
   });
   app.post("/api/story/plot-points", async (c) => {
     const seat = seatOf(c);

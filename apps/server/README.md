@@ -47,6 +47,7 @@ Everything is JSON. Errors are always `{ "error": { "code", "message" } }` with 
 | `GET /api/stories`, `POST /api/stories`, `POST /api/stories/:id/resume` | host: list, start (`202`), resume |
 | `POST /api/story/retry`, `/continue`, `/stop`, `/undo`, `/edit`, `/pin` | players and host |
 | `POST /api/story/goto`, `/break`, `/plot`, `/plot-points`, `/plot-points/undo`; `DELETE /api/story/plot-points/:id` | host |
+| `POST /api/story/save-as-world` `{name, title?, at?}` | host: save the story as a new world beside this one ([F-48](../../docs/features/F-48-save-story-as-world.md)); run the server on it with `NIRMATA_WORLD` |
 | `GET /api/source/world`, `GET/PUT /api/source/cards`, `DELETE /api/source/cards/:id` | the source cards: host, or players if the host allows reading |
 | `GET/PATCH /api/settings` | host |
 

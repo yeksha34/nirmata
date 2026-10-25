@@ -72,6 +72,7 @@ but has not been re-verified inside Nirmata.
 | F-45 | Player input is never fact | Building | `feat/F-30-story-host-core` | Prompt + judge pipeline done and tested with the fake provider; real-model check pending. [features/F-45](features/F-45-player-input-is-not-fact.md) |
 | F-46 | Shared board, age confirmation, moderation | Building | `feat/F-30-story-host-core` | Board, rounds, env-gated age check and in-fiction moderation done in core + host (310 tests, fake provider). Live transport is done in the server (F-47); screens pending. [features/F-46](features/F-46-shared-board-and-table-rules.md) |
 | F-47 | The table server | Review | `feat/F-30-story-host-core` | `apps/server`: join, live board and story, saved stories, per-role views; 41 tests and one real run in demo mode. Not yet tried with a live model or a second device. [features/F-47](features/F-47-table-server.md), [ADR-0016](decisions/0016-table-server.md) |
+| F-48 | Save a story as a world | Review | `feat/F-30-story-host-core` | Core function and server route done, 12 tests. No screen yet, and the server needs a restart to host the new world. [features/F-48](features/F-48-save-story-as-world.md) |
 | F-41 | Promote story content to the world | Proposed | | |
 | F-50 | Guided first run + simple/advanced mode | Specified | | See [ux-principles.md](ux-principles.md) |
 | F-51 | Mobile-friendly PWA | Proposed | | |

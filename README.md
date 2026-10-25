@@ -17,10 +17,10 @@ Design references: SillyTavern + KoboldAI (local control, lorebooks), AI Dungeon
 | Studio (legacy vanilla-JS editor, `apps/studio`) | Baseline, copied and runnable |
 | World linter (`.agents/skills/world-lint`) | Verified on the example world |
 | Rules judge (`services/rules-gatekeeper`) | Copied; training project, optional |
-| `packages/core` engine (cards, lorebook matching, context builder, event tree) | Built, 106 tests (F-30 in progress) |
+| `packages/core` engine (cards, lorebook matching, context builder, event tree) | Built, 113 tests (F-30 in progress) |
 | `packages/llm` model providers (OpenAI-compatible, Anthropic, fake) | Built, 48 tests; not yet tried against a live model |
 | `packages/host` game master (turns, retry/undo/branch, rule checks, context window shifting into chapters, plot points on cards) | Built, 157 tests with the fake provider |
-| `apps/server` table server (join, shared board, live story, saved stories, per-role views) | Built, 41 tests; no screens yet, see [apps/server/README.md](apps/server/README.md) |
+| `apps/server` table server (join, shared board, live story, saved stories, per-role views) | Built, 46 tests; no screens yet, see [apps/server/README.md](apps/server/README.md) |
 | React UI | Planned, see [docs/lifecycle.md](docs/lifecycle.md) |
 
 ## Run the baseline Studio

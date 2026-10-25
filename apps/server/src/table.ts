@@ -1,5 +1,12 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { type Action, type Actor, projectStory, sourceOf } from "@nirmata/core";
+import {
+  type Action,
+  type Actor,
+  NoStoryCopyError,
+  projectStory,
+  sourceOf,
+  worldFromStory,
+} from "@nirmata/core";
 import {
   Board,
   type BoardView,
@@ -18,7 +25,13 @@ import {
 } from "@nirmata/host";
 import type { Provider } from "@nirmata/llm";
 import { HttpError } from "./errors";
-import { newStoryId, type StoryFiles, type StorySummary, type WorldFiles } from "./files";
+import {
+  newStoryId,
+  type StoryFiles,
+  type StorySummary,
+  type WorldFiles,
+  writeNewWorld,
+} from "./files";
 import {
   type Audience,
   type HostStoryView,
@@ -446,6 +459,35 @@ export class Table {
     const done = await this.live().undoLastPlot();
     await this.afterChange();
     return done;
+  }
+
+  /**
+   * Save the story as it stands (or as it stood at moment `at`) as a new world: its own copy of
+   * the cards with every plot point written into the card it happened to, plus its chapters.
+   * Host only. The new world sits beside this one; run the server on it to tell stories there.
+   */
+  async saveAsWorld(
+    seat: Seat,
+    options: { name: string; title?: string | undefined; at?: string | undefined },
+  ): Promise<{ name: string; cards: number; chapters: number }> {
+    requireCan(this.actor(seat), "source.edit");
+    const session = this.live();
+    if (options.at !== undefined && !session.state.events.has(options.at)) {
+      throw new HostError("nothing_to_do", "There is no such moment in this story.");
+    }
+    const was = sourceOf(session.state)?.world.title;
+    try {
+      const made = worldFromStory(session.state, {
+        name: options.name,
+        title: options.title ?? (was ? `${was} (continued)` : options.name),
+        ...(options.at !== undefined ? { at: options.at } : {}),
+        plot: { revokesSurviveUndo: this.settings.revokesSurviveUndo },
+      });
+      return await writeNewWorld(this.options.world.parent, made);
+    } catch (e) {
+      if (e instanceof NoStoryCopyError) throw new HostError("bad_state", e.message);
+      throw e;
+    }
   }
 
   // ---- source cards and settings (host) -----------------------------------------------------
