@@ -26,10 +26,12 @@ import {
 import type { Provider } from "@nirmata/llm";
 import { HttpError } from "./errors";
 import {
+  type Library,
   newStoryId,
-  type StoryFiles,
+  StoryFiles,
   type StorySummary,
   type WorldFiles,
+  type WorldSummary,
   writeNewWorld,
 } from "./files";
 import {
@@ -44,8 +46,8 @@ import {
 } from "./views";
 
 export interface TableOptions {
-  world: WorldFiles;
-  stories: StoryFiles;
+  /** The worlds the host can open. Which one is open is chosen on screen, not configured. */
+  library: Library;
   provider: Provider;
   settings: HostSettings;
   /** The nickname of whoever runs this server. */
@@ -74,8 +76,16 @@ export interface You {
   host: boolean;
 }
 
+/** The world the table has open. */
+export interface WorldInfo {
+  name: string;
+  title: string;
+  tagline: string;
+}
+
 export interface TableInfo {
-  world: { name: string; title: string; tagline: string };
+  /** Null until the host has chosen a world. */
+  world: WorldInfo | null;
   host: string;
   requiresAdultConfirmation: boolean;
   /** True when a story is being told. */
@@ -86,6 +96,7 @@ export type BoardMessage = BoardView & { online: string[] };
 
 export interface Snapshot {
   you: You;
+  world: WorldInfo | null;
   board: BoardMessage;
   story: StoryView | HostStoryView | null;
   /** Host only. */
@@ -96,7 +107,10 @@ export interface Snapshot {
 export interface Outgoing {
   snapshot: Snapshot;
   board: BoardMessage;
-  "story-view": StoryView | HostStoryView;
+  /** The story being told, or null when there is none. */
+  "story-view": StoryView | HostStoryView | null;
+  /** The host opened a different world. */
+  world: { world: WorldInfo | null };
   story: TableEvent;
   /** You were sent away. The connection closes after this. */
   kicked: { message: string };
@@ -138,7 +152,10 @@ const MAX_SEATS = 64;
  */
 export class Table {
   private readonly board: Board;
-  private readonly source: SourceCards;
+  private open:
+    | { info: WorldInfo; world: WorldFiles; stories: StoryFiles; source: SourceCards }
+    | undefined;
+  private playersMayRead = false;
   private readonly seats = new Map<string, Seat>();
   private readonly subs = new Set<Subscriber>();
   private readonly settings: HostSettings;
@@ -156,19 +173,84 @@ export class Table {
       ports: options.ports,
       requireAdultConfirmation: options.requireAdultConfirmation,
     });
-    this.source = new SourceCards(options.world);
   }
 
   // ---- who is here --------------------------------------------------------------------------
 
   async info(): Promise<TableInfo> {
-    const world = await this.options.world.world();
     return {
-      world: { name: world.name, title: world.title, tagline: world.tagline },
+      world: this.open?.info ?? null,
       host: this.options.hostNick,
       requiresAdultConfirmation: this.board.requiresAdultConfirmation,
       story: this.session !== undefined,
     };
+  }
+
+  // ---- the library of worlds ----------------------------------------------------------------
+
+  /** The worlds that can be opened. Host only. */
+  async worlds(seat: Seat): Promise<WorldSummary[]> {
+    requireCan(this.actor(seat), "story.start");
+    return this.options.library.list();
+  }
+
+  /**
+   * Open a world for the table to tell stories in. Host only, and only while no reply is being
+   * written. Any story in progress is put away (it is already saved) and the table waits for the
+   * host to start or continue one.
+   */
+  async openWorld(seat: Seat, name: string): Promise<WorldInfo> {
+    requireCan(this.actor(seat), "story.start");
+    this.requireIdle();
+    const info = await this.useWorld(name);
+    this.pushWorld();
+    return info;
+  }
+
+  /** On startup: if the library holds exactly one world, open it so there is nothing to choose. */
+  async openOnlyWorld(): Promise<WorldInfo | undefined> {
+    if (this.open) return this.open.info;
+    const all = (await this.options.library.list()).filter((w) => !w.problem);
+    const only = all.length === 1 ? all[0] : undefined;
+    return only ? this.useWorld(only.name) : undefined;
+  }
+
+  /** Open a world with no questions asked: for startup. The host's request goes through `openWorld`. */
+  async useWorld(name: string): Promise<WorldInfo> {
+    const world = this.options.library.open(name);
+    if (!(await world.exists())) {
+      throw new HostError("nothing_to_do", `There is no world "${name}".`);
+    }
+    const manifest = await world.world();
+    this.open = {
+      info: { name, title: manifest.title, tagline: manifest.tagline },
+      world,
+      stories: new StoryFiles(world.storiesDir),
+      source: new SourceCards(world, { playersMayRead: this.playersMayRead }),
+    };
+    this.session = undefined;
+    this.storyId = undefined;
+    return this.open.info;
+  }
+
+  private current() {
+    if (!this.open) throw new HostError("bad_state", "Choose a world first.");
+    return this.open;
+  }
+
+  /** Put the story away and go back to the library. It stays saved, ready to continue. Host only. */
+  closeStory(seat: Seat): void {
+    requireCan(this.actor(seat), "story.start");
+    this.requireIdle();
+    this.session = undefined;
+    this.storyId = undefined;
+    this.pushStory();
+  }
+
+  private pushWorld(): void {
+    const world = this.open?.info ?? null;
+    for (const sub of this.subs) sub.send("world", { world });
+    this.pushStory();
   }
 
   /**
@@ -333,7 +415,7 @@ export class Table {
 
   async stories(seat: Seat): Promise<StorySummary[]> {
     requireCan(this.actor(seat), "story.start");
-    return this.options.stories.list();
+    return this.current().stories.list();
   }
 
   /** Take the copy of the source cards and begin a new story. Host only. */
@@ -341,14 +423,15 @@ export class Table {
     const actor = this.actor(seat);
     requireCan(actor, "story.start");
     this.requireIdle();
-    const copy = await this.source.snapshot(actor);
+    const open = this.current();
+    const copy = await open.source.snapshot(actor);
     const id = newStoryId((this.options.ports ?? { now: () => new Date().toISOString() }).now());
     const session = StorySession.create({
       world: copy.world,
       cards: copy.cards,
       actor: SOLO_HOST,
       provider: this.options.provider,
-      sink: this.options.stories.sink(id),
+      sink: open.stories.sink(id),
       settings: this.settings,
       judge: this.options.judge,
       ports: this.options.ports,
@@ -362,12 +445,13 @@ export class Table {
   async resumeStory(seat: Seat, id: string): Promise<void> {
     requireCan(this.actor(seat), "story.start");
     this.requireIdle();
-    const events = await this.options.stories.load(id);
+    const open = this.current();
+    const events = await open.stories.load(id);
     const session = StorySession.create(
       {
         actor: SOLO_HOST,
         provider: this.options.provider,
-        sink: this.options.stories.sink(id),
+        sink: open.stories.sink(id),
         settings: this.settings,
         judge: this.options.judge,
         ports: this.options.ports,
@@ -483,7 +567,7 @@ export class Table {
         ...(options.at !== undefined ? { at: options.at } : {}),
         plot: { revokesSurviveUndo: this.settings.revokesSurviveUndo },
       });
-      return await writeNewWorld(this.options.world.parent, made);
+      return await writeNewWorld(this.options.library.root, made);
     } catch (e) {
       if (e instanceof NoStoryCopyError) throw new HostError("bad_state", e.message);
       throw e;
@@ -493,7 +577,7 @@ export class Table {
   // ---- source cards and settings (host) -----------------------------------------------------
 
   get cards(): SourceCards {
-    return this.source;
+    return this.current().source;
   }
 
   actorFor(seat: Seat): Actor {
@@ -501,7 +585,7 @@ export class Table {
   }
 
   settingsView(): SettingsView {
-    return { settings: structuredClone(this.settings), playersMayRead: this.source.playersCanRead };
+    return { settings: structuredClone(this.settings), playersMayRead: this.playersMayRead };
   }
 
   changeSettings(
@@ -520,7 +604,11 @@ export class Table {
     if (plot) Object.assign(this.settings.plot, plot);
     if (params) Object.assign(this.settings.params, params);
     if (budget) Object.assign(this.settings.budget, budget);
-    if (playersMayRead !== undefined) this.source.setPlayersMayRead(actor, playersMayRead);
+    if (playersMayRead !== undefined) {
+      requireCan(actor, "settings.change");
+      this.playersMayRead = playersMayRead;
+      this.open?.source.setPlayersMayRead(actor, playersMayRead);
+    }
     return this.settingsView();
   }
 
@@ -529,6 +617,7 @@ export class Table {
   snapshot(seat: Seat): Snapshot {
     return {
       you: this.you(seat),
+      world: this.open?.info ?? null,
       board: this.boardMessage(),
       story: this.storyFor(seat.host ? "host" : "table"),
       ...(seat.host ? { settings: this.settingsView() } : {}),
@@ -586,10 +675,7 @@ export class Table {
       host: this.storyFor("host"),
       table: this.storyFor("table"),
     };
-    for (const sub of this.subs) {
-      const view = views[sub.seat.host ? "host" : "table"];
-      if (view) sub.send("story-view", view);
-    }
+    for (const sub of this.subs) sub.send("story-view", views[sub.seat.host ? "host" : "table"]);
   }
 
   private fanOut(ev: HostEvent): void {
@@ -680,7 +766,8 @@ export class Table {
   private writeFiles(): Promise<void> {
     const session = this.session;
     const id = this.storyId;
-    if (!session || !id) return this.files;
+    const stories = this.open?.stories;
+    if (!session || !id || !stories) return this.files;
     const names = new Map(
       (sourceOf(session.state)?.cards ?? []).map((c) => [c.fm.id, c.fm.name] as const),
     );
@@ -689,7 +776,7 @@ export class Table {
       revokesSurviveUndo: this.settings.revokesSurviveUndo,
     });
     this.files = this.files
-      .then(() => this.options.stories.writeProjection(id, files))
+      .then(() => stories.writeProjection(id, files))
       .catch((e: Error) => {
         this.options.log?.(`Could not write the chapter files: ${e.message}`);
         this.fanOut({

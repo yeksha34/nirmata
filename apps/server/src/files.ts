@@ -16,10 +16,12 @@ import {
   parseCard,
   parseLog,
   parseWorldManifest,
+  replay,
   type StoryEvent,
   type StoryWorld,
   serializeCard,
   serializeEvent,
+  turnsOf,
   type WorldManifest,
 } from "@nirmata/core";
 import { type EventSink, HostError, type SourceBackend } from "@nirmata/host";
@@ -84,10 +86,15 @@ export class WorldFiles implements SourceBackend {
     return join(this.root, "stories");
   }
 
+  /** True when the folder has a world.json (it may still be unreadable). */
+  async exists(): Promise<boolean> {
+    return (await readIfThere(join(this.root, "world.json"))) !== undefined;
+  }
+
   async world(): Promise<WorldManifest> {
     const text = await readIfThere(join(this.root, "world.json"));
     if (text === undefined) {
-      throw new HostError("bad_state", `There is no world.json in ${this.root}.`);
+      throw new HostError("bad_state", "This world has no world.json.");
     }
     const parsed = parseWorldManifest(text);
     if (!parsed.ok) throw new HostError("bad_state", `world.json: ${parsed.errors.join("; ")}`);
@@ -177,11 +184,7 @@ export async function writeNewWorld(
   }
   const temp = `${target}.tmp-${randomBytes(3).toString("hex")}`;
   try {
-    await writeAtomic(
-      join(temp, "world.json"),
-      `${JSON.stringify(made.manifest, null, 2)}
-`,
-    );
+    await writeAtomic(join(temp, "world.json"), `${JSON.stringify(made.manifest, null, 2)}\n`);
     for (const card of made.cards) {
       await writeAtomic(inside(temp, cardPath(card.path)), serializeCard(card));
     }
@@ -203,6 +206,39 @@ export interface StorySummary {
   id: string;
   /** When its log was last written. */
   updatedAt: string;
+  /** When it began. */
+  startedAt?: string;
+  /** Turns on the current branch. */
+  turns: number;
+  /** Who has written in it. */
+  players: string[];
+  /** The start of the latest thing the story said, to recognise it by. */
+  preview: string;
+  /** The log cannot be read; it needs repair before it can be continued. */
+  damaged?: boolean;
+}
+
+function parseTolerant(text: string): StoryEvent[] {
+  try {
+    return parseLog(text);
+  } catch {
+    // a crash can leave one half-written last line; anything worse still throws
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    lines.pop();
+    return parseLog(lines.join("\n"));
+  }
+}
+
+function summarize(events: readonly StoryEvent[]): Omit<StorySummary, "id" | "updatedAt"> {
+  const turns = turnsOf(replay(events));
+  const lastHost = [...turns].reverse().find((t) => t.role === "host");
+  const text = (lastHost?.text ?? "").replace(/\s+/g, " ").trim();
+  return {
+    ...(events[0] ? { startedAt: events[0].t } : {}),
+    turns: turns.length,
+    players: [...new Set(turns.flatMap((t) => (t.by ? [t.by] : [])))],
+    preview: text.length > 140 ? `${text.slice(0, 139).trimEnd()}…` : text,
+  };
 }
 
 /** A story's id: sortable by when it began, with a little randomness so two never collide. */
@@ -230,24 +266,62 @@ export class StoryFiles {
     return join(this.dir, id);
   }
 
+  private readonly cache = new Map<
+    string,
+    { key: string; summary: Omit<StorySummary, "id" | "updatedAt"> }
+  >();
+
+  /** The saved stories, newest first, each with enough to recognise it by. */
   async list(): Promise<StorySummary[]> {
-    let names: string[];
+    const out: StorySummary[] = [];
+    for (const id of await this.ids()) {
+      const file = join(this.dir, id, "events.jsonl");
+      let info: Awaited<ReturnType<typeof stat>>;
+      try {
+        info = await stat(file);
+      } catch (e) {
+        if (isMissing(e)) continue;
+        throw e;
+      }
+      const key = `${info.mtimeMs}:${info.size}`;
+      let cached = this.cache.get(id);
+      if (cached?.key !== key) {
+        let summary: Omit<StorySummary, "id" | "updatedAt">;
+        try {
+          summary = summarize(parseTolerant(await readFile(file, "utf8")));
+        } catch {
+          summary = { turns: 0, players: [], preview: "", damaged: true };
+        }
+        cached = { key, summary };
+        this.cache.set(id, cached);
+      }
+      out.push({ id, updatedAt: info.mtime.toISOString(), ...cached.summary });
+    }
+    return out.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  }
+
+  /** How many stories are saved, without reading them. */
+  async count(): Promise<number> {
+    let n = 0;
+    for (const id of await this.ids()) {
+      if (
+        await stat(join(this.dir, id, "events.jsonl")).then(
+          () => true,
+          () => false,
+        )
+      )
+        n++;
+    }
+    return n;
+  }
+
+  private async ids(): Promise<string[]> {
     try {
-      names = await readdir(this.dir);
+      return (await readdir(this.dir)).filter((n) => STORY_ID.test(n));
     } catch (e) {
       if (isMissing(e)) return [];
       throw e;
     }
-    const out: StorySummary[] = [];
-    for (const id of names.filter((n) => STORY_ID.test(n))) {
-      try {
-        const info = await stat(join(this.dir, id, "events.jsonl"));
-        out.push({ id, updatedAt: info.mtime.toISOString() });
-      } catch (e) {
-        if (!isMissing(e)) throw e;
-      }
-    }
-    return out.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
   }
 
   /** Appends one line per event. The session saves each event before using it. */
@@ -314,5 +388,58 @@ export class StoryFiles {
         }
       }
     }
+  }
+}
+
+export interface WorldSummary {
+  name: string;
+  title: string;
+  tagline: string;
+  /** How many stories have been saved in it. */
+  stories: number;
+  /** Its world.json cannot be read; the world cannot be opened until it is fixed. */
+  problem?: string;
+}
+
+const LIBRARY_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
+/** The folder of worlds a table can open. The host chooses one on screen; nothing is configured. */
+export class Library {
+  readonly root: string;
+
+  constructor(root: string) {
+    this.root = resolve(root);
+  }
+
+  open(name: string): WorldFiles {
+    if (!LIBRARY_NAME.test(name))
+      throw new HostError("nothing_to_do", `There is no world "${name}".`);
+    return new WorldFiles(join(this.root, name));
+  }
+
+  /** Every folder with a world.json, by title. Folders starting with "_" or "." are skipped. */
+  async list(): Promise<WorldSummary[]> {
+    let names: string[];
+    try {
+      names = await readdir(this.root);
+    } catch (e) {
+      if (isMissing(e)) return [];
+      throw e;
+    }
+    const out: WorldSummary[] = [];
+    for (const name of names.sort()) {
+      if (!LIBRARY_NAME.test(name) || name.startsWith("_") || /\.tmp-[0-9a-f]+$/.test(name))
+        continue;
+      const world = new WorldFiles(join(this.root, name));
+      if ((await readIfThere(join(world.root, "world.json"))) === undefined) continue;
+      const stories = await new StoryFiles(world.storiesDir).count();
+      try {
+        const m = await world.world();
+        out.push({ name, title: m.title, tagline: m.tagline, stories });
+      } catch (e) {
+        out.push({ name, title: name, tagline: "", stories, problem: (e as Error).message });
+      }
+    }
+    return out.sort((a, b) => a.title.localeCompare(b.title));
   }
 }

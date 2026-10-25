@@ -29,7 +29,7 @@ Things not yet decided or not yet proven. When one is settled, move it to the de
 | Q31 | A restart empties the board and leaves no story active; the host resumes one by hand. Resume the last story automatically? | By hand |
 | Q32 | Only one story is active at a time on a table. Fine? | One |
 
-| Q33 | Saving a story as a world is built. You also named a draft, a stream/line and a snapshot. Build any of them: a readable draft (chapters as one markdown document), a named line you can resume or fork from, or a single-file snapshot to share? Also: the saved world drops the built-in current-situation card, and hosting it needs a restart. | World only |
+| Q33 | Saving a story as a world is built. You also named a draft, a stream/line and a snapshot. Build any of them: a readable draft (chapters as one markdown document), a named line you can resume or fork from, or a single-file snapshot to share? Also: the saved world drops the built-in current-situation card. | World only |
 
 ## Unproven (works in tests only)
 | # | Question | Needs |

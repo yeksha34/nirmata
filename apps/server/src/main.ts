@@ -1,18 +1,37 @@
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { ConfigError, loadConfig } from "./config";
-import { StoryFiles, WorldFiles } from "./files";
+import { Library } from "./files";
 import { Table } from "./table";
+
+/** Open the browser on the host's own link, so the person who ran the server just lands in it. */
+function openBrowser(url: string): void {
+  const [cmd, args] =
+    process.platform === "win32"
+      ? ["cmd", ["/c", "start", "", url]]
+      : process.platform === "darwin"
+        ? ["open", [url]]
+        : ["xdg-open", [url]];
+  try {
+    spawn(cmd as string, args as string[], { stdio: "ignore", detached: true })
+      .on("error", () => {})
+      .unref();
+  } catch {
+    // the link is printed anyway
+  }
+}
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const log = (message: string) => console.error(`[nirmata] ${message}`);
-  const world = new WorldFiles(config.worldDir);
-  const manifest = await world.world(); // fail now, not on the first join, if the world is broken
+  const library = new Library(config.libraryDir);
 
   const table = new Table({
-    world,
-    stories: new StoryFiles(config.storiesDir),
+    library,
     provider: config.provider,
     settings: config.settings,
     judge: config.judge,
@@ -21,16 +40,34 @@ async function main(): Promise<void> {
     requireAdultConfirmation: config.requireAdultConfirmation,
     log,
   });
-  const app = createApp({ table, log });
+  const opened = await table.openOnlyWorld();
+  const worlds = await library.list();
+
+  const here = dirname(fileURLToPath(import.meta.url));
+  const uiDir = join(here, "..", "..", "web", "dist");
+  const ui = existsSync(join(uiDir, "index.html")) ? uiDir : undefined;
+
+  const app = createApp({ table, log, ui });
   const server = serve({ fetch: app.fetch, port: config.port, hostname: config.bind }, (info) => {
-    const where = config.bind === "0.0.0.0" ? "every address on this computer" : info.address;
-    console.log(`Nirmata is hosting "${manifest.title}" on port ${info.port} (${where}).`);
-    console.log(`You are the host, "${config.hostNick}". Your host key:`);
+    const host = config.bind === "0.0.0.0" ? "localhost" : info.address;
+    const link = `http://${host}:${info.port}/`;
+    const hostLink = `${link}#host=${encodeURIComponent(config.hostKey)}`;
     console.log(
-      `  ${config.hostKey}${config.generatedHostKey ? "  (new each time; set NIRMATA_HOST_KEY to keep one)" : ""}`,
+      `Nirmata is ready: ${worlds.length} world${worlds.length === 1 ? "" : "s"} in ${config.libraryDir}`,
     );
-    console.log("Anyone who can reach this address can join with a nickname.");
+    if (opened) console.log(`Opened "${opened.title}" (the only world there).`);
+    if (!ui)
+      console.log(
+        "The screens are not built yet: run `corepack pnpm --filter @nirmata/web build`.",
+      );
+    console.log(`\nYou are the host. Open this link on this computer:\n  ${hostLink}`);
+    if (config.bind === "0.0.0.0")
+      console.log(
+        `Friends on your network join at:\n  http://<this computer's address>:${info.port}/`,
+      );
     if (config.requireAdultConfirmation) console.log("Joiners must confirm they are adults.");
+    if (ui && process.env.NIRMATA_OPEN !== "0" && !config.requireAdultConfirmation)
+      openBrowser(hostLink);
   });
 
   const stop = () => {
