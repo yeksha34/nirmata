@@ -1,11 +1,5 @@
----
-id: rule.host-tone
-kind: rule
-name: Host tone
-keywords: [tone]
-scope: story
-severity: should
----
+<card id="rule.host-tone" kind="rule" name="Host tone" scope="story">
+  <keywords>tone</keywords>
 
 # Host tone
 
@@ -14,3 +8,4 @@ severity: should
 **Check:** Does the passage create unease through atmosphere rather than graphic violence?
 
 **Why:** Sets the world tone so every host model plays it consistently.
+</card>

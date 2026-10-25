@@ -894,3 +894,115 @@ main {
     animation: none;
   }
 }
+
+/* ---- the story manager ---- */
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.tabs button[aria-current="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.tab-count {
+  opacity: 0.7;
+  font-size: 0.85em;
+}
+.manager-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.manager-head .hint {
+  margin: 0;
+}
+.card-list {
+  padding: 0;
+  margin: 0 0 8px;
+  list-style: none;
+}
+.card-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.card-item details {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+.card-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin-left: 0.6em;
+}
+.card-item > .card-actions {
+  margin-left: 0;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0 0 14px;
+}
+.facts dt {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.facts dd {
+  margin: 0;
+}
+.broken {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--bad);
+  border-radius: 8px;
+}
+.broken ul {
+  margin: 0.4em 0 0;
+  padding-left: 1.2em;
+}
+.broken .hint {
+  margin-bottom: 0.4em;
+}
+.dialog.wide {
+  width: min(94vw, 44rem);
+  max-height: 92vh;
+}
+.dialog .two {
+  display: grid;
+  gap: 0 12px;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 560px) {
+  .dialog .two {
+    grid-template-columns: 1fr;
+  }
+}
+label.check {
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  font-weight: 500;
+}
+textarea.code,
+.syntax {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 0.9rem;
+}
+.syntax {
+  overflow-x: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}

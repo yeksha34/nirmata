@@ -19,7 +19,7 @@ One front door for the host. Open the app and you see the story you were in, one
 
 **Explore**
 - [x] Every world is a card with its title, tagline and how many stories it holds; a world that cannot be read says why and can still be put away.
-- [x] A world's page shows its saved stories and its cards by kind (lore, characters, places, arcs, rules, scenes), each opening to its text, and marks cards that are always in the storyteller's view. Nothing is opened or started by looking.
+- [x] A world's page shows its saved stories and its cards by kind (lore, characters, places, arcs, rules, scenes), each opening to its text (managed in [F-55](F-55-story-manager.md)), and marks cards that are always in the storyteller's view. Nothing is opened or started by looking.
 - [x] The page starts a new story, from an arc or its own way.
 
 **Make and manage**

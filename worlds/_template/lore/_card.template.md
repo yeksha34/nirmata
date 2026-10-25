@@ -1,12 +1,9 @@
----
-id: lore.example
-kind: lore
-name: Example lore entry
-keywords: [example, sample]      # when any appears in play, this card is injected
-summary: One line the host sees even when the full card is not injected.
-always: false                    # true = always in context (use sparingly)
----
+<!-- Copy this file, rename it, and change the fields. Files starting with _ are ignored. -->
+<card id="lore.example" kind="lore" name="Example lore entry" always="false">
+  <keywords>example, sample</keywords>
+  <summary>One line the host sees even when the full card is not injected.</summary>
 
 # Example lore entry
 
 Facts only. No prose, no scene order. Link related cards by relative path.
+</card>

@@ -12,6 +12,9 @@ import {
 import { basename, dirname, join, resolve, sep } from "node:path";
 import {
   type Card,
+  CardFrontmatter,
+  checkCards,
+  formatIssues,
   type ProjectedFile,
   parseCard,
   parseLog,
@@ -74,6 +77,14 @@ async function markdownFiles(dir: string): Promise<string[]> {
   return out;
 }
 
+/** One card file: its text, and either the card it holds or what is wrong with it. */
+export interface CardFile {
+  path: string;
+  text: string;
+  card?: Card;
+  problems?: string[];
+}
+
 /** One world on disk: `world.json` and its card folders. The source cards (ADR-0009). */
 export class WorldFiles implements SourceBackend {
   readonly root: string;
@@ -101,23 +112,47 @@ export class WorldFiles implements SourceBackend {
     return parsed.world;
   }
 
-  async cards(): Promise<Card[]> {
-    const cards: Card[] = [];
+  /** Every card file as it is on disk, readable or not: the manager shows the broken ones too. */
+  async cardFiles(): Promise<CardFile[]> {
+    const out: CardFile[] = [];
     for (const dir of CARD_DIRS) {
       for (const file of await markdownFiles(join(this.root, dir))) {
         const rel = file.slice(this.root.length + 1).replaceAll("\\", "/");
-        const parsed = parseCard(rel, await readFile(file, "utf8"));
-        if (!parsed.ok) {
-          throw new HostError("invalid_card", `${rel}: ${parsed.errors.join("; ")}`);
-        }
-        cards.push(parsed.card);
+        const text = await readFile(file, "utf8");
+        const parsed = parseCard(rel, text);
+        out.push(
+          parsed.ok
+            ? { path: rel, text, card: parsed.card }
+            : { path: rel, text, problems: parsed.errors },
+        );
       }
+    }
+    return out;
+  }
+
+  /** The world's cards. A card that cannot be read stops this, naming the file (stories need all). */
+  async cards(): Promise<Card[]> {
+    const cards: Card[] = [];
+    for (const f of await this.cardFiles()) {
+      if (!f.card)
+        throw new HostError("invalid_card", `${f.path}: ${(f.problems ?? []).join("; ")}`);
+      cards.push(f.card);
     }
     return cards;
   }
 
   async save(card: Card): Promise<void> {
     await writeAtomic(this.cardFile(card.path), serializeCard(card));
+  }
+
+  /** Write a card file exactly as given (the manager's "edit as text"). */
+  async saveText(path: string, text: string): Promise<void> {
+    await writeAtomic(this.cardFile(path), text);
+  }
+
+  /** Delete one card file by its path. */
+  async removeFile(path: string): Promise<void> {
+    await rm(this.cardFile(path), { force: true });
   }
 
   async remove(cardId: string): Promise<void> {
@@ -435,11 +470,63 @@ export interface RecentStory extends StorySummary {
   worldTitle: string;
 }
 
+/** What the manager may change in world.json; everything else in the file is kept as it was. */
+export interface WorldPatch {
+  title?: string | undefined;
+  tagline?: string | undefined;
+  genre?: string[] | undefined;
+  tone?: string[] | undefined;
+  perspective?: WorldManifest["perspective"] | undefined;
+}
+
+/** A card with the text of its file, for the manager to show and edit. */
+export interface CardView extends Card {
+  file: string;
+}
+
+/** A card file that cannot be read: shown with what is wrong, to be fixed as text or removed. */
+export interface BrokenCard {
+  path: string;
+  file: string;
+  problems: string[];
+}
+
 export interface WorldDetail {
   world: WorldSummary;
+  /** world.json as read; missing when the world cannot be read. */
+  manifest?: WorldManifest;
   stories: StorySummary[];
-  cards: Card[];
+  cards: CardView[];
+  broken: BrokenCard[];
 }
+
+/** What the manager's form sends for a card; the id, path and any extra fields stay as they were. */
+export interface CardForm {
+  kind: Card["fm"]["kind"];
+  name: string;
+  keywords: string[];
+  summary: string;
+  always: boolean;
+  role?: string | undefined;
+  scope?: Card["fm"]["scope"] | undefined;
+  severity?: Card["fm"]["severity"] | undefined;
+  body: string;
+}
+
+/** A card to save: the form's fields (a new card when there is no path) or the file's own text. */
+export type CardInput =
+  | { path?: string | undefined; form: CardForm }
+  | { path: string; text: string };
+
+/** The folder and id prefix a new card of each kind starts with. */
+const KIND_HOME: Record<Card["fm"]["kind"], { dir: string; prefix: string }> = {
+  lore: { dir: "lore", prefix: "lore" },
+  character: { dir: "characters", prefix: "char" },
+  place: { dir: "setting/places", prefix: "place" },
+  arc: { dir: "plot/arcs", prefix: "arc" },
+  rule: { dir: ".agents/rules", prefix: "rule" },
+  scene: { dir: "plot/scenes", prefix: "scene" },
+};
 
 const LIBRARY_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
@@ -520,12 +607,98 @@ export class Library {
   async detail(name: string): Promise<WorldDetail> {
     const found = await this.summary(name);
     if (!found) throw new HostError("nothing_to_do", `There is no world "${name}".`);
-    if (found.problem) return { world: found, stories: [], cards: [] };
+    if (found.problem) return { world: found, stories: [], cards: [], broken: [] };
+    const files = await this.open(name).cardFiles();
     return {
       world: found,
+      manifest: await this.open(name).world(),
       stories: await this.stories(name).list(),
-      cards: await this.open(name).cards(),
+      cards: files.flatMap((f) => (f.card ? [{ ...f.card, file: f.text }] : [])),
+      broken: files.flatMap((f) =>
+        f.card ? [] : [{ path: f.path, file: f.text, problems: f.problems ?? [] }],
+      ),
     };
+  }
+
+  /**
+   * Add a card to a world or change one, without opening the world. A new card gets a file and an
+   * id from its name; an existing card keeps its file, its id and any fields the form does not
+   * show. A card that would clash with another's id, or does not read, is refused in plain words
+   * and nothing is written.
+   */
+  async saveCard(name: string, input: CardInput): Promise<{ path: string; id: string }> {
+    const world = this.open(name);
+    if (!(await world.exists()))
+      throw new HostError("nothing_to_do", `There is no world "${name}".`);
+    const files = await world.cardFiles();
+    const cards = files.flatMap((f) => (f.card ? [f.card] : []));
+    const refuse = (why: string) => new HostError("invalid_card", `That card is not valid: ${why}`);
+
+    let card: Card;
+    let text: string | undefined;
+    if ("text" in input) {
+      const path = cardPath(input.path);
+      const parsed = parseCard(path, input.text);
+      if (!parsed.ok) throw refuse(parsed.errors.join("; "));
+      card = parsed.card;
+      text = input.text;
+    } else {
+      const { form } = input;
+      const path = input.path === undefined ? undefined : cardPath(input.path);
+      const old = path === undefined ? undefined : cards.find((c) => c.path === path);
+      if (path !== undefined && !old) {
+        const broken = files.some((f) => f.path === path);
+        throw new HostError(
+          broken ? "invalid_card" : "nothing_to_do",
+          broken
+            ? "That card cannot be read, so it cannot be edited as a form. Edit it as text."
+            : `There is no card at ${path}.`,
+        );
+      }
+      const home = KIND_HOME[form.kind];
+      const slug = slugify(form.name);
+      const taken = new Set(cards.map((c) => c.fm.id));
+      const used = new Set(files.map((f) => f.path));
+      let n = 1;
+      const nth = () => (n === 1 ? slug : `${slug}-${n}`);
+      while (
+        !old &&
+        (taken.has(`${home.prefix}.${nth()}`) || used.has(`${home.dir}/${nth()}.md`))
+      ) {
+        n++;
+      }
+      const { role, scope, severity } = form;
+      const fm = CardFrontmatter.safeParse({
+        ...(old?.fm ?? {}),
+        id: old?.fm.id ?? `${home.prefix}.${nth()}`,
+        kind: form.kind,
+        name: form.name,
+        keywords: form.keywords,
+        summary: form.summary,
+        always: form.always,
+        ...(role !== undefined ? { role: role.trim() || undefined } : {}),
+        ...(scope !== undefined ? { scope } : {}),
+        ...(severity !== undefined ? { severity } : {}),
+      });
+      if (!fm.success) throw refuse(formatIssues(fm.error).join("; "));
+      card = { path: path ?? `${home.dir}/${nth()}.md`, fm: fm.data, body: form.body };
+    }
+
+    const clash = checkCards([...cards.filter((c) => c.path !== card.path), card]);
+    if (clash.length) throw refuse(clash.join("; "));
+    if (text === undefined) await world.save(card);
+    else await world.saveText(card.path, text);
+    return { path: card.path, id: card.fm.id };
+  }
+
+  /** Delete one card's file (a git-tracked world can bring it back). Works on unreadable cards too. */
+  async removeCard(name: string, path: string): Promise<void> {
+    const world = this.open(name);
+    const file = cardPath(path);
+    if (!(await world.cardFiles()).some((f) => f.path === file)) {
+      throw new HostError("nothing_to_do", `There is no card at ${file}.`);
+    }
+    await world.removeFile(file);
   }
 
   /**
@@ -551,11 +724,16 @@ export class Library {
       createdWith: "nirmata",
     };
     const premise = input.premise.trim();
-    const card = `---\nid: lore.premise\nkind: lore\nname: Premise\nalways: true\n---\n${premise}\n`;
-    if (premise) {
-      const parsed = parseCard("lore/premise.md", card);
-      if (!parsed.ok) throw new HostError("invalid_card", parsed.errors.join("; "));
-    }
+    const card = serializeCard({
+      path: "lore/premise.md",
+      fm: CardFrontmatter.parse({
+        id: "lore.premise",
+        kind: "lore",
+        name: "Premise",
+        always: true,
+      }),
+      body: premise,
+    });
     await placeNewFolder(this.root, name, async (temp) => {
       await writeAtomic(join(temp, "world.json"), `${JSON.stringify(manifest, null, 2)}\n`);
       if (premise) await writeAtomic(join(temp, "lore", "premise.md"), card);
@@ -565,10 +743,7 @@ export class Library {
   }
 
   /** Change a world's title or tagline. Everything else in world.json is kept as it was. */
-  async update(
-    name: string,
-    patch: { title?: string | undefined; tagline?: string | undefined },
-  ): Promise<WorldSummary> {
+  async update(name: string, patch: WorldPatch): Promise<WorldSummary> {
     const file = join(this.open(name).root, "world.json");
     const text = await readIfThere(file);
     if (text === undefined) throw new HostError("nothing_to_do", `There is no world "${name}".`);
@@ -585,6 +760,9 @@ export class Library {
       ...raw,
       ...(patch.title !== undefined ? { title: patch.title } : {}),
       ...(patch.tagline !== undefined ? { tagline: patch.tagline } : {}),
+      ...(patch.genre !== undefined ? { genre: patch.genre } : {}),
+      ...(patch.tone !== undefined ? { tone: patch.tone } : {}),
+      ...(patch.perspective !== undefined ? { perspective: patch.perspective } : {}),
     };
     const checked = parseWorldManifest(JSON.stringify(next));
     if (!checked.ok) throw new HostError("bad_state", `world.json: ${checked.errors.join("; ")}`);

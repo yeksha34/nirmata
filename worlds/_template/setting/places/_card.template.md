@@ -1,10 +1,6 @@
----
-id: place.example
-kind: place
-name: Example Place
-keywords: [example]
-summary: What a visitor sees first.
----
+<card id="place.example" kind="place" name="Example Place">
+  <keywords>example</keywords>
+  <summary>What a visitor sees first.</summary>
 
 # Example Place
 
@@ -12,3 +8,4 @@ summary: What a visitor sees first.
 - **Who is here:**
 - **Exits / connections:**
 - **Hooks:**
+</card>

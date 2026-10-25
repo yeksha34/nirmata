@@ -1,5 +1,7 @@
 import type {
+  CardForm,
   Mode,
+  Perspective,
   RecentStory,
   Snapshot,
   TableInfo,
@@ -113,13 +115,36 @@ export const api = {
   worldDetail: (name: string) => get<WorldDetail>(`/api/worlds/${encodeURIComponent(name)}`),
   createWorld: (args: { title: string; tagline?: string; premise?: string }) =>
     post<{ world: WorldSummary }>("/api/worlds", args).then((r) => r.world),
-  editWorld: (name: string, patch: { title?: string; tagline?: string }) =>
+  editWorld: (
+    name: string,
+    patch: {
+      title?: string;
+      tagline?: string;
+      genre?: string[];
+      tone?: string[];
+      perspective?: Perspective;
+    },
+  ) =>
     request<{ world: WorldSummary }>(
       "PATCH",
       `/api/worlds/${encodeURIComponent(name)}`,
       patch,
     ).then((r) => r.world),
   archiveWorld: (name: string) => post(`/api/worlds/${encodeURIComponent(name)}/archive`),
+  // the story manager: a world's cards, as the form's fields or as the file's own text
+  saveCard: (
+    name: string,
+    input: { path?: string; form: CardForm } | { path: string; text: string },
+  ) =>
+    put<{ card: { path: string; id: string } }>(
+      `/api/worlds/${encodeURIComponent(name)}/cards`,
+      input,
+    ).then((r) => r.card),
+  removeCard: (name: string, path: string) =>
+    request(
+      "DELETE",
+      `/api/worlds/${encodeURIComponent(name)}/cards?path=${encodeURIComponent(path)}`,
+    ),
   startStoryIn: (name: string, arcId?: string) =>
     post<{ id: string }>(`/api/worlds/${encodeURIComponent(name)}/stories`, arcId ? { arcId } : {}),
   resumeStoryIn: (name: string, id: string) =>

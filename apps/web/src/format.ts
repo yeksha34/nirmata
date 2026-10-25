@@ -43,3 +43,11 @@ export const MODE_HINT = {
   say: "What your character says",
   story: "Steer the story directly",
 } as const;
+
+/** "fog, mist, haze" as ["fog", "mist", "haze"]: what the manager's comma-separated fields hold. */
+export function words(text: string): string[] {
+  return text
+    .split(/[,\n]/)
+    .map((w) => w.trim())
+    .filter(Boolean);
+}

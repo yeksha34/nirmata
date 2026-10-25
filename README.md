@@ -21,7 +21,7 @@ Design references: SillyTavern + KoboldAI (local control, lorebooks), AI Dungeon
 | `packages/llm` model providers (OpenAI-compatible, Anthropic, fake) | Built, 48 tests; not yet tried against a live model |
 | `packages/host` game master (turns, retry/undo/branch, rule checks, context window shifting into chapters, plot points on cards) | Built, 157 tests with the fake provider |
 | `apps/server` table server (join, shared board, live story, saved stories, worlds library, per-role views) | Built, 70 tests, see [apps/server/README.md](apps/server/README.md) |
-| `apps/web` screens (join, the worlds page, the story window) | Built, 22 tests; the worlds page, the story window and two people at one table were checked by eye in a browser; a lost connection, keyboard order of the whole app and a live model were not: [F-49](docs/features/F-49-screens-join-library-table.md), [F-53](docs/features/F-53-worlds-page.md), [F-54](docs/features/F-54-story-window.md) |
+| `apps/web` screens (join, the worlds page, the story manager, the story window) | Built, 22 tests; the worlds page, the story window and two people at one table were checked by eye in a browser; a lost connection, keyboard order of the whole app and a live model were not: [F-49](docs/features/F-49-screens-join-library-table.md), [F-53](docs/features/F-53-worlds-page.md), [F-54](docs/features/F-54-story-window.md), [F-55](docs/features/F-55-story-manager.md) |
 
 ## Run the baseline Studio
 

@@ -57,3 +57,28 @@ export function useAct() {
   );
   return { act, busy: busy > 0 };
 }
+
+/**
+ * Run a save from inside a dialog and keep its problem in the dialog. A toast would sit behind
+ * the dialog's backdrop, where nobody would see why the save did not happen.
+ */
+export function useSave() {
+  const { leave } = useApp();
+  const [problem, setProblem] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const run = async (work: () => Promise<unknown>): Promise<boolean> => {
+    setBusy(true);
+    setProblem(undefined);
+    try {
+      await work();
+      return true;
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) leave();
+      else setProblem(e instanceof Error ? e.message : "Something went wrong.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { problem, busy, run };
+}

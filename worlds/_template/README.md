@@ -17,5 +17,7 @@ Layers, from source of truth outward (see `.agents/skills/story-direction`):
 | `.agents/rules/` | Hard rules the AI host/writer must obey in this world |
 | `assets/` | Portraits and backgrounds |
 
-Every card is markdown with YAML frontmatter (`id`, `kind`, `name`, `keywords`, `summary`)
-so the host can inject it into context when a keyword fires (the lorebook model).
+Every card is markdown inside a `<card>` tag: the fields are attributes (`id`, `kind`, `name`, and
+`role`, `always`, `scope`, `severity` where they apply), `<keywords>` and `<summary>` follow, and the
+markdown comes after (see docs/decisions/0017-xml-markdown-cards.md). The host injects a card into
+context when a keyword fires (the lorebook model). Cards written with YAML frontmatter still load.

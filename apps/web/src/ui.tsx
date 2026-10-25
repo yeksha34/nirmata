@@ -138,10 +138,12 @@ export function Panel({
 export function Modal({
   titleId,
   onClose,
+  wide,
   children,
 }: {
   titleId: string;
   onClose: () => void;
+  wide?: boolean;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -149,7 +151,12 @@ export function Modal({
     ref.current?.showModal();
   }, []);
   return (
-    <dialog ref={ref} className="dialog" onClose={onClose} aria-labelledby={titleId}>
+    <dialog
+      ref={ref}
+      className={wide ? "dialog wide" : "dialog"}
+      onClose={onClose}
+      aria-labelledby={titleId}
+    >
       {children}
     </dialog>
   );

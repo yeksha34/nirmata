@@ -29,7 +29,8 @@ Things not yet decided or not yet proven. When one is settled, move it to the de
 | Q31 | A restart empties the board and leaves no story active; the host resumes one by hand. Resume the last story automatically? | By hand |
 | Q32 | Only one story is active at a time on a table. Fine? | One |
 | Q33 | Saving a story as a world is built. You also named a draft, a stream/line and a snapshot. Build any of them: a readable draft (chapters as one markdown document), a named line you can resume or fork from, or a single-file snapshot to share? Also: the saved world drops the built-in current-situation card. | World only |
-| Q34 | The worlds page can make, rename and put a world away, but "put away" only renames the folder (restore by renaming it back), and cards can be read but not edited on screen. Add a restore list and card editing next, or a real delete (with a typed confirmation)? | Rename only; edit cards as files |
+| Q34 | The worlds page can make, rename, edit and put a world away, and manage its cards (F-55), but "put away" only renames the folder (restore by renaming it back). Add a restore list, or a real delete (with a typed confirmation)? | Rename only |
+| Q35 | **Cards in two syntaxes** ([ADR-0017](decisions/0017-xml-markdown-cards.md)). Saving an older card on screen rewrites it as XML+MD, a whole-file change in git. Convert every world once instead, and drop the YAML form later? Also: should secrets become their own tag (`<secret>`) so one section can be hidden from players? | Read both, write XML+MD; one card = one block |
 
 ## Unproven (works in tests only)
 | # | Question | Needs |

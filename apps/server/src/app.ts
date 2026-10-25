@@ -1,10 +1,10 @@
-import { PlayerMode } from "@nirmata/core";
+import { CARD_KINDS, PlayerMode } from "@nirmata/core";
 import { FLAVOR_STYLES } from "@nirmata/host";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { describeError, HttpError } from "./errors";
-import { WORLD_NAME } from "./files";
+import { type CardInput, WORLD_NAME } from "./files";
 import type { Seat, Send, Table } from "./table";
 import { uiHandler } from "./ui";
 
@@ -21,6 +21,7 @@ const Join = z
     message: "Pick a nickname to join with.",
   });
 
+const Tags = z.array(z.string().trim().min(1).max(40)).max(12);
 const Draft = z.object({ mode: PlayerMode, text: z.string().max(4000) });
 const Text = z.object({ text: z.string().min(1).max(1000) });
 const Object_ = z.object({ about: Nick, text: z.string().min(1).max(1000) });
@@ -165,10 +166,45 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
         .object({
           title: z.string().trim().min(1, "A world needs a title.").max(120).optional(),
           tagline: z.string().trim().max(200).optional(),
+          genre: Tags.optional(),
+          tone: Tags.optional(),
+          perspective: z.enum(["first-person", "second-person", "third-person"]).optional(),
         })
         .strict(),
     );
     return c.json({ world: await table.editWorld(seat, c.req.param("name"), body) });
+  });
+  // a world's cards, without opening it: add or change one (the form's fields, or the file's text)
+  app.put("/api/worlds/:name/cards", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(
+      c,
+      z.union([
+        z.object({ path: z.string().min(1).max(200), text: z.string().max(60000) }),
+        z.object({
+          path: z.string().min(1).max(200).optional(),
+          form: z.object({
+            kind: z.enum(CARD_KINDS),
+            name: z.string().trim().min(1, "A card needs a name.").max(120),
+            keywords: z.array(z.string().trim().min(1).max(60)).max(40).default([]),
+            summary: z.string().trim().max(300).default(""),
+            always: z.boolean().default(false),
+            role: z.string().trim().max(40).optional(),
+            scope: z.enum(["chapter", "story", "both"]).optional(),
+            severity: z.enum(["must", "should"]).optional(),
+            body: z.string().max(60000).default(""),
+          }),
+        }),
+      ]),
+    );
+    return c.json({ card: await table.saveCard(seat, c.req.param("name"), body as CardInput) });
+  });
+  app.delete("/api/worlds/:name/cards", async (c) => {
+    const seat = seatOf(c);
+    const path = c.req.query("path");
+    if (!path) throw new HttpError(400, "bad_request", "Say which card to remove.");
+    await table.removeCard(seat, c.req.param("name"), path);
+    return ok(c);
   });
   app.post("/api/worlds/:name/archive", async (c) => {
     await table.archiveWorld(seatOf(c), c.req.param("name"));
