@@ -167,11 +167,11 @@ export function waitingFor(board: BoardMessage | undefined): string[] {
 }
 
 /** Which screen to show for someone who has joined. */
-export type Screen = "waiting-world" | "library" | "waiting-story" | "table";
+export type Screen = "waiting-world" | "portal" | "waiting-story" | "table";
 
 export function screenFor(state: State): Screen {
   const host = state.you?.host === true;
   if (state.story) return "table";
-  if (host) return "library";
+  if (host) return "portal";
   return state.world ? "waiting-story" : "waiting-world";
 }

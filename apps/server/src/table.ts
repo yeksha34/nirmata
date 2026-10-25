@@ -28,8 +28,10 @@ import { HttpError } from "./errors";
 import {
   type Library,
   newStoryId,
-  StoryFiles,
+  type RecentStory,
+  type StoryFiles,
   type StorySummary,
+  type WorldDetail,
   type WorldFiles,
   type WorldSummary,
   writeNewWorld,
@@ -225,12 +227,84 @@ export class Table {
     this.open = {
       info: { name, title: manifest.title, tagline: manifest.tagline },
       world,
-      stories: new StoryFiles(world.storiesDir),
+      stories: this.options.library.stories(name),
       source: new SourceCards(world, { playersMayRead: this.playersMayRead }),
     };
     this.session = undefined;
     this.storyId = undefined;
     return this.open.info;
+  }
+
+  /** The stories played most recently in any world: where the host picks up. Host only. */
+  async recent(seat: Seat, limit = 8): Promise<RecentStory[]> {
+    requireCan(this.actor(seat), "story.start");
+    return this.options.library.recent(limit);
+  }
+
+  /** One world's page: its details, its saved stories and its cards, without opening it. Host only. */
+  async worldDetail(seat: Seat, name: string): Promise<WorldDetail> {
+    requireCan(this.actor(seat), "story.start");
+    return this.options.library.detail(name);
+  }
+
+  /** Make a new world. It is not opened: the host goes to its page and starts a story there. */
+  async createWorld(
+    seat: Seat,
+    input: { title: string; tagline: string; premise: string },
+  ): Promise<WorldSummary> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.create(input);
+  }
+
+  /** Change a world's title or tagline. Host only. */
+  async editWorld(
+    seat: Seat,
+    name: string,
+    patch: { title?: string | undefined; tagline?: string | undefined },
+  ): Promise<WorldSummary> {
+    requireCan(this.actor(seat), "source.edit");
+    const found = await this.options.library.update(name, patch);
+    if (this.open?.info.name === name) {
+      this.open = { ...this.open, info: { name, title: found.title, tagline: found.tagline } };
+      this.pushWorld();
+    }
+    return found;
+  }
+
+  /** Put a world away (its folder is renamed, not deleted). Host only; not while a reply is written. */
+  async archiveWorld(seat: Seat, name: string): Promise<void> {
+    requireCan(this.actor(seat), "source.edit");
+    this.requireIdle();
+    await this.options.library.archive(name);
+    if (this.open?.info.name === name) {
+      this.open = undefined;
+      this.session = undefined;
+      this.storyId = undefined;
+      this.pushWorld();
+    }
+  }
+
+  /** Open `name` unless it is already the open world, so a story can be started or continued in it. */
+  private async openIfNeeded(name: string): Promise<void> {
+    if (this.open?.info.name === name) return;
+    await this.useWorld(name);
+    this.pushWorld();
+  }
+
+  /** Begin a new story in `name`, opening that world first if needed. Host only. */
+  async startStoryIn(seat: Seat, name: string, options: { arcId?: string } = {}): Promise<string> {
+    requireCan(this.actor(seat), "story.start");
+    this.requireIdle();
+    await this.openIfNeeded(name);
+    return this.startStory(seat, options);
+  }
+
+  /** Continue a saved story of `name`, opening that world first if needed. Host only. */
+  async resumeStoryIn(seat: Seat, name: string, id: string): Promise<void> {
+    requireCan(this.actor(seat), "story.start");
+    this.requireIdle();
+    await this.openIfNeeded(name);
+    await this.resumeStory(seat, id);
   }
 
   private current() {

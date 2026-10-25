@@ -196,11 +196,11 @@ describe("which screen", () => {
   const host = { nick: "Dana", seat: "host" as const, muted: false, host: true };
   const player = { nick: "Sam", seat: "player" as const, muted: false, host: false };
 
-  it("sends the host to the library until a story is open, and everyone to the story after", () => {
-    expect(screenFor({ ...initialState, you: host })).toBe("library");
+  it("sends the host to the portal until a story is open, and everyone to the story after", () => {
+    expect(screenFor({ ...initialState, you: host })).toBe("portal");
     expect(
       screenFor({ ...initialState, you: host, world: { name: "w", title: "W", tagline: "" } }),
-    ).toBe("library");
+    ).toBe("portal");
     expect(screenFor({ ...initialState, you: host, story: story([]) })).toBe("table");
     expect(screenFor({ ...initialState, you: player, story: story([]) })).toBe("table");
   });

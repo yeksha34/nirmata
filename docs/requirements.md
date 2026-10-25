@@ -68,6 +68,7 @@ Status is the lifecycle state from [lifecycle.md](lifecycle.md); the board there
 | F-50 | M | **Guided first run**: opens on the example world, one-screen setup for a model, a visible "Play" button. **Simple / Advanced** toggle hides token budgets, raw prompts and sampler settings by default. |
 | F-51 | S | **Mobile-friendly PWA**: play and light edits on a phone over LAN. |
 | F-52 | S | **Accessibility**: keyboard-first play, focus order, 4.5:1 contrast, reduced motion, screen-reader labels. |
+| F-53 | M | **The portal.** The host's front page: carry on the latest story in any world in one click, and explore, start stories in, make, rename and put away worlds without opening one first. | A host can continue a story in another world, make a world and play in it, and put a world away, all from the page |
 
 ## Non-functional requirements
 
