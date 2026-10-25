@@ -154,6 +154,57 @@ export function cardPath(path: string): string {
 /** Names a world folder may have: lowercase letters, digits and hyphens. */
 export const WORLD_NAME = /^[a-z0-9][a-z0-9-]{1,39}$/;
 
+const exists = (path: string) =>
+  stat(path).then(
+    () => true,
+    () => false,
+  );
+
+/**
+ * Make a new world folder: built aside, then moved into place, so a failure leaves no half-made
+ * world behind. Nothing is overwritten: a name already in use is refused.
+ */
+async function placeNewFolder(
+  parent: string,
+  name: string,
+  build: (temp: string) => Promise<void>,
+): Promise<void> {
+  if (!WORLD_NAME.test(name)) {
+    throw new HostError(
+      "bad_state",
+      "A world's name uses lowercase letters, digits and hyphens, 2 to 40 characters.",
+    );
+  }
+  const target = inside(parent, name);
+  if (await exists(target)) {
+    throw new HostError(
+      "bad_state",
+      `There is already a world called "${name}". Pick another name.`,
+    );
+  }
+  const temp = `${target}.tmp-${randomBytes(3).toString("hex")}`;
+  try {
+    await build(temp);
+    await rename(temp, target);
+  } catch (e) {
+    await rm(temp, { recursive: true, force: true });
+    throw e;
+  }
+}
+
+/** A folder name from a title: "The Lantern Coast!" becomes "the-lantern-coast". */
+export function slugify(title: string): string {
+  const slug = title
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/g, "");
+  return slug.length >= 2 ? slug : "world";
+}
+
 /**
  * Write a world made from a story as a new folder next to the others. Nothing is overwritten: a
  * name already in use is refused. The folder is built aside and moved into place, so a failure
@@ -164,37 +215,14 @@ export async function writeNewWorld(
   made: StoryWorld,
 ): Promise<{ name: string; cards: number; chapters: number }> {
   const name = made.manifest.name;
-  if (!WORLD_NAME.test(name)) {
-    throw new HostError(
-      "bad_state",
-      "A world's name uses lowercase letters, digits and hyphens, 2 to 40 characters.",
-    );
-  }
-  const target = inside(parent, name);
-  if (
-    await stat(target).then(
-      () => true,
-      () => false,
-    )
-  ) {
-    throw new HostError(
-      "bad_state",
-      `There is already a world called "${name}". Pick another name.`,
-    );
-  }
-  const temp = `${target}.tmp-${randomBytes(3).toString("hex")}`;
-  try {
+  await placeNewFolder(parent, name, async (temp) => {
     await writeAtomic(join(temp, "world.json"), `${JSON.stringify(made.manifest, null, 2)}\n`);
     for (const card of made.cards) {
       await writeAtomic(inside(temp, cardPath(card.path)), serializeCard(card));
     }
     for (const file of made.files) await writeAtomic(inside(temp, file.path), file.content);
     await writeAtomic(join(temp, "stories", ".gitkeep"), "");
-    await rename(temp, target);
-  } catch (e) {
-    await rm(temp, { recursive: true, force: true });
-    throw e;
-  }
+  });
   return {
     name,
     cards: made.cards.length,
@@ -401,6 +429,18 @@ export interface WorldSummary {
   problem?: string;
 }
 
+/** A saved story, with the world it belongs to. */
+export interface RecentStory extends StorySummary {
+  world: string;
+  worldTitle: string;
+}
+
+export interface WorldDetail {
+  world: WorldSummary;
+  stories: StorySummary[];
+  cards: Card[];
+}
+
 const LIBRARY_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
 /** The folder of worlds a table can open. The host chooses one on screen; nothing is configured. */
@@ -417,6 +457,18 @@ export class Library {
     return new WorldFiles(join(this.root, name));
   }
 
+  private readonly storyFiles = new Map<string, StoryFiles>();
+
+  /** A world's saved stories. One `StoryFiles` per world, so its summaries stay cached. */
+  stories(name: string): StoryFiles {
+    let files = this.storyFiles.get(name);
+    if (!files) {
+      files = new StoryFiles(this.open(name).storiesDir);
+      this.storyFiles.set(name, files);
+    }
+    return files;
+  }
+
   /** Every folder with a world.json, by title. Folders starting with "_" or "." are skipped. */
   async list(): Promise<WorldSummary[]> {
     let names: string[];
@@ -430,16 +482,136 @@ export class Library {
     for (const name of names.sort()) {
       if (!LIBRARY_NAME.test(name) || name.startsWith("_") || /\.tmp-[0-9a-f]+$/.test(name))
         continue;
-      const world = new WorldFiles(join(this.root, name));
-      if ((await readIfThere(join(world.root, "world.json"))) === undefined) continue;
-      const stories = await new StoryFiles(world.storiesDir).count();
-      try {
-        const m = await world.world();
-        out.push({ name, title: m.title, tagline: m.tagline, stories });
-      } catch (e) {
-        out.push({ name, title: name, tagline: "", stories, problem: (e as Error).message });
-      }
+      const found = await this.summary(name);
+      if (found) out.push(found);
     }
     return out.sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  /** One world's summary, or nothing when the folder has no world.json. */
+  private async summary(name: string): Promise<WorldSummary | undefined> {
+    const world = this.open(name);
+    if (!(await world.exists())) return undefined;
+    const stories = await this.stories(name).count();
+    try {
+      const m = await world.world();
+      return { name, title: m.title, tagline: m.tagline, stories };
+    } catch (e) {
+      return { name, title: name, tagline: "", stories, problem: (e as Error).message };
+    }
+  }
+
+  /**
+   * The stories played most recently, across every world, newest first: where the host picks up.
+   * A damaged story or a world that cannot be read is left out (the world's own page shows them).
+   */
+  async recent(limit: number): Promise<RecentStory[]> {
+    const out: RecentStory[] = [];
+    for (const w of await this.list()) {
+      if (w.problem || w.stories === 0) continue;
+      for (const s of await this.stories(w.name).list()) {
+        if (!s.damaged) out.push({ ...s, world: w.name, worldTitle: w.title });
+      }
+    }
+    return out.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)).slice(0, limit);
+  }
+
+  /** Everything the host sees on a world's page: its details, saved stories and cards. */
+  async detail(name: string): Promise<WorldDetail> {
+    const found = await this.summary(name);
+    if (!found) throw new HostError("nothing_to_do", `There is no world "${name}".`);
+    if (found.problem) return { world: found, stories: [], cards: [] };
+    return {
+      world: found,
+      stories: await this.stories(name).list(),
+      cards: await this.open(name).cards(),
+    };
+  }
+
+  /**
+   * Make a new world with a title and, if given, a premise, which becomes a card that is always in
+   * the storyteller's view so the world is playable straight away. The folder name follows the
+   * title and is made unique.
+   */
+  async create(input: { title: string; tagline: string; premise: string }): Promise<WorldSummary> {
+    const base = slugify(input.title);
+    let name = base;
+    for (let n = 2; await exists(join(this.root, name)); n++) {
+      const suffix = `-${n}`;
+      name = `${base.slice(0, 40 - suffix.length).replace(/-+$/g, "")}${suffix}`;
+    }
+    const manifest = {
+      name,
+      title: input.title,
+      tagline: input.tagline,
+      genre: [],
+      tone: [],
+      perspective: "second-person",
+      systems: { dice: "none", stats: [], inventory: true },
+      createdWith: "nirmata",
+    };
+    const premise = input.premise.trim();
+    const card = `---\nid: lore.premise\nkind: lore\nname: Premise\nalways: true\n---\n${premise}\n`;
+    if (premise) {
+      const parsed = parseCard("lore/premise.md", card);
+      if (!parsed.ok) throw new HostError("invalid_card", parsed.errors.join("; "));
+    }
+    await placeNewFolder(this.root, name, async (temp) => {
+      await writeAtomic(join(temp, "world.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+      if (premise) await writeAtomic(join(temp, "lore", "premise.md"), card);
+      await writeAtomic(join(temp, "stories", ".gitkeep"), "");
+    });
+    return { name, title: input.title, tagline: input.tagline, stories: 0 };
+  }
+
+  /** Change a world's title or tagline. Everything else in world.json is kept as it was. */
+  async update(
+    name: string,
+    patch: { title?: string | undefined; tagline?: string | undefined },
+  ): Promise<WorldSummary> {
+    const file = join(this.open(name).root, "world.json");
+    const text = await readIfThere(file);
+    if (text === undefined) throw new HostError("nothing_to_do", `There is no world "${name}".`);
+    let raw: Record<string, unknown>;
+    try {
+      raw = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      throw new HostError(
+        "bad_state",
+        `${name}/world.json is not valid JSON; fix it by hand first.`,
+      );
+    }
+    const next = {
+      ...raw,
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.tagline !== undefined ? { tagline: patch.tagline } : {}),
+    };
+    const checked = parseWorldManifest(JSON.stringify(next));
+    if (!checked.ok) throw new HostError("bad_state", `world.json: ${checked.errors.join("; ")}`);
+    await writeAtomic(file, `${JSON.stringify(next, null, 2)}\n`);
+    const found = await this.summary(name);
+    if (!found) throw new HostError("nothing_to_do", `There is no world "${name}".`);
+    return found;
+  }
+
+  /**
+   * Put a world away: its folder is renamed with a leading "_", which the library skips. Nothing
+   * is deleted; renaming the folder back brings it back.
+   */
+  async archive(name: string): Promise<string> {
+    const world = this.open(name);
+    if (!(await world.exists()))
+      throw new HostError("nothing_to_do", `There is no world "${name}".`);
+    const archived = `_archived-${name}-${randomBytes(3).toString("hex")}`;
+    try {
+      await rename(world.root, join(this.root, archived));
+    } catch (e) {
+      throw new HostError(
+        "bad_state",
+        `Couldn't put "${name}" away (${(e as Error).message}). Close anything using its folder and try again.`,
+      );
+    }
+    this.storyFiles.delete(name);
+    return archived;
   }
 }

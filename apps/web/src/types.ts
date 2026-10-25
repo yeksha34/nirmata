@@ -124,8 +124,21 @@ export interface StorySummary {
 
 export interface Card {
   path: string;
-  fm: { id: string; kind: string; name: string };
+  fm: { id: string; kind: string; name: string; summary?: string; always?: boolean };
   body: string;
+}
+
+/** A saved story with the world it belongs to: what the portal offers to pick up. */
+export interface RecentStory extends StorySummary {
+  world: string;
+  worldTitle: string;
+}
+
+/** A world's page: its details, saved stories and cards, whether or not it is the open one. */
+export interface WorldDetail {
+  world: WorldSummary;
+  stories: StorySummary[];
+  cards: Card[];
 }
 
 /** A live event while the story is being written. */

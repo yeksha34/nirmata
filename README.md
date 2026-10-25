@@ -20,8 +20,8 @@ Design references: SillyTavern + KoboldAI (local control, lorebooks), AI Dungeon
 | `packages/core` engine (cards, lorebook matching, context builder, event tree) | Built, 113 tests (F-30 in progress) |
 | `packages/llm` model providers (OpenAI-compatible, Anthropic, fake) | Built, 48 tests; not yet tried against a live model |
 | `packages/host` game master (turns, retry/undo/branch, rule checks, context window shifting into chapters, plot points on cards) | Built, 157 tests with the fake provider |
-| `apps/server` table server (join, shared board, live story, saved stories, per-role views) | Built, 46 tests; no screens yet, see [apps/server/README.md](apps/server/README.md) |
-| `apps/web` screens (join, choose a world, continue or start a story, play on the shared board) | Built, 11 tests; not yet checked by eye in a browser, see [F-49](docs/features/F-49-screens-join-library-table.md) |
+| `apps/server` table server (join, shared board, live story, saved stories, worlds library, per-role views) | Built, 70 tests, see [apps/server/README.md](apps/server/README.md) |
+| `apps/web` screens (join, the portal, play on the shared board) | Built, 11 tests; the portal and a single-host game were checked by eye in a browser, a table of several people was not: [F-49](docs/features/F-49-screens-join-library-table.md), [F-53](docs/features/F-53-world-portal.md) |
 
 ## Run the baseline Studio
 

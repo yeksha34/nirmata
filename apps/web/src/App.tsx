@@ -3,7 +3,7 @@ import { api, seat } from "./api";
 import { AppProvider } from "./app-context";
 import { useLive } from "./live";
 import { Join } from "./screens/Join";
-import { Library } from "./screens/Library";
+import { Portal } from "./screens/Portal";
 import { TableScreen } from "./screens/Table";
 import { Waiting } from "./screens/Waiting";
 import { initialState, reducer, screenFor } from "./store";
@@ -63,6 +63,16 @@ export function App() {
     };
   }, []);
 
+  // Pasting the host link into a tab that is already open only changes the address's `#` part, so
+  // the browser does not reload the page; reload it so the host key is picked up.
+  useEffect(() => {
+    const onHash = () => {
+      if (new URLSearchParams(window.location.hash.slice(1)).has("host")) window.location.reload();
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
   useLive(token, dispatch, leave);
 
   const joined = (nextToken: string) => {
@@ -87,7 +97,7 @@ export function App() {
         <div className="shell">
           <HeaderBar />
           <main>
-            {screen === "library" && <Library />}
+            {screen === "portal" && <Portal />}
             {(screen === "waiting-world" || screen === "waiting-story") && <Waiting />}
             {screen === "table" && <TableScreen />}
           </main>

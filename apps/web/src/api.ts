@@ -1,9 +1,9 @@
 import type {
-  Card,
   Mode,
+  RecentStory,
   Snapshot,
-  StorySummary,
   TableInfo,
+  WorldDetail,
   WorldInfo,
   WorldSummary,
   You,
@@ -106,11 +106,24 @@ export const api = {
   worlds: () => get<{ worlds: WorldSummary[] }>("/api/worlds").then((r) => r.worlds),
   openWorld: (name: string) =>
     post<{ world: WorldInfo }>("/api/worlds/open", { name }).then((r) => r.world),
-  stories: () => get<{ stories: StorySummary[] }>("/api/stories").then((r) => r.stories),
-  startStory: (arcId?: string) => post<{ id: string }>("/api/stories", arcId ? { arcId } : {}),
-  resumeStory: (id: string) => post(`/api/stories/${encodeURIComponent(id)}/resume`),
   closeStory: () => post("/api/story/close"),
-  sourceCards: () => get<{ cards: Card[] }>("/api/source/cards").then((r) => r.cards),
+
+  // the portal: every world, without opening any of them
+  recent: () => get<{ stories: RecentStory[] }>("/api/recent").then((r) => r.stories),
+  worldDetail: (name: string) => get<WorldDetail>(`/api/worlds/${encodeURIComponent(name)}`),
+  createWorld: (args: { title: string; tagline?: string; premise?: string }) =>
+    post<{ world: WorldSummary }>("/api/worlds", args).then((r) => r.world),
+  editWorld: (name: string, patch: { title?: string; tagline?: string }) =>
+    request<{ world: WorldSummary }>(
+      "PATCH",
+      `/api/worlds/${encodeURIComponent(name)}`,
+      patch,
+    ).then((r) => r.world),
+  archiveWorld: (name: string) => post(`/api/worlds/${encodeURIComponent(name)}/archive`),
+  startStoryIn: (name: string, arcId?: string) =>
+    post<{ id: string }>(`/api/worlds/${encodeURIComponent(name)}/stories`, arcId ? { arcId } : {}),
+  resumeStoryIn: (name: string, id: string) =>
+    post(`/api/worlds/${encodeURIComponent(name)}/stories/${encodeURIComponent(id)}/resume`),
 
   retry: () => post("/api/story/retry"),
   continueStory: () => post("/api/story/continue"),

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { api } from "./api";
 import { useAct, useApp } from "./app-context";
 import type { SeatKind } from "./types";
@@ -43,7 +43,7 @@ export function HeaderBar() {
   return (
     <header className="topbar">
       <Brand />
-      {state.world && (
+      {state.world && state.story && (
         <span className="world-name" title={state.world.tagline}>
           {state.world.title}
         </span>
@@ -131,6 +131,27 @@ export function Panel({
       </div>
       {children}
     </section>
+  );
+}
+
+/** A dialog that opens as soon as it is shown; Escape or `onClose` puts it away. */
+export function Modal({
+  titleId,
+  onClose,
+  children,
+}: {
+  titleId: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    ref.current?.showModal();
+  }, []);
+  return (
+    <dialog ref={ref} className="dialog" onClose={onClose} aria-labelledby={titleId}>
+      {children}
+    </dialog>
   );
 }
 

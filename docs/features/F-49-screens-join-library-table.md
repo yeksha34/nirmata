@@ -36,14 +36,15 @@ The server side of each item is tested. How the screens behave has been built an
 - Model setup on screen, card editing on screen, plot-point and context drawers, branch browsing ([F-50](../requirements.md) and later).
 
 ## Design
-`apps/web`: React + Vite ([ADR-0001](../decisions/0001-tech-stack.md)). `store.ts` folds everything the server sends into one state (unit tested without a browser); `live.ts` is the one event-stream connection; `api.ts` the typed calls; `screens/` Join, Library, Waiting, Table, Board. The server serves the built screens at `/` (`apps/server/src/ui.ts`) and a library of worlds (`Library`, `GET /api/worlds`, `POST /api/worlds/open`).
+`apps/web`: React + Vite ([ADR-0001](../decisions/0001-tech-stack.md)). `store.ts` folds everything the server sends into one state (unit tested without a browser); `live.ts` is the one event-stream connection; `api.ts` the typed calls; `screens/` Join, Portal ([F-53](F-53-world-portal.md); it replaced the first library screen), Waiting, Table, Board. The server serves the built screens at `/` (`apps/server/src/ui.ts`) and a library of worlds (`Library`, `GET /api/worlds`, `POST /api/worlds/open`).
 
 ## Verification log
 | Date | What was run | Result |
 |---|---|---|
 | 2026-10-25 | `vitest`, `tsc`, `biome`, `vite build` | Server: 13 new tests for the library, opening, story list, closing, continuing and serving the screens. Web: 11 tests of the state store. Production build 251 kB (79 kB gzipped). |
 | 2026-10-25 | Server started with two worlds | Serves the built page and bundle with correct types; no world opened by itself when there are two. |
-| not yet | Looked at in a real browser | The browser extension was not allowed on `127.0.0.1`; layout, focus order and the phone width are unchecked by eye. |
+| 2026-10-25 | Looked at in the in-app browser, demo model, one person (the host) | Host link took the host's seat; reloading in the same tab kept it; started a story, wrote a Do turn, Ready sent it and the reply arrived; "More" menu and Put the story away worked; the portal at phone width (375 px) in light mode has no sideways scroll; dark mode is the default there and looked right. Opening the host link in a tab that was already open did nothing (only the `#` changed): fixed by reloading on that change. |
+| not yet | The board with two or more people, Stop / Try again / Keep going / Undo, objections, hushing, a lost connection, keyboard order, reduced motion | Not exercised, so those bullets stay open. The Chrome extension stayed blocked on `127.0.0.1` even after it was allowed there; the in-app browser was used instead. |
 
 ## History
 | Date | Change |

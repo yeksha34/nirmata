@@ -141,6 +141,53 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
     const body = await json(c, z.object({ name: z.string().min(1).max(64) }));
     return c.json({ world: await table.openWorld(seat, body.name) });
   });
+  app.post("/api/worlds", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(
+      c,
+      z.object({
+        title: z.string().trim().min(1, "A world needs a title.").max(120),
+        tagline: z.string().trim().max(200).default(""),
+        premise: z.string().trim().max(4000).default(""),
+      }),
+    );
+    return c.json({ world: await table.createWorld(seat, body) }, 201);
+  });
+  app.get("/api/recent", async (c) => c.json({ stories: await table.recent(seatOf(c)) }));
+  app.get("/api/worlds/:name", async (c) =>
+    c.json(await table.worldDetail(seatOf(c), c.req.param("name"))),
+  );
+  app.patch("/api/worlds/:name", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(
+      c,
+      z
+        .object({
+          title: z.string().trim().min(1, "A world needs a title.").max(120).optional(),
+          tagline: z.string().trim().max(200).optional(),
+        })
+        .strict(),
+    );
+    return c.json({ world: await table.editWorld(seat, c.req.param("name"), body) });
+  });
+  app.post("/api/worlds/:name/archive", async (c) => {
+    await table.archiveWorld(seatOf(c), c.req.param("name"));
+    return ok(c);
+  });
+  app.post("/api/worlds/:name/stories", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(c, z.object({ arcId: z.string().min(1).optional() }));
+    const id = await table.startStoryIn(
+      seat,
+      c.req.param("name"),
+      body.arcId ? { arcId: body.arcId } : {},
+    );
+    return c.json({ id }, 202);
+  });
+  app.post("/api/worlds/:name/stories/:id/resume", async (c) => {
+    await table.resumeStoryIn(seatOf(c), c.req.param("name"), c.req.param("id"));
+    return ok(c);
+  });
 
   app.get("/api/state", (c) => c.json(table.snapshot(seatOf(c))));
   app.post("/api/leave", (c) => {
