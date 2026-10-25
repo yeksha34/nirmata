@@ -24,13 +24,45 @@ export interface SourceBackend {
  * nothing, and an invalid card is refused for everyone with the problems listed.
  */
 export class SourceCards {
-  constructor(private readonly backend: SourceBackend) {}
+  private playersMayRead: boolean;
 
-  world(): Promise<WorldManifest> {
+  /**
+   * `playersMayRead` is a host setting, off by default: source cards hold host-only Secrets, so
+   * players see them only if the host allows it. Hosts always can.
+   */
+  constructor(
+    private readonly backend: SourceBackend,
+    options: { playersMayRead?: boolean } = {},
+  ) {
+    this.playersMayRead = options.playersMayRead === true;
+  }
+
+  /** Let players read the source cards (or stop letting them). Host only. */
+  setPlayersMayRead(actor: Actor, allowed: boolean): void {
+    requireCan(actor, "settings.change");
+    this.playersMayRead = allowed;
+  }
+
+  get playersCanRead(): boolean {
+    return this.playersMayRead;
+  }
+
+  private requireRead(actor: Actor): void {
+    if (actor.role !== "host" && !this.playersMayRead) {
+      throw new HostError(
+        "forbidden",
+        "The host has not allowed players to read the source cards.",
+      );
+    }
+  }
+
+  async world(actor: Actor): Promise<WorldManifest> {
+    this.requireRead(actor);
     return this.backend.world();
   }
 
-  list(): Promise<Card[]> {
+  async list(actor: Actor): Promise<Card[]> {
+    this.requireRead(actor);
     return this.backend.cards();
   }
 

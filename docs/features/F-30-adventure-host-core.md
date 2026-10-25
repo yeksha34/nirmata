@@ -23,7 +23,7 @@ adventurers in created worlds".
 - [ ] Works against any OpenAI-compatible endpoint (KoboldCpp, Ollama, LM Studio) and against Anthropic, chosen in settings (F-35).
 
 ## Progress
-- [x] `packages/core`: card/world schemas and parsing, Aho-Corasick keyword matcher, deterministic context builder with token budget and rating gate, event-tree adventure log (undo, retry, edit, branch, per-branch memory). 44 tests including a golden prompt for the example world.
+- [x] `packages/core`: card/world schemas and parsing, Aho-Corasick keyword matcher, deterministic context builder with token budget, event-tree adventure log (undo, retry, edit, branch, per-branch memory). 44 tests including a golden prompt for the example world.
 - [x] `packages/llm`: OpenAI-compatible and Anthropic streaming adapters, SSE reader, fake replay provider, presets, plain-language errors ([ADR-0003](../decisions/0003-llm-provider-abstraction.md), [ADR-0006](../decisions/0006-stack-revision.md)). 48 tests, including real-socket streaming, error and abort cases.
 - [x] `packages/host`: `AdventureSession` with start, submit, retry, continue, undo, edit, goto, pin; rule judge with automatic rewrite; summary refresh; save-before-apply and single-flight guarantees. 41 tests with the fake provider.
 - [ ] `apps/server`: Hono routes, SSE streaming, file loading and watching, `events.jsonl` persistence.

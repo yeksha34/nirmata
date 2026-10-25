@@ -5,7 +5,6 @@ import type {
   Card,
   PlayerMode,
   PlotPoint,
-  Rating,
 } from "@nirmata/core";
 import type { SamplerParams } from "@nirmata/llm";
 
@@ -58,8 +57,11 @@ export interface HostSettings {
   model: string;
   params: SamplerParams;
   budget: { maxTokens: number; reserveReply?: number };
-  /** Defaults to the world's own rating. */
-  ratingCeiling?: Rating;
+  /**
+   * Revoked plot points stay revoked on every branch, so undoing a turn does not bring back a
+   * point that was taken back later. Off by default: undo is plain time travel.
+   */
+  revokesSurviveUndo: boolean;
   scanTurns?: number;
   plot: PlotSettings;
   /** Which rules the judge checks each reply against. */
@@ -75,6 +77,7 @@ export function defaultSettings(model: string, maxTokens = 4096): HostSettings {
     budget: { maxTokens },
     plot: { ...defaultPlot },
     ruleCheck: "must",
+    revokesSurviveUndo: false,
     maxRegenerations: 1,
   };
 }

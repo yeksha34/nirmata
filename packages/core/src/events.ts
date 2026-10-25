@@ -98,7 +98,7 @@ export const AdventureEvent = z
     }
     if (e.kind === "begin") {
       if (!e.world) issue("world", "begin events need the world manifest");
-      if (e.parentId !== null) issue("parentId", "begin must be the root of the adventure");
+      if (e.parentId !== null) issue("parentId", "begin must be the root of the story");
     }
     if (e.kind === "player" && !e.mode) issue("mode", "player events need a mode");
     if (e.kind === "unplot" && !e.revokes.length) issue("revokes", "unplot events need revokes");
@@ -170,7 +170,7 @@ function reduce(draft: Draft, ev: AdventureEvent): void {
       throw new Error(`event ${ev.id}: unknown parent "${ev.parentId}"`);
     }
     if (ev.kind === "begin" && [...draft.events.values()].some((e) => e.kind === "begin")) {
-      throw new Error(`begin ${ev.id}: this adventure has already begun`);
+      throw new Error(`begin ${ev.id}: this story has already begun`);
     }
     for (const [field, target] of [
       ["shifted", ev.shifted],

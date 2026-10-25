@@ -55,20 +55,21 @@ but has not been re-verified inside Nirmata.
 | F-07 | Version-control drawer | Baseline | | Git diff viewer in legacy Studio |
 | F-08 | AI-assisted card generation | Proposed | | |
 | F-09 | Contradiction / consistency check | Baseline | | Legacy ops queue |
-| F-30 | Adventure host core (turn loop) | Building | `feat/F-30-adventure-host-core` | Engine, providers, host, window shifting and plot points done (240 tests, fake provider only). Server routes and play screen pending. See [features/F-30](features/F-30-adventure-host-core.md) |
+| F-30 | Adventure host core (turn loop) | Building | `feat/F-30-adventure-host-core` | Engine, providers, host, window shifting and plot points done (266 tests, fake provider only). Server routes and play screen pending. See [features/F-30](features/F-30-adventure-host-core.md) |
 | F-31 | Retry / edit / undo / continue | Building | `feat/F-30-adventure-host-core` | Done in `packages/host` (retry also recovers a failed turn); UI pending |
 | F-32 | Context builder with budget | Building | `feat/F-30-adventure-host-core` | Implemented and golden-tested in `packages/core`; budget meter UI pending |
 | F-33 | Persistent memory | Building | `feat/F-30-adventure-host-core` | Player pins done; long-term memory is now plot points on cards (F-42). Memory panel pending |
 | F-34 | Player character, stats, inventory | Proposed | | |
 | F-35 | Model/provider settings | Building | `feat/F-30-adventure-host-core` | Provider layer, presets and test-connection logic done in `packages/llm` (see ADR-0003, ADR-0006); settings UI and key storage pending |
 | F-36 | Rules enforcement during play | Building | `feat/F-30-adventure-host-core` | LLM judge, automatic rewrite and flags done in `packages/host`; judge-model settings and the flag/Fix UI pending |
-| F-37 | Hosting other players (LAN / link) | Proposed | | Legacy peer-sync is the seed |
+| F-37 | Join a story IRC-style | Specified | | No accounts; host = whoever runs the server ([ADR-0011](decisions/0011-irc-style-joining.md)). Turn order undecided; needs the server |
 | F-38 | Save, branch, export adventures | Proposed | | |
-| F-39 | Content-rating gate | Building | `feat/F-30-adventure-host-core` | Gate enforced in the context builder; session-level setting UI pending |
-| F-40 | Live context-window shifting into chapters | Building | `feat/F-30-adventure-host-core` | Core + host done (240 tests, fake provider). Writing chapter files is the server's job; automatic chapter breaks are a later decision. [features/F-40](features/F-40-window-shift-to-chapters.md), [ADR-0008](decisions/0008-window-shift-and-plot-points.md) |
-| F-42 | Plot points on cards, with undo | Building | `feat/F-30-adventure-host-core` | Core + host done (240 tests, fake provider). Real-model review and the card/undo UI pending. [features/F-42](features/F-42-plot-points-on-cards.md) |
-| F-43 | Adventure copies of the source cards | Building | `feat/F-30-adventure-host-core` | Done in core + host (240 tests, fake provider, in-memory source). Real source backend and secret-safe player views pending. [features/F-43](features/F-43-adventure-copies-and-source-permissions.md), [ADR-0009](decisions/0009-adventure-copies-and-source-permissions.md) |
+| F-39 | Adults only (no rating tiers) | Building | `feat/F-30-adventure-host-core` | Rating tiers removed; one fixed prompt line added ([ADR-0010](decisions/0010-adults-only.md)). Whether to confirm age on joining is open |
+| F-40 | Live context-window shifting into chapters | Building | `feat/F-30-adventure-host-core` | Core + host done (266 tests, fake provider). Writing chapter files is the server's job; automatic chapter breaks are a later decision. [features/F-40](features/F-40-window-shift-to-chapters.md), [ADR-0008](decisions/0008-window-shift-and-plot-points.md) |
+| F-42 | Plot points on cards, with undo | Building | `feat/F-30-adventure-host-core` | Core + host done (266 tests, fake provider). Real-model review and the card/undo UI pending. [features/F-42](features/F-42-plot-points-on-cards.md) |
+| F-43 | Adventure copies of the source cards | Building | `feat/F-30-adventure-host-core` | Done in core + host (266 tests, fake provider, in-memory source). Real source backend and secret-safe player views pending. [features/F-43](features/F-43-adventure-copies-and-source-permissions.md), [ADR-0009](decisions/0009-adventure-copies-and-source-permissions.md) |
 | F-44 | Source-card permissions (host edits, players cannot) | Building | `feat/F-30-adventure-host-core` | `SourceCards` guard and role table done; accounts and the real backend belong to the server. Same record as F-43 |
+| F-45 | Player input is never fact | Building | `feat/F-30-adventure-host-core` | Prompt + judge pipeline done and tested with the fake provider; real-model check pending. [features/F-45](features/F-45-player-input-is-not-fact.md) |
 | F-41 | Promote adventure content to the world | Proposed | | |
 | F-50 | Guided first run + simple/advanced mode | Specified | | See [ux-principles.md](ux-principles.md) |
 | F-51 | Mobile-friendly PWA | Proposed | | |

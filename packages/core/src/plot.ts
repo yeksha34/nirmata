@@ -10,6 +10,11 @@ import {
 } from "./events";
 import type { Turn } from "./schema";
 
+export interface PlotOptions {
+  /** A host setting: revoked points stay revoked on every branch, not just where they were revoked. */
+  revokesSurviveUndo?: boolean;
+}
+
 export interface PlotPoint {
   /** `<plot event id>:<index>`, the handle used to revoke it. */
   id: string;
@@ -24,9 +29,16 @@ export interface PlotPoint {
  * path, minus the ones an `unplot` event on the same path took back. Because they live on the
  * branch, undoing or branching away from the turns that produced them removes them too.
  */
-export function plotPointsOf(state: AdventureState, at: string | null = state.head): PlotPoint[] {
+export function plotPointsOf(
+  state: AdventureState,
+  at: string | null = state.head,
+  options: PlotOptions = {},
+): PlotPoint[] {
   const path = pathTo(state, at);
-  const revoked = new Set(path.flatMap((ev) => (ev.kind === "unplot" ? ev.revokes : [])));
+  // By default a revoke counts only on the branch it was made on, so undoing a turn also undoes
+  // a revoke made after it. With `revokesSurviveUndo` a point stays revoked on every branch.
+  const revokers = options.revokesSurviveUndo ? [...state.events.values()] : path;
+  const revoked = new Set(revokers.flatMap((ev) => (ev.kind === "unplot" ? ev.revokes : [])));
   return path.flatMap((ev) =>
     ev.kind === "plot"
       ? ev.points
@@ -77,11 +89,14 @@ export function cardsWithPlot(
   return cards.map((card) => {
     const texts = byCard.get(card.fm.id);
     if (!texts?.length) return card;
+    // A card may ask to show fewer points, or a different heading (the current-situation card).
+    const limit = typeof card.fm.plotMax === "number" ? card.fm.plotMax : maxPerCard;
+    const heading = typeof card.fm.plotHeading === "string" ? card.fm.plotHeading : PLOT_HEADING;
     const list = texts
-      .slice(-maxPerCard)
+      .slice(-limit)
       .map((t) => `- ${t}`)
       .join("\n");
-    return { ...card, body: `${card.body.trimEnd()}\n\n${PLOT_HEADING}\n${list}\n` };
+    return { ...card, body: `${card.body.trimEnd()}\n\n${heading}\n${list}\n` };
   });
 }
 
@@ -129,8 +144,9 @@ export function undoLastPlotEvent(
   state: AdventureState,
   id: string,
   t: string,
+  options: PlotOptions = {},
 ): AdventureEvent | undefined {
-  const live = plotPointsOf(state);
+  const live = plotPointsOf(state, state.head, options);
   const newest = live[live.length - 1];
   if (!newest) return undefined;
   const batch = live.filter((p) => p.eventId === newest.eventId).map((p) => p.id);
@@ -146,7 +162,7 @@ export function manualPlotEvent(
   args: { id: string; t: string; card: string; text: string },
 ): AdventureEvent {
   if (state.head === null) {
-    throw new Error("There is nothing in the adventure yet to attach a plot point to.");
+    throw new Error("There is nothing in the story yet to attach a plot point to.");
   }
   return newEvent({
     id: args.id,

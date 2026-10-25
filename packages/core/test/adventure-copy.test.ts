@@ -27,7 +27,6 @@ const world: WorldManifest = {
   tagline: "",
   genre: [],
   tone: [],
-  contentRating: "everyone",
   perspective: "second-person",
   systems: { dice: "none", stats: [], inventory: true },
 };
@@ -55,7 +54,7 @@ describe("begin", () => {
       /world manifest/,
     );
     expect(() => newEvent({ id: "b", parentId: "x", t: T, kind: "begin", world })).toThrow(
-      /root of the adventure/,
+      /root of the story/,
     );
   });
 

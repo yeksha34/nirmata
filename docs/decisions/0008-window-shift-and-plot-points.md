@@ -1,6 +1,6 @@
 # ADR-0008: Shift the context window into chapters; carry plot on the cards
 
-- Status: Proposed
+- Status: Accepted 2026-10-25
 - Date: 2026-10-25
 - Supersedes: [ADR-0007](0007-adventure-compaction.md)
 - Amended by [ADR-0009](0009-adventure-copies-and-source-permissions.md): wherever this says plot points overlay "the world's cards", read "the adventure's own copy of the cards"; the source cards are never touched by play.
@@ -29,6 +29,11 @@ ADR-0007 compacted old turns with three model calls (summary, chapter prose, car
 - Details that were never turned into a plot point or a pin are gone from the prompt once they leave the window (they remain in the chapter file). Mitigations: manual add, pins, keyword-triggered cards.
 - A weak model may miss or phrase points badly; they can be revoked or added by hand.
 - "Where are we now" is no longer tracked by a dedicated card; it relies on the recent turns and on plot points on place cards. A current-situation card can be added later as a special plot target.
+
+## Decided later the same day
+- **A current-situation card** helps and was added: every story's copy gets an always-on `lore.current-situation` card (unless the world defines one). The plot extractor is offered it every time and told to give it one point only when the situation changed; it shows only the newest point under "Right now". It is empty, and costs nothing in the prompt, until it has a point.
+- **Revokes and undo is a host setting**, `revokesSurviveUndo`, off by default. Off: undo is plain time travel and a revoke made after a turn goes with it. On: a revoked point stays revoked on every branch.
+- **Still open:** whether the memory trade-off is acceptable long term, and how chapter breaks are decided. See [open-questions](../open-questions.md).
 
 ## Alternatives considered
 - **Keep ADR-0007's summary compaction.** Rejected by the owner.

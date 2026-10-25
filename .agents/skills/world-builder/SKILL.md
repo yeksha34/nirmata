@@ -8,7 +8,7 @@ description: Create or extend a Nirmata world (worlds/<name>/) - lore, character
 Read `worlds/_template/README.md` for the folder layers and `.agents/skills/story-direction` for the discipline: **lore is the source of truth; prose and adventures are derived from it and never copy it verbatim**.
 
 ## New world
-1. Ask (or infer) only: title, tagline, genre, tone, content rating (default `everyone`), perspective (default second-person).
+1. Ask (or infer) only: title, tagline, genre, tone, perspective (default second-person).
 2. Copy `worlds/_template/` to `worlds/<kebab-name>/` and fill `world.json`.
 3. Create at minimum: one `lore/` card (the central premise, `always: true`), one place, one character, one arc. Remove the `_*.template.md` files from the new world.
 
@@ -23,4 +23,4 @@ Read `worlds/_template/README.md` for the folder layers and `.agents/skills/stor
 Rule cards live in `.agents/rules/`: a `Rule` sentence, a yes/no `Check` question, and a `Why`. Mark `scope: adventure` for play-time rules.
 
 ## Finish
-Run `node .agents/skills/world-lint/driver.mjs check` (the active world is set in `worlds/.active_story.json`). Fix broken links and orphans. A world is **ready to host** when: it lints clean, has an `always` premise card, at least one place, one character and one arc, and a `contentRating`.
+Run `node .agents/skills/world-lint/driver.mjs check` (the active world is set in `worlds/.active_story.json`). Fix broken links and orphans. A world is **ready to host** when: it lints clean, has an `always` premise card, at least one place, one character and one arc.

@@ -1,21 +1,16 @@
-import { type Card, ratingRank, stripTitle } from "@nirmata/core";
+import { type Card, stripTitle } from "@nirmata/core";
 import { generateText, type Provider, type SamplerParams } from "@nirmata/llm";
 import { extractJson } from "./json";
 import { HostError, type RuleJudge, type Violation } from "./types";
 
 /** Rule cards that apply to a play session, filtered to the severity being checked. */
-export function rulesToCheck(
-  cards: readonly Card[],
-  mode: "off" | "must" | "all",
-  ceiling: Parameters<typeof ratingRank>[0],
-): Card[] {
+export function rulesToCheck(cards: readonly Card[], mode: "off" | "must" | "all"): Card[] {
   if (mode === "off") return [];
   return cards
     .filter(
       (c) =>
         c.fm.kind === "rule" &&
         c.fm.scope !== "chapter" &&
-        ratingRank(c.fm.rating) <= ratingRank(ceiling) &&
         (mode === "all" || c.fm.severity === "must"),
     )
     .sort((a, b) => (a.fm.id < b.fm.id ? -1 : 1));

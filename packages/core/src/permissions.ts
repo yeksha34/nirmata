@@ -15,7 +15,7 @@ export interface Actor {
 const ALLOWED = {
   /** Edit or remove the world's source cards. Never a player. */
   "source.edit": ["host"],
-  /** Take the copy of the source cards and begin an adventure. */
+  /** Take the copy of the source cards and begin a story. */
   "adventure.start": ["host"],
   "adventure.play": ["host", "player"],
   "adventure.undo": ["host", "player"],
@@ -35,11 +35,11 @@ export const ACTIONS = Object.keys(ALLOWED) as Action[];
 
 const REFUSAL: Record<Action, string> = {
   "source.edit": "Only the host can edit the source cards.",
-  "adventure.start": "Only the host can start an adventure.",
-  "adventure.play": "You can't take part in this adventure.",
-  "adventure.undo": "You can't undo in this adventure.",
-  "adventure.edit-turn": "You can't edit turns in this adventure.",
-  "adventure.pin": "You can't pin facts in this adventure.",
+  "adventure.start": "Only the host can start a story.",
+  "adventure.play": "You can't take part in this story.",
+  "adventure.undo": "You can't undo in this story.",
+  "adventure.edit-turn": "You can't edit turns in this story.",
+  "adventure.pin": "You can't pin facts in this story.",
   "adventure.branch": "Only the host can jump to another branch of the story.",
   "plot.extract": "Only the host can update plot points.",
   "plot.add": "Only the host can add plot points.",

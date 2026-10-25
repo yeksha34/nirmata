@@ -21,7 +21,7 @@ describe("start", () => {
     const events = await run(session.start({ arcId: "arc.fourth-light" }));
 
     expect(types(events)).toEqual(["begun", "context", "text", "text", "reply", "done"]);
-    expect(pick(events, "begun")[0]?.cards).toBe(loadWorld("example-world").cards.length);
+    expect(pick(events, "begun")[0]?.cards).toBe(loadWorld("example-world").cards.length + 1); // + the current-situation card
     const ctx = pick(events, "context")[0]?.context;
     expect(ctx?.included.find((i) => i.id === "arc.fourth-light")?.reason).toBe(
       "pinned for this turn",
@@ -35,7 +35,7 @@ describe("start", () => {
     });
     expect(saved?.cardsUsed).toContain("arc.fourth-light");
     expect(sink.events).toEqual([saved]);
-    expect(lastContent(provider.requests[0])).toContain("Begin the adventure");
+    expect(lastContent(provider.requests[0])).toContain("Begin the story");
     expect(lastContent(provider.requests[0])).toContain("The Fourth Light");
     expect(session.turns.map((t) => t.text)).toEqual(["Dusk settles."]);
   });
@@ -150,7 +150,7 @@ describe("failures", () => {
     const { session } = rig(reply("x"), { sink });
     const events = await run(session.submit({ mode: "do", text: "go" }));
     expect(pick(events, "error")[0]).toMatchObject({ code: "persist", recoverable: false });
-    expect(pick(events, "error")[0]?.message).toMatch(/Could not save the adventure: disk full/);
+    expect(pick(events, "error")[0]?.message).toMatch(/Could not save the story: disk full/);
     expect(session.state.head).toBeNull();
   });
 

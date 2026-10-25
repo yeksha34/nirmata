@@ -5,7 +5,7 @@ import { defaultPlot, HostError } from "../src";
 import { lastContent, pick, rig, run, systemContent, types } from "./helpers";
 
 const isPlot = (req: GenerateRequest) =>
-  systemContent(req).includes("plot log of an interactive adventure");
+  systemContent(req).includes("plot log of an interactive story");
 
 const POINTS = JSON.stringify({
   points: [
@@ -122,24 +122,27 @@ describe("extracting plot points", () => {
     expect(r.session.plotPoints).toHaveLength(2);
   });
 
-  it("does nothing when disabled, or when no card is mentioned, and says so when asked", async () => {
+  it("does nothing when disabled, and says so when asked with nothing new to read", async () => {
     const off = rig(script(), { settings: { plot: plot({ enabled: false }) } });
     await play(off, 4);
     expect(off.provider.requests.some(isPlot)).toBe(false);
-
-    const onlyRules = rig(script(), {
-      settings: { plot: plot() },
-      filterCards: (c) => c.fm.kind === "rule",
-    });
-    await run(onlyRules.session.submit({ mode: "do", text: "I wait." }));
-    const events = await run(onlyRules.session.plot());
-    expect(pick(events, "warning")[0]?.message).toMatch(/No card is mentioned/);
-    expect(onlyRules.provider.requests.some(isPlot)).toBe(false);
 
     const empty = rig(script());
     expect(pick(await run(empty.session.plot()), "warning")[0]?.message).toMatch(
       /nothing new to read/,
     );
+  });
+
+  it("always offers the current-situation card, even when the story mentions no other card", async () => {
+    const r = rig(script(), {
+      settings: { plot: plot() },
+      filterCards: (c) => c.fm.kind === "rule",
+    });
+    await run(r.session.submit({ mode: "do", text: "I wait." }));
+    await run(r.session.submit({ mode: "do", text: "I wait some more." }));
+    const user = lastContent(r.provider.requests.find(isPlot));
+    expect(user).toContain("- lore.current-situation: Current situation (lore)");
+    expect(user.match(/^- [a-z]+\.[a-z-]+:/gm)).toHaveLength(1);
   });
 
   it("uses a separate model when configured", async () => {

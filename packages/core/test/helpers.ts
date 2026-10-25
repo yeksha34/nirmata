@@ -53,7 +53,6 @@ export function card(id: string, extra: Record<string, unknown> = {}, body = "Bo
       keywords: [],
       summary: "",
       always: false,
-      rating: "everyone",
       scope: "both",
       severity: "should",
       ...extra,

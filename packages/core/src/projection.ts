@@ -39,7 +39,11 @@ function frontmatter(data: Record<string, unknown>): string {
  */
 export function projectAdventure(
   state: AdventureState,
-  options: { at?: string | null; cardNames?: ReadonlyMap<string, string> } = {},
+  options: {
+    at?: string | null;
+    cardNames?: ReadonlyMap<string, string>;
+    revokesSurviveUndo?: boolean;
+  } = {},
 ): ProjectedFile[] {
   const at = options.at === undefined ? state.head : options.at;
   const files: ProjectedFile[] = [];
@@ -62,7 +66,9 @@ export function projectAdventure(
   }
 
   const byCard = new Map<string, string[]>();
-  for (const p of plotPointsOf(state, at)) {
+  for (const p of plotPointsOf(state, at, {
+    revokesSurviveUndo: options.revokesSurviveUndo === true,
+  })) {
     byCard.set(p.card, [...(byCard.get(p.card) ?? []), p.text]);
   }
   for (const [card, texts] of [...byCard].sort(([a], [b]) => (a < b ? -1 : 1))) {

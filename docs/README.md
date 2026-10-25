@@ -6,6 +6,8 @@
 | [requirements.md](requirements.md) | Every feature (F-xx) with priority and current status |
 | [lifecycle.md](lifecycle.md) | The states a feature moves through, definition of done, status board |
 | [features/](features/) | One record per feature under active work (design notes, test evidence, history) |
+| [open-questions.md](open-questions.md) | What is not decided or not yet proven |
+| [glossary.md](glossary.md) | The words used here (story, world, source cards, host, player ...) |
 | [bugs.md](bugs.md) | Bug and tech-debt register (BUG-xxx / TD-xxx) |
 | [decisions/](decisions/) | Architecture decision records (ADR-xxxx) |
 | [tech-stack.md](tech-stack.md) | Recommended stack and the alternatives rejected |

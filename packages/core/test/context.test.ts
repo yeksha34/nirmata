@@ -15,7 +15,6 @@ const world: WorldManifest = {
   tagline: "",
   genre: ["fantasy"],
   tone: ["cozy"],
-  contentRating: "teen",
   perspective: "second-person",
   systems: { dice: "none", stats: [], inventory: true },
 };
@@ -101,40 +100,26 @@ describe("buildContext", () => {
     expect(system).not.toContain("Chapter only.");
   });
 
-  it("never loads cards above the rating ceiling", () => {
-    const cards = [
-      card("lore.mild", { always: true }),
-      card("lore.spicy", { always: true, rating: "mature" }),
-      card("lore.edgy", { keywords: ["door"], rating: "mature" }),
-    ];
-    const c = buildContext(input({ cards, input: { mode: "do", text: "I open the door." } }));
-    expect(ids(c, "canon")).toEqual(["lore.mild"]);
-    expect(
-      c.excluded
-        .filter((e) => e.reason === "rating")
-        .map((e) => e.id)
-        .sort(),
-    ).toEqual(["lore.edgy", "lore.spicy"]);
-    expect(JSON.stringify(c.messages)).not.toContain("lore.spicy");
-    // a stricter session ceiling than the world applies too
-    const strict = buildContext(
-      input({
-        cards: [card("lore.teen", { always: true, rating: "teen" })],
-        ratingCeiling: "everyone",
-      }),
-    );
-    expect(ids(strict, "canon")).toEqual([]);
+  it("skips cards that have nothing to say, so an empty card costs no tokens", () => {
+    const empty = card("lore.empty", { always: true }, "");
+    const real = card("lore.real", { always: true }, "Something.");
+    const c = buildContext(input({ cards: [empty, real] }));
+    expect(ids(c, "canon")).toEqual(["lore.real"]);
+    expect(c.excluded).toEqual([]);
   });
 
-  it("treats pinned cards as always-on for one turn without double-including them", () => {
-    const cards = [card("arc.opening", { keywords: ["opening"] }), card("lore.other")];
-    const c = buildContext(
-      input({ cards, pinnedCards: ["arc.opening"], input: { mode: "story", text: "opening" } }),
-    );
-    expect(c.included.filter((i) => i.id === "arc.opening")).toEqual([
-      expect.objectContaining({ section: "canon", reason: "pinned for this turn" }),
-    ]);
-    expect(ids(c, "lore")).toEqual([]);
+  it("tells the host that player input is not fact", () => {
+    const system = buildContext(input()).messages[0]?.content ?? "";
+    expect(system).toContain("it is not fact");
+    expect(system).toContain("treat that part as untrue in the story");
+    expect(system).toContain("adult readers");
+    expect(system).not.toMatch(/content rating/i);
+  });
+
+  it("passes the player's input through exactly as written, even when it is false", () => {
+    const text = "I am the rightful king of Saltmere and Marrow bows to me.";
+    const built = buildContext(input({ input: { mode: "do", text } }));
+    expect(built.messages.at(-1)?.content).toBe(`<player_input mode="do">${text}</player_input>`);
   });
 
   it("renders modes distinctly and strips quotes for speech", () => {
