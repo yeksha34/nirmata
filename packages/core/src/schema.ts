@@ -73,6 +73,17 @@ export interface Turn {
   /** Player turns only; missing is treated as "do". */
   mode?: PlayerMode | undefined;
   text: string;
+  /** Player turns only: the nickname of who wrote it, when several people play. */
+  by?: string | undefined;
+  /** Player turns only: lines written together on the shared board share a round. */
+  round?: string | undefined;
+}
+
+/** What one player wrote for a turn. */
+export interface PlayerInput {
+  mode: PlayerMode;
+  text: string;
+  by?: string | undefined;
 }
 
 /** What the host remembers beyond the verbatim recent turns. */

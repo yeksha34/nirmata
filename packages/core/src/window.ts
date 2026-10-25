@@ -27,7 +27,8 @@ export function contextTurnsOf(state: StoryState, at: string | null = state.head
 export function renderTurn(turn: Turn): string {
   if (turn.role === "host") return turn.text;
   const label = { do: "Do", say: "Say", story: "Story" }[turn.mode ?? "do"];
-  return `> **${label}:** ${turn.text.replace(/\s*\n+\s*/g, " ")}`;
+  const who = turn.by ? `${turn.by} (${label})` : label;
+  return `> **${who}:** ${turn.text.replace(/\s*\n+\s*/g, " ")}`;
 }
 
 export interface Chapter {

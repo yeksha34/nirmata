@@ -1,6 +1,6 @@
 import { type Card, plainLinks, stripTitle } from "./cards";
 import { buildMatcher, type KeywordHit } from "./matcher";
-import type { Memory, PlayerMode, Turn, WorldManifest } from "./schema";
+import type { Memory, PlayerInput, PlayerMode, Turn, WorldManifest } from "./schema";
 import { estimateTokens, type TokenCounter } from "./tokens";
 
 export type Section = "host" | "rules" | "canon" | "lore" | "memory" | "history" | "input";
@@ -12,7 +12,8 @@ export interface ContextInput {
   memory: Memory;
   /** The visible story so far, oldest first, not including the pending player input. */
   turns: readonly Turn[];
-  input: { mode: PlayerMode; text: string };
+  /** One player's input, or the several lines written together on the shared board. */
+  input: PlayerInput | readonly PlayerInput[];
   budget: { maxTokens: number; reserveReply: number };
   counter?: TokenCounter;
   /** How many of the most recent turns are scanned for keywords, in addition to the input. */
@@ -83,10 +84,11 @@ export function hostInstructions(world: WorldManifest): string {
   ].join("\n");
 }
 
-export function formatPlayerInput(mode: PlayerMode, text: string): string {
+export function formatPlayerInput(mode: PlayerMode, text: string, by?: string): string {
   const trimmed = text.trim();
+  const who = by ? ` by="${by.replace(/["<>]/g, "")}"` : "";
   const body = mode === "say" ? `"${trimmed.replace(/^["“]+|["”]+$/g, "")}"` : trimmed;
-  return `<player_input mode="${mode}">${body}</player_input>`;
+  return `<player_input mode="${mode}"${who}>${body}</player_input>`;
 }
 
 const cardText = (card: Card): string => plainLinks(stripTitle(card.body)) || card.fm.summary;
@@ -176,7 +178,10 @@ export function buildContext(input: ContextInput): BuiltContext {
   const hostText = hostInstructions(input.world);
   admit("host", "host", "Host instructions", "always", hostText, true);
 
-  const inputText = formatPlayerInput(input.input.mode, input.input.text);
+  const inputs: readonly PlayerInput[] = Array.isArray(input.input)
+    ? input.input
+    : [input.input as PlayerInput];
+  const inputText = inputs.map((i) => formatPlayerInput(i.mode, i.text, i.by)).join("\n");
   admit("input", "input", "Player input", "current turn", inputText, true);
 
   const rules = cards.filter((c) => c.fm.kind === "rule" && c.fm.scope !== "chapter");
@@ -211,7 +216,7 @@ export function buildContext(input: ContextInput): BuiltContext {
   const turnLabel = (t: Turn) => (t.role === "player" ? "Player turn" : "Host turn");
   const admitTurn = (turn: Turn, reason: string): boolean => {
     const text =
-      turn.role === "player" ? formatPlayerInput(turn.mode ?? "do", turn.text) : turn.text;
+      turn.role === "player" ? formatPlayerInput(turn.mode ?? "do", turn.text, turn.by) : turn.text;
     if (!admit("history", turn.id, turnLabel(turn), reason, text)) return false;
     keptTurns.add(turn.id);
     return true;
@@ -233,7 +238,7 @@ export function buildContext(input: ContextInput): BuiltContext {
   );
   const cardById = new Map(triggerable.map((c) => [c.fm.id, c] as const));
   const sources = [
-    { rank: 0, source: "your input", text: input.input.text },
+    { rank: 0, source: "your input", text: inputs.map((i) => i.text).join("\n") },
     ...newestFirst.slice(0, scanTurns).map((t, i) => ({
       rank: i + 1,
       source: `${t.role === "player" ? "player" : "host"} turn ${t.id}`,
@@ -330,7 +335,7 @@ export function buildContext(input: ContextInput): BuiltContext {
     if (!keptTurns.has(turn.id)) continue;
     messages.push(
       turn.role === "player"
-        ? { role: "user", content: formatPlayerInput(turn.mode ?? "do", turn.text) }
+        ? { role: "user", content: formatPlayerInput(turn.mode ?? "do", turn.text, turn.by) }
         : { role: "assistant", content: turn.text },
     );
   }

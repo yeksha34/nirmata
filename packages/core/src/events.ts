@@ -62,6 +62,10 @@ export const StoryEvent = z
     t: z.string().min(1),
     kind: EventKind,
     mode: PlayerMode.optional(),
+    /** `player` only: the nickname of who wrote it (several people can play, ADR-0013). */
+    by: z.string().min(1).optional(),
+    /** `player` only: lines written together on the shared board share one round id. */
+    round: z.string().min(1).optional(),
     /** Turn text, summary, pinned fact, or (for `break`) the new chapter's title. */
     text: z.string().default(""),
     /** Card ids that were in the prompt that produced this host event. */
@@ -236,7 +240,9 @@ export function pathTo(state: StoryState, id: string | null = state.head): Story
 }
 
 export function turnOf(ev: StoryEvent): Turn | undefined {
-  if (ev.kind === "player") return { id: ev.id, role: "player", mode: ev.mode, text: ev.text };
+  if (ev.kind === "player") {
+    return { id: ev.id, role: "player", mode: ev.mode, text: ev.text, by: ev.by, round: ev.round };
+  }
   if (ev.kind === "host") return { id: ev.id, role: "host", text: ev.text };
   return undefined;
 }
@@ -284,14 +290,33 @@ export function lastOnPath(
 }
 
 /**
- * Undo = take back the most recent player action and everything after it, including any plot
- * points and window shifts that came with it.
+ * The player lines written together with `lastId`, oldest first. Lines share a round when they
+ * were written on the shared board for one reply; a line written alone is a round of one.
+ */
+export function roundLines(state: StoryState, lastId: string): StoryEvent[] {
+  const last = state.events.get(lastId);
+  if (last?.kind !== "player") return [];
+  const lines = [last];
+  let cur = last;
+  while (last.round && cur.parentId) {
+    const parent = state.events.get(cur.parentId);
+    if (parent?.kind !== "player" || parent.round !== last.round) break;
+    lines.unshift(parent);
+    cur = parent;
+  }
+  return lines;
+}
+
+/**
+ * Undo = take back the most recent turn the players took (a whole round, if several wrote it)
+ * and everything after it, including any plot points and window shifts that came with it.
  * Returns the `goto` event to append, or undefined when there is nothing to undo.
  */
 export function undoEvent(state: StoryState, id: string, t: string): StoryEvent | undefined {
   const last = lastOnPath(state, "player");
   if (!last) return undefined;
-  return newEvent({ id, parentId: null, t, kind: "goto", target: last.parentId });
+  const first = roundLines(state, last.id)[0] ?? last;
+  return newEvent({ id, parentId: null, t, kind: "goto", target: first.parentId });
 }
 
 /**

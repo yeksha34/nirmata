@@ -1,4 +1,7 @@
 export * from "./access";
+export * from "./age";
+export * from "./board";
+export * from "./moderation";
 export * from "./plot";
 export * from "./rules";
 export * from "./session";
