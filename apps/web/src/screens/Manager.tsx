@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api";
 import { useSave } from "../app-context";
 import { list, words } from "../format";
@@ -7,6 +7,7 @@ import type {
   Card,
   CardForm,
   CardKind,
+  CardTemplate,
   Manifest,
   Perspective,
   WorldDetail,
@@ -36,21 +37,15 @@ const PERSPECTIVE: Record<Perspective, string> = {
   "third-person": "Third person (they)",
 };
 
-/** What a new card starts with, so the blanks are there to fill in. */
-const STARTER: Partial<Record<CardKind, string>> = {
-  character:
-    "- **Appearance:**\n- **Manner / Voice:**\n- **Wants:**\n- **Secrets:** (host-only; never revealed unprompted)\n- **Relations:**\n",
-  place: "- **Look & feel:**\n- **Who is here:**\n- **Exits / connections:**\n- **Hooks:**\n",
-  rule: "**Rule:** State the constraint in one sentence.\n\n**Check:** A yes/no question a judge can answer about a piece of text.\n\n**Why:** The reason this world needs it.\n",
-};
-
 const SYNTAX = `<card id="char.marrow" kind="character" name="Marrow" role="npc">
   <keywords>marrow, keeper</keywords>
   <summary>Gruff keeper of the north light.</summary>
+  <appearance>Weathered, oilskin coat, one lamp-blind eye.</appearance>
+  <wants>The fourth light put out.</wants>
 
 # Marrow
 
-- **Wants:** the fourth light put out.
+Anything else, as plain markdown.
 </card>`;
 
 type Dialog =
@@ -72,6 +67,15 @@ export function Manager({
   const { cards, broken, manifest } = detail;
   const [tab, setTab] = useState<"world" | CardKind>("world");
   const [dialog, setDialog] = useState<Dialog>();
+  const [templates, setTemplates] = useState<CardTemplate[]>([]);
+  useEffect(() => {
+    api
+      .cardTemplates()
+      .then(setTemplates)
+      .catch(() => setTemplates([])); // without them the form is plain notes
+  }, []);
+  const labelOf = (id: string) =>
+    templates.flatMap((t) => t.fields).find((f) => f.id === id)?.label ?? humanize(id);
   const tabs = TABS.filter((t) => t.id !== "scene" || cards.some((c) => c.fm.kind === "scene"));
   const shown = tab === "world" ? [] : cards.filter((c) => c.fm.kind === tab);
   const current = TABS.find((t) => t.id === tab);
@@ -124,7 +128,7 @@ export function Manager({
           ) : (
             <ul className="card-list">
               {shown.map((c) => (
-                <CardRow key={c.path} card={c} onDialog={setDialog} />
+                <CardRow key={c.path} card={c} labelOf={labelOf} onDialog={setDialog} />
               ))}
             </ul>
           )}
@@ -141,6 +145,7 @@ export function Manager({
           world={name}
           kind={dialog.kind}
           card={dialog.card}
+          templates={templates}
           onClose={close}
           onSaved={saved}
         />
@@ -216,7 +221,15 @@ function Broken({ broken, onDialog }: { broken: BrokenCard[]; onDialog: (d: Dial
   );
 }
 
-function CardRow({ card, onDialog }: { card: Card; onDialog: (d: Dialog) => void }) {
+function CardRow({
+  card,
+  labelOf,
+  onDialog,
+}: {
+  card: Card;
+  labelOf: (id: string) => string;
+  onDialog: (d: Dialog) => void;
+}) {
   const { fm } = card;
   return (
     <li className="card-item">
@@ -230,7 +243,16 @@ function CardRow({ card, onDialog }: { card: Card; onDialog: (d: Dialog) => void
         {fm.keywords && fm.keywords.length > 0 && (
           <p className="hint">Comes up when someone says: {list(fm.keywords)}</p>
         )}
-        <p className="card-body">{card.body.trim() || "(no text)"}</p>
+        {Object.entries(fm.fields ?? {}).map(([id, text]) => (
+          <p key={id} className="card-part">
+            <strong>{labelOf(id)}:</strong> {text}
+          </p>
+        ))}
+        {card.body.trim() ? (
+          <p className="card-body">{card.body.trim()}</p>
+        ) : (
+          Object.keys(fm.fields ?? {}).length === 0 && <p className="card-body">(no text)</p>
+        )}
       </details>
       <span className="card-actions">
         <button
@@ -259,38 +281,88 @@ function CardRow({ card, onDialog }: { card: Card; onDialog: (d: Dialog) => void
   );
 }
 
+/** "life-outside-the-story" as "Life outside the story", for a part no template names. */
+const humanize = (id: string) => {
+  const text = id.replace(/-/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+/** The template whose parts best match a card's own (plain notes when it has none). */
+function bestTemplate(options: CardTemplate[], have: string[]): CardTemplate | undefined {
+  if (have.length === 0) return options.find((t) => t.fields.length === 0) ?? options[0];
+  let best = options[0];
+  let score = -1;
+  for (const t of options) {
+    const hit = t.fields.filter((f) => have.includes(f.id)).length;
+    if (hit > score) {
+      best = t;
+      score = hit;
+    }
+  }
+  return best;
+}
+
 function CardFormDialog({
   world,
   kind,
   card,
+  templates,
   onClose,
   onSaved,
 }: {
   world: string;
   kind: CardKind;
   card?: Card;
+  templates: CardTemplate[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { problem, busy, run } = useSave();
   const label = TABS.find((t) => t.id === kind)?.one ?? "card";
+  const options = templates.filter((t) => t.kind === kind);
+  const [values, setValues] = useState<Record<string, string>>(card?.fm.fields ?? {});
+  const [templateId, setTemplateId] = useState(
+    () => (card ? bestTemplate(options, Object.keys(card.fm.fields ?? {})) : options[0])?.id ?? "",
+  );
+  const template = options.find((t) => t.id === templateId);
   const [name, setName] = useState(card?.fm.name ?? "");
   const [summary, setSummary] = useState(card?.fm.summary ?? "");
   const [keywords, setKeywords] = useState((card?.fm.keywords ?? []).join(", "));
   const [always, setAlways] = useState(card?.fm.always ?? false);
-  const [role, setRole] = useState(card?.fm.role ?? "");
+  const [role, setRole] = useState(card?.fm.role ?? template?.role ?? "");
   const [scope, setScope] = useState(card?.fm.scope ?? "both");
   const [severity, setSeverity] = useState(card?.fm.severity ?? "should");
-  const [body, setBody] = useState(card ? card.body : (STARTER[kind] ?? ""));
+  const [body, setBody] = useState(card?.body ?? "");
+
+  // the template's parts first, then any part the card has that the template does not name
+  const named = template?.fields ?? [];
+  const parts = [
+    ...named,
+    ...Object.keys(values)
+      .filter((id) => (values[id] ?? "").trim() && !named.some((f) => f.id === id))
+      .map((id) => ({ id, label: humanize(id), hint: "" })),
+  ];
+
+  const pickTemplate = (id: string) => {
+    setTemplateId(id);
+    const next = options.find((t) => t.id === id);
+    if (!card && kind === "character") setRole(next?.role ?? "");
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    const fields: Record<string, string> = {};
+    for (const p of parts) {
+      const text = (values[p.id] ?? "").trim();
+      if (text) fields[p.id] = text;
+    }
     const form: CardForm = {
       kind,
       name: name.trim(),
       keywords: words(keywords),
       summary: summary.trim(),
       always,
+      fields,
       body,
       ...(kind === "character" ? { role: role.trim() } : {}),
       ...(kind === "rule" ? { scope, severity } : {}),
@@ -304,6 +376,27 @@ function CardFormDialog({
     <Modal titleId="card-form-title" onClose={onClose} wide>
       <form onSubmit={submit}>
         <h2 id="card-form-title">{card ? `Edit ${card.fm.name}` : `New ${label}`}</h2>
+
+        {options.length > 1 && (
+          <>
+            <label htmlFor="cf-template">{card ? "Parts from" : "Start from"}</label>
+            <select
+              id="cf-template"
+              value={templateId}
+              onChange={(e) => pickTemplate(e.target.value)}
+            >
+              {options.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <p className="hint">
+              {template?.description} {card && "Parts you have filled in are kept."}
+            </p>
+          </>
+        )}
+
         <label htmlFor="cf-name">Name</label>
         <input
           id="cf-name"
@@ -384,8 +477,31 @@ function CardFormDialog({
         </label>
         <p className="hint">Use sparingly: it uses space in every turn.</p>
 
-        <label htmlFor="cf-body">The card</label>
-        <textarea id="cf-body" rows={10} value={body} onChange={(e) => setBody(e.target.value)} />
+        {parts.length > 0 && (
+          <fieldset className="parts">
+            <legend>The details</legend>
+            {parts.map((p) => (
+              <div key={p.id}>
+                <label htmlFor={`cf-part-${p.id}`}>{p.label}</label>
+                <textarea
+                  id={`cf-part-${p.id}`}
+                  rows={2}
+                  value={values[p.id] ?? ""}
+                  onChange={(e) => setValues({ ...values, [p.id]: e.target.value })}
+                />
+                {p.hint && <p className="hint">{p.hint}</p>}
+              </div>
+            ))}
+          </fieldset>
+        )}
+
+        <label htmlFor="cf-body">{parts.length > 0 ? "More notes" : "The card"}</label>
+        <textarea
+          id="cf-body"
+          rows={parts.length > 0 ? 4 : 10}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+        />
         <p className="hint">
           Markdown. Link to other cards with relative paths, as in{" "}
           <code>[The Fog](../lore/the_fog.md)</code>.

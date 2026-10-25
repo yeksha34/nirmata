@@ -226,3 +226,70 @@ describe("the story manager: removing cards and describing the world", () => {
     );
   });
 });
+
+describe("the story manager: named parts and templates", () => {
+  it("lists the templates, the same for everyone", async () => {
+    const r = await rig();
+    const sam = await new Client(r.app).asPlayer("Sam");
+    const res = await sam.get("/api/card-templates");
+    expect(res.status).toBe(200);
+    const ids = res.body.templates.map((t: { id: string }) => t.id);
+    expect(ids).toEqual(
+      expect.arrayContaining(["character.person", "place.location", "lore.concept"]),
+    );
+    const person = res.body.templates.find((t: { id: string }) => t.id === "character.person");
+    expect(person.fields[0]).toEqual({ id: "kind", label: "Kind", hint: expect.any(String) });
+  });
+
+  it("writes the named parts as tags, drops empty ones, and shows them on the page", async () => {
+    const r = await rig();
+    const dana = await host(r);
+    const fields = {
+      age: "61",
+      appearance: "Weathered.\n\nOne lamp-blind eye.",
+      voice: "  ",
+      wants: "Quiet.",
+    };
+    const made = await dana.put("/api/worlds/example-world/cards", { form: { ...form, fields } });
+    expect(made.status).toBe(200);
+    const text = await read(r, "characters/old-tam.md");
+    expect(text).toContain("  <age>61</age>\n");
+    expect(text).toContain("  <appearance>\nWeathered.\n\nOne lamp-blind eye.\n  </appearance>\n");
+    expect(text).toContain("  <wants>Quiet.</wants>\n");
+    expect(text).not.toContain("<voice>");
+
+    const page = (await dana.get("/api/worlds/example-world")).body;
+    const tam = page.cards.find((c: { fm: { id: string } }) => c.fm.id === "char.old-tam");
+    expect(tam.fm.fields).toEqual({
+      age: "61",
+      appearance: "Weathered.\n\nOne lamp-blind eye.",
+      wants: "Quiet.",
+    });
+  });
+
+  it("replaces a card's parts when it is edited, and refuses a part with a bad name", async () => {
+    const r = await rig();
+    const dana = await host(r);
+    const made = await dana.put("/api/worlds/example-world/cards", {
+      form: { ...form, fields: { age: "61", wants: "Quiet." } },
+    });
+    const path = made.body.card.path;
+    await dana.put("/api/worlds/example-world/cards", {
+      path,
+      form: { ...form, fields: { wants: "Salt." } },
+    });
+    const page = (await dana.get("/api/worlds/example-world")).body;
+    expect(page.cards.find((c: { path: string }) => c.path === path).fm.fields).toEqual({
+      wants: "Salt.",
+    });
+
+    const before = await read(r, path);
+    const bad = await dana.put("/api/worlds/example-world/cards", {
+      path,
+      form: { ...form, fields: { "Not A Name": "x" } },
+    });
+    expect(bad.status).toBe(400);
+    expect(bad.body.error.message).toMatch(/lowercase letters, digits and hyphens/);
+    expect(await read(r, path)).toBe(before);
+  });
+});

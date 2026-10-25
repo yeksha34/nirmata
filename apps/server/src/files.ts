@@ -510,6 +510,8 @@ export interface CardForm {
   role?: string | undefined;
   scope?: Card["fm"]["scope"] | undefined;
   severity?: Card["fm"]["severity"] | undefined;
+  /** The card's named parts, replacing the ones it had; empty ones are left out. */
+  fields: Record<string, string>;
   body: string;
 }
 
@@ -676,6 +678,9 @@ export class Library {
         keywords: form.keywords,
         summary: form.summary,
         always: form.always,
+        fields: Object.fromEntries(
+          Object.entries(form.fields).filter(([, text]) => text.trim() !== ""),
+        ),
         ...(role !== undefined ? { role: role.trim() || undefined } : {}),
         ...(scope !== undefined ? { scope } : {}),
         ...(severity !== undefined ? { severity } : {}),

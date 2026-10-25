@@ -1,5 +1,6 @@
 import { parse as parseYaml } from "yaml";
-import { CardFrontmatter, formatIssues, WorldManifest } from "./schema";
+import { CardFrontmatter, formatIssues, isFieldId, WorldManifest } from "./schema";
+import { fieldLabel } from "./templates";
 
 export interface Card {
   /** World-relative path, used only for messages and stable ordering. */
@@ -63,7 +64,8 @@ export function parseCard(path: string, text: string): ParseCardResult {
 //   - **Wants:** the fourth light put out.
 //   </card>
 //
-// Fields are attributes; keywords and summary are small child tags; everything after them is
+// Fields are attributes; keywords and summary are small child tags; so is every named part the
+// card has (`<appearance>`, `<voice>`: markdown inside, see templates.ts); everything after them is
 // markdown, left exactly as written (it is not XML, so `<` and `&` in it need no escaping).
 
 /** Fields that are always text, whatever they look like (a name may be "1984"). */
@@ -109,6 +111,19 @@ function readTag(
   }
 }
 
+/** Text written inside an indented tag, with the indentation the tag gave it taken off again. */
+function dedent(text: string): string {
+  const lines = text.replace(/^[ \t]*\r?\n/, "").split(/\r?\n/);
+  const indents = lines
+    .filter((l) => l.trim())
+    .map((l) => (/^[ \t]*/.exec(l) as RegExpExecArray)[0].length);
+  const cut = indents.length ? Math.min(...indents) : 0;
+  return lines
+    .map((l) => l.slice(Math.min(cut, (/^[ \t]*/.exec(l) as RegExpExecArray)[0].length)))
+    .join("\n")
+    .trim();
+}
+
 function parseXmlCard(path: string, text: string): ParseCardResult {
   const fail = (...errors: string[]): ParseCardResult => ({ ok: false, path, errors });
 
@@ -126,30 +141,37 @@ function parseXmlCard(path: string, text: string): ParseCardResult {
     }
     let rest = text.slice(open.end, close);
 
-    // the small child tags come first; the first thing that is not one starts the markdown
+    // the child tags come first (keywords, summary, named parts, data); the first thing that is
+    // not one starts the markdown
+    const fields: Record<string, string> = {};
     for (;;) {
-      const lead = /^\s*<(keywords|summary|data)\b/.exec(rest);
-      if (!lead) break;
-      const tag = lead[1] as string;
-      const afterName = lead[0].length;
-      const opened = readTag(rest, afterName);
+      const lead = /^\s*<([a-z][a-z0-9-]*)/.exec(rest);
+      const tag = lead?.[1];
+      if (!lead || !tag) break;
+      const isField = !["keywords", "summary", "data"].includes(tag);
+      if (isField && !isFieldId(tag)) break;
+      const opened = readTag(rest, lead[0].length);
       if (typeof opened === "string") return fail(`<${tag}>: ${opened}`);
       const closeAt = opened.selfClosed ? opened.end : rest.indexOf(`</${tag}>`, opened.end);
       if (closeAt < 0) return fail(`<${tag}> is never closed (write </${tag}>)`);
-      const inner = opened.selfClosed ? "" : decode(rest.slice(opened.end, closeAt)).trim();
-      if (tag === "data") {
+      const inner = opened.selfClosed ? "" : rest.slice(opened.end, closeAt);
+      if (isField) {
+        if (tag in fields) return fail(`the part <${tag}> is written twice`);
+        if (inner.trim()) fields[tag] = dedent(inner);
+      } else if (tag === "data") {
         const key = opened.attrs.key;
         if (!key) return fail('<data> needs a key, as in <data key="mood">…</data>');
         try {
-          raw[key] = JSON.parse(inner);
+          raw[key] = JSON.parse(decode(inner).trim());
         } catch {
           return fail(`<data key="${key}"> does not hold valid JSON`);
         }
       } else {
-        raw[tag] = inner;
+        raw[tag] = decode(inner).trim();
       }
       rest = rest.slice(opened.selfClosed ? opened.end : closeAt + `</${tag}>`.length);
     }
+    if (Object.keys(fields).length) raw.fields = fields;
     body = rest.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd();
     if (body) body += "\n";
   }
@@ -166,7 +188,7 @@ const isScalar = (v: unknown): v is string | number | boolean =>
 
 /** The card as a file: `parseCard(path, serializeCard(card))` gives the card back. */
 export function serializeCard(card: Card): string {
-  const { keywords, summary, ...fields } = card.fm as Record<string, unknown>;
+  const { keywords, summary, fields: parts, ...fields } = card.fm as Record<string, unknown>;
   const known = FIELD_ORDER.filter((k) => fields[k] !== undefined && fields[k] !== DEFAULTS[k]);
   const extra = Object.keys(fields)
     .filter((k) => !(FIELD_ORDER as readonly string[]).includes(k) && fields[k] !== undefined)
@@ -181,6 +203,13 @@ export function serializeCard(card: Card): string {
   }
   if (typeof summary === "string" && summary.trim()) {
     children.push(`  <summary>${encode(summary.trim())}</summary>`);
+  }
+  for (const [id, value] of Object.entries((parts ?? {}) as Record<string, string>)) {
+    const text = value.trim();
+    if (!text) continue;
+    children.push(
+      text.includes("\n") ? `  <${id}>\n${text}\n  </${id}>` : `  <${id}>${text}</${id}>`,
+    );
   }
   for (const k of extra.filter((k) => !isScalar(fields[k]))) {
     children.push(`  <data key="${encodeAttr(k)}">${encode(JSON.stringify(fields[k]))}</data>`);
@@ -227,6 +256,20 @@ export function checkCards(cards: readonly Card[]): string[] {
  */
 export function plainLinks(text: string): string {
   return text.replace(/\[([^\]]+)\]\((?!https?:)[^)\s]+\)/g, "$1");
+}
+
+/**
+ * What a card says, as text: its named parts as `- **Label:** text` lines (a part of several lines
+ * under a bold label), then the markdown body without its title.
+ */
+export function cardBody(card: Card): string {
+  const parts = Object.entries(card.fm.fields)
+    .filter(([, text]) => text.trim())
+    .map(([id, text]) => {
+      const t = text.trim();
+      return t.includes("\n") ? `**${fieldLabel(id)}:**\n${t}` : `- **${fieldLabel(id)}:** ${t}`;
+    });
+  return [parts.join("\n"), stripTitle(card.body)].filter(Boolean).join("\n\n");
 }
 
 /** Card bodies start with a "# Title" that repeats the name; the prompt does not need it twice. */

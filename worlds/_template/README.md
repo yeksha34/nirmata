@@ -20,4 +20,4 @@ Layers, from source of truth outward (see `.agents/skills/story-direction`):
 Every card is markdown inside a `<card>` tag: the fields are attributes (`id`, `kind`, `name`, and
 `role`, `always`, `scope`, `severity` where they apply), `<keywords>` and `<summary>` follow, and the
 markdown comes after (see docs/decisions/0017-xml-markdown-cards.md). The host injects a card into
-context when a keyword fires (the lorebook model). Cards written with YAML frontmatter still load.
+context when a keyword fires (the lorebook model). Named parts (`<appearance>`, `<voice>` ...) can sit between them and the markdown; the template files show them. Cards written with YAML frontmatter still load.

@@ -23,6 +23,19 @@ const CardId = z
     'id must look like "kind.slug" (lowercase letters, digits, hyphens)',
   );
 
+/** Tags a card may not use as a field: its own structure, and the HTML a markdown body may start with. */
+const RESERVED_TAGS = new Set(
+  (
+    "card keywords summary data a abbr b blockquote br center cite code del details div em figure " +
+    "font footer h1 h2 h3 h4 h5 h6 header hr i img ins kbd li mark nav ol p pre q s section small " +
+    "span strong sub sup table tbody td tfoot th thead tr u ul video audio source article aside"
+  ).split(" "),
+);
+
+/** A field is a lowercase tag name inside the card: `appearance`, `life-outside-the-story`. */
+export const isFieldId = (id: string): boolean =>
+  /^[a-z][a-z0-9-]{0,39}$/.test(id) && !RESERVED_TAGS.has(id);
+
 /**
  * Frontmatter every world card carries. Unknown keys pass through untouched so
  * authors (and later features) can add their own fields without breaking parsing.
@@ -40,6 +53,13 @@ export const CardFrontmatter = z
     /** Rules only: `must` is never dropped from context. */
     severity: z.enum(["must", "should"]).default("should"),
     role: z.string().optional(),
+    /** The card's named parts (appearance, voice, wants ...), in the order written; text is markdown. */
+    fields: z
+      .record(
+        z.string().refine(isFieldId, "a field name is lowercase letters, digits and hyphens"),
+        z.string(),
+      )
+      .default({}),
   })
   .passthrough();
 export type CardFrontmatter = z.infer<typeof CardFrontmatter>;

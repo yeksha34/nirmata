@@ -127,6 +127,23 @@ export type CardKind = (typeof CARD_KINDS)[number];
 
 export type Perspective = "first-person" | "second-person" | "third-person";
 
+/** One named part a card of some kind usually has, with a hint for filling it in. */
+export interface FieldSpec {
+  id: string;
+  label: string;
+  hint: string;
+}
+
+/** A starting shape for a card: a person, a place, a custom... (served by the server). */
+export interface CardTemplate {
+  id: string;
+  kind: CardKind;
+  label: string;
+  description: string;
+  role?: string;
+  fields: FieldSpec[];
+}
+
 export interface Card {
   path: string;
   fm: {
@@ -139,6 +156,8 @@ export interface Card {
     role?: string;
     scope?: "chapter" | "story" | "both";
     severity?: "must" | "should";
+    /** Named parts (appearance, voice ...), in the order written. */
+    fields?: Record<string, string>;
   };
   body: string;
   /** The text of the card's file as it is on disk (a world's page sends it). */
@@ -172,6 +191,7 @@ export interface CardForm {
   role?: string;
   scope?: "chapter" | "story" | "both";
   severity?: "must" | "should";
+  fields: Record<string, string>;
   body: string;
 }
 
