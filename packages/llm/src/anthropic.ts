@@ -23,7 +23,7 @@ export interface AnthropicConfig {
 }
 
 const DEFAULT_MAX_TOKENS = 1024;
-const OPENING_PROMPT = "(The adventure begins.)";
+const OPENING_PROMPT = "(The story begins.)";
 
 export interface AnthropicMessages {
   system: string;

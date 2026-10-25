@@ -38,6 +38,7 @@ import {
   undoLastPlotEvent,
   unplotEvent,
   type WorldManifest,
+  withCurrentSituation,
 } from "@nirmata/core";
 import { type ChatMessage, LlmError, type Provider } from "@nirmata/llm";
 import { requireCan, SOLO_HOST } from "./access";
@@ -83,7 +84,7 @@ const CONTINUE_INSTRUCTION = "Continue the scene from exactly where your last re
 
 function openingInstruction(arcName?: string): string {
   return [
-    "Begin the adventure. Write the opening scene: set the place and the mood,",
+    "Begin the story. Write the opening scene: set the place and the mood,",
     arcName ? `introduce the situation of "${arcName}",` : "introduce the situation,",
     "and end by inviting the player to act. Do not act for the player.",
   ].join(" ");
@@ -185,7 +186,7 @@ export class AdventureSession {
   }
   /** Plot points in force on the current branch. */
   get plotPoints(): PlotPoint[] {
-    return plotPointsOf(this._state);
+    return plotPointsOf(this._state, this._state.head, this.plotOptions());
   }
   get isBusy(): boolean {
     return this.busy;
@@ -203,7 +204,7 @@ export class AdventureSession {
     return this.guarded(async function* (self) {
       self.require("adventure.start");
       if (self._state.log.length) {
-        throw new HostError("bad_state", "This adventure has already started.");
+        throw new HostError("bad_state", "This story has already started.");
       }
       const begin = await self.begin();
       yield { type: "begun", event: begin, cards: begin.cards.length };
@@ -230,7 +231,7 @@ export class AdventureSession {
         throw new HostError("nothing_to_do", "Type something to do or say first.");
       if (!self._state.log.length) {
         if (!can(self.actor, "adventure.start")) {
-          throw new HostError("forbidden", "The host has not started this adventure yet.");
+          throw new HostError("forbidden", "The host has not started this story yet.");
         }
         const begin = await self.begin();
         yield { type: "begun", event: begin, cards: begin.cards.length };
@@ -379,7 +380,7 @@ export class AdventureSession {
   async revokePlotPoint(pointId: string): Promise<void> {
     this.assertIdle();
     this.require("plot.revoke");
-    if (!plotPointsOf(this._state).some((p) => p.id === pointId)) {
+    if (!this.plotPoints.some((p) => p.id === pointId)) {
       throw new HostError("nothing_to_do", "That plot point is not in force on this branch.");
     }
     await this.commit(
@@ -395,7 +396,12 @@ export class AdventureSession {
   async undoLastPlot(): Promise<boolean> {
     this.assertIdle();
     this.require("plot.revoke");
-    const ev = undoLastPlotEvent(this._state, this.ports.newId(), this.ports.now());
+    const ev = undoLastPlotEvent(
+      this._state,
+      this.ports.newId(),
+      this.ports.now(),
+      this.plotOptions(),
+    );
     if (!ev) return false;
     await this.commit(ev);
     return true;
@@ -458,16 +464,22 @@ export class AdventureSession {
     if (own) return own;
     if (this.deps.world && this.deps.cards)
       return { world: this.deps.world, cards: this.deps.cards };
-    throw new HostError("bad_state", "This adventure has no cards to play with.");
+    throw new HostError("bad_state", "This story has no cards to play with.");
   }
 
   /** Duplicate the source cards into the log. The root of every new adventure. */
   private async begin(): Promise<AdventureEvent> {
     const { world, cards } = this.deps;
     if (!world || !cards) {
-      throw new HostError("bad_state", "There are no source cards to start this adventure from.");
+      throw new HostError("bad_state", "There are no source cards to start this story from.");
     }
-    const event = beginEvent({ id: this.ports.newId(), t: this.ports.now(), world, cards });
+    const event = beginEvent({
+      id: this.ports.newId(),
+      t: this.ports.now(),
+      world,
+      // every story also gets a card for "where are we now", unless the world defines its own
+      cards: withCurrentSituation(cards),
+    });
     await this.commit(event);
     return event;
   }
@@ -480,7 +492,7 @@ export class AdventureSession {
     try {
       await this.deps.sink.append(ev);
     } catch (e) {
-      throw new HostError("persist", `Could not save the adventure: ${(e as Error).message}`);
+      throw new HostError("persist", `Could not save the story: ${(e as Error).message}`);
     }
     this._state = applyEvent(this._state, ev);
   }
@@ -505,15 +517,14 @@ export class AdventureSession {
     yield { type: "done", state: this._state };
   }
 
-  private ceiling(world: WorldManifest) {
-    return this.deps.settings.ratingCeiling ?? world.contentRating;
+  private plotOptions() {
+    return { revokesSurviveUndo: this.deps.settings.revokesSurviveUndo };
   }
 
   private async *generate(args: GenerateArgs, signal?: AbortSignal): AsyncGenerator<HostEvent> {
     const { settings, provider, judge } = this.deps;
     const { world, cards } = this.adventure(args.replyTo ?? this._state.head);
-    const ceiling = this.ceiling(world);
-    const rules = judge ? rulesToCheck(cards, settings.ruleCheck, ceiling) : [];
+    const rules = judge ? rulesToCheck(cards, settings.ruleCheck) : [];
     const attempts = 1 + (rules.length ? Math.max(0, settings.maxRegenerations) : 0);
     const reserve = settings.budget.reserveReply ?? settings.params.maxTokens ?? 350;
 
@@ -526,12 +537,11 @@ export class AdventureSession {
 
       const context: BuiltContext = buildContext({
         world,
-        cards: cardsWithPlot(cards, plotPointsOf(this._state, args.replyTo)),
+        cards: cardsWithPlot(cards, plotPointsOf(this._state, args.replyTo, this.plotOptions())),
         memory: memoryOf(this._state, args.replyTo),
         turns: contextTurnsOf(this._state, args.turnsAt),
         input: args.input,
         budget: { maxTokens: settings.budget.maxTokens, reserveReply: reserve },
-        ratingCeiling: ceiling,
         ...(settings.scanTurns !== undefined ? { scanTurns: settings.scanTurns } : {}),
         ...(args.pinned ? { pinnedCards: args.pinned } : {}),
         ...(this.deps.counter ? { counter: this.deps.counter } : {}),
@@ -682,6 +692,7 @@ export class AdventureSession {
         turns,
         candidates,
         maxPoints: cfg.maxPoints,
+        revokesSurviveUndo: settings.revokesSurviveUndo,
         signal,
       });
     } catch (e) {
@@ -705,7 +716,7 @@ export class AdventureSession {
     yield {
       type: "plot",
       event,
-      points: plotPointsOf(this._state).filter((p) => p.eventId === event.id),
+      points: this.plotPoints.filter((p) => p.eventId === event.id),
     };
   }
 

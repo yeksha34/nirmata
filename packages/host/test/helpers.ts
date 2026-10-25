@@ -62,7 +62,6 @@ export function ruleCard(id: string, severity: "must" | "should", check: string)
       keywords: [],
       summary: "",
       always: false,
-      rating: "everyone",
       scope: "adventure",
       severity,
     } as Card["fm"],

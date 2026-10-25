@@ -104,7 +104,7 @@ describe("plot events", () => {
     expect(plotCursor(manual)).toBe("h2");
     expect(plotPointsOf(manual).at(-1)).toMatchObject({ id: "m:0", card: "place.saltmere" });
     expect(() => manualPlotEvent(replay([]), { id: "m", t: T, card: "a.b", text: "x" })).toThrow(
-      /nothing in the adventure/,
+      /nothing in the story/,
     );
   });
 });
@@ -219,7 +219,6 @@ describe("cardsWithPlot", () => {
         tagline: "",
         genre: [],
         tone: [],
-        contentRating: "everyone",
         perspective: "second-person",
         systems: { dice: "none", stats: [], inventory: true },
       },

@@ -26,7 +26,7 @@ Status is the lifecycle state from [lifecycle.md](lifecycle.md); the board there
 
 | ID | Pri | Requirement | Acceptance (short) |
 |---|---|---|---|
-| F-01 | M | **World library and wizard.** Grid of worlds with portrait, title, tagline. "New world" asks title, genre, tone, rating, perspective and creates `worlds/<name>/` from `_template`. | A new world is playable-ready in under 2 minutes with only 5 fields filled |
+| F-01 | M | **World library and wizard.** Grid of worlds with portrait, title, tagline. "New world" asks title, genre, tone, perspective and creates `worlds/<name>/` from `_template`. | A new world is playable-ready in under 2 minutes with only 5 fields filled |
 | F-02 | M | **Card editor** for lore, characters, places, rules, arcs: form fields from frontmatter plus markdown body, live preview, autosave, templates per kind. | Edit a card without touching raw YAML; invalid frontmatter is flagged inline |
 | F-03 | M | **Lorebook engine**: `keywords` trigger injection, `always: true` cards are permanent, a **token budget meter** shows what would be sent and why. | The meter lists each included card with its trigger |
 | F-04 | M | **Link graph and lint**: backlinks panel, broken/orphan detection, relationship graph. | `world-lint check` clean; UI shows the same results |
@@ -47,14 +47,15 @@ Status is the lifecycle state from [lifecycle.md](lifecycle.md); the board there
 | F-34 | S | **Player character**: pick a template or build; light stats and inventory; optional dice. | Inventory change shown in a side panel |
 | F-35 | M | **Model settings**: provider list (local OpenAI-compatible, Ollama, Anthropic, others), model, temperature, max tokens, presets ("Balanced", "Creative", "Strict"). | Test-connection button with a plain-language error |
 | F-36 | S | **Rules during play**: after each host reply, cheap rule check; on `must` violation offer one-click regenerate. | Violating reply is flagged before the player sees it, or flagged with a Fix button |
-| F-37 | C | **Host others**: invite via LAN link or QR; players take turns; host controls the model. | Second device joins a running adventure |
+| F-37 | C | **Join a story IRC-style.** Whoever runs the story's server is the host; anyone who can reach it joins with a nickname and can opt to play. No accounts, passwords or user management ([ADR-0011](decisions/0011-irc-style-joining.md)). Turn order for simultaneous input is undecided. | A second device joins by address and nickname, watches, then opts in and plays |
 | F-38 | S | **Save, branch, export**: fork from any turn; export transcript as markdown or epub. | Branch leaves the original untouched |
 | F-40 | M | **Live context-window shifting.** No summarising: the prompt holds the recent turns that fit, and turns that fall out of the window are written verbatim to the adventure's **chapter** as they leave. Chapter breaks are decided later ([ADR-0008](decisions/0008-window-shift-and-plot-points.md)). | Chapter text equals the exact turns outside the window; follows undo and branches |
 | F-42 | M | **Plot points on cards, with undo.** After something affecting a card has happened in the adventure, that plot point is added to the card (adventure-scoped) and recalled with it. Points can be revoked or added by hand, and follow undo and branches. | Points appear in later prompts under their card; undoing the turn removes them |
 | F-43 | M | **Adventure copies.** Each adventure begins by duplicating the source cards (and world manifest) into its own log; play uses and changes only the copy ([ADR-0009](decisions/0009-adventure-copies-and-source-permissions.md)). | Editing the source after the start changes nothing in a running adventure |
 | F-44 | M | **Source permissions.** Source cards can be edited by whoever hosts them, never by players. | A player's edit is refused and nothing is written |
+| F-45 | M | **Player input is never fact.** The rules checker runs only on generated text, after generation; it never touches player input. The host treats input that contradicts the rules, cards or memory as untrue in the story ([ADR-0012](decisions/0012-player-input-is-not-fact.md)). | A false claim does not become a fact, a plot point or a card change |
 | F-41 | C | **Promote to the source.** A host copies a chosen adventure chapter or card (with its plot points) back into the source cards, and can pull source changes into a running adventure. | Promoted content appears in `worlds/<name>/` and lints clean |
-| F-39 | M | **Content rating gate**: `contentRating` on the world and a per-session ceiling; the host prompt and rule checker honour it. | Setting a session to "everyone" never loads cards marked above it |
+| F-39 | M | **Adults only.** Nirmata is for adult audiences ([ADR-0010](decisions/0010-adults-only.md)): no rating tiers, no ceiling, no gate. A story is bounded by the world's rule cards, the host's direction, and one fixed prompt line no world can remove. | No rating field anywhere; the prompt says the story is for adults |
 
 ### C. UX
 

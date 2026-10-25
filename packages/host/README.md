@@ -33,7 +33,7 @@ Note that the copy contains host-only text (Secrets). The log and the card copie
 
 ## Who may do what
 
-([F-44](../../docs/features/F-43-adventure-copies-and-source-permissions.md).) A session acts for one `actor` (`{ id, role: "host" | "player" }`, default a host running their own adventure); the server decides who is who. The table is in core's `permissions.ts`:
+([F-44](../../docs/features/F-43-adventure-copies-and-source-permissions.md).) A session acts for one `actor` (the joining model is IRC-style, [ADR-0011](../../docs/decisions/0011-irc-style-joining.md): whoever runs the server is the host, anyone who joins can opt to play) (`{ id, role: "host" | "player" }`, default a host running their own adventure); the server decides who is who. The table is in core's `permissions.ts`:
 
 | | Host | Player |
 |---|:-:|:-:|
@@ -44,7 +44,7 @@ Note that the copy contains host-only text (Secrets). The log and the card copie
 
 A refused call yields an `error` event (or rejects) with `code: "forbidden"` and a plain message such as "Only the host can add plot points.", and saves nothing. Plot extraction that happens as part of play is not a player action and is never blocked.
 
-**Source cards** are only written through `SourceCards` (`update`, `editFromText`, `remove`), which checks the role first, validates the card (and refuses duplicate ids) and then calls your `SourceBackend` (files on disk, a database). Anyone can read through it; only a host can write or take the `snapshot` that starts an adventure.
+**Source cards** are only written through `SourceCards` (`update`, `editFromText`, `remove`), which checks the role first, validates the card (and refuses duplicate ids) and then calls your `SourceBackend` (files on disk, a database). A host always reads; a player reads only if the host has set `playersMayRead`. Only a host can write or take the `snapshot` that starts a story.
 
 ## Operations
 
@@ -71,6 +71,21 @@ A refused call yields an `error` event (or rejects) with `code: "forbidden"` and
 
 Set `judge` (for example `createLlmJudge(provider, { model })`) and `settings.ruleCheck` (`"must"` / `"all"` / `"off"`). After each reply the judge answers each rule's `**Check:**` question. A violating reply is saved with `flags`, then rewritten up to `maxRegenerations` times with an editor note listing what broke; the flagged draft stays in the log as a sibling. After the last attempt the reply is accepted, still flagged.
 
+## Host settings
+
+Changed with `updateSettings` (host only):
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `revokesSurviveUndo` | off | Off: undo is plain time travel, so a plot-point revoke made after a turn goes with it. On: a revoked point stays revoked on every branch |
+| `ruleCheck`, `maxRegenerations`, `plot`, `budget`, `params`, `model`, `scanTurns` | see `defaultSettings` | As described elsewhere in this file |
+
+`SourceCards` has its own host setting, `playersMayRead` (off by default; see above).
+
+## Adults only, and player input is not fact
+
+There are no rating tiers ([ADR-0010](../../docs/decisions/0010-adults-only.md)): the prompt says the story is for adult readers and carries one fixed line (no sexual content involving a minor) that no world can remove. Player input reaches the host exactly as written; the host is told it is only what the character says or attempts, and to treat any part that contradicts the rules, cards or memory as untrue in the story ([ADR-0012](../../docs/decisions/0012-player-input-is-not-fact.md)). The rule checker runs only on host-written text, after generation, and never on input.
+
 ## The context window shifts into chapters
 
 There is no summarising ([ADR-0008](../../docs/decisions/0008-window-shift-and-plot-points.md), F-40). The prompt holds the recent turns that fit the budget. When a reply is written with some older turns left out, the reply records `shifted`: the newest turn that was outside the window. That cursor only moves forward on a branch, so a turn that has left the window never returns, even if the budget grows. Turns up to the cursor are the **chapter**, verbatim (`session.chapters`, and `projectAdventure(state)` in core for files). No model call is involved. Chapters split only at `breakChapter()`; where breaks should happen automatically is a later decision.
@@ -79,6 +94,7 @@ There is no summarising ([ADR-0008](../../docs/decisions/0008-window-shift-and-p
 
 Long-term memory lives on the cards (F-42). Every `settings.plot.everyPlayerTurns` player turns, while those turns are still in the prompt, a model reads them and returns one-sentence, past-tense **plot points**, each attached to an existing card. They are saved in a `plot` event and appear under the card (newest eight) whenever the card is in a prompt. The world's own cards are never modified.
 
+- Every story's copy also gets an always-on **current-situation** card (`lore.current-situation`). It is empty, and free, until the extractor gives it a point; it shows only the newest point, as "Right now" (where the player is, who is with them, what they are doing).
 - The extractor is shown card **ids, names and kinds only**, never summaries or bodies, so host-only secrets cannot leak into something the player can read, and it can only attach points to cards it was offered (those mentioned recently, those in the last prompt, and every arc).
 - Failure never breaks play: a `warning` is shown and the same turns are read next time.
 - **Undo:** points are events on the branch, so undo, retry, edit and `goto` remove and restore them with the turns that produced them (including a revoke made after those turns, which time-travels too). On top of that, `revokePlotPoint(id)` takes one back, `undoLastPlot()` takes back the newest batch, and `addPlotPoint(card, text)` adds one by hand without moving the extraction cursor. A revoked point is not re-extracted because the turns it came from were already read.

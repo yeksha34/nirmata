@@ -27,9 +27,15 @@ A world is a reusable source. Every adventure plays on its own copy, so play nev
 - [x] A player cannot start an adventure, jump branches, add or revoke plot points, break chapters or change settings; a player can act, retry, continue, undo, edit their own turn and pin a fact.
 - [x] The permission table lives in one place.
 
+## Decisions (2026-10-25)
+- The permission table is **confirmed** by the owner.
+- **Players reading the source cards is a host setting** (`playersMayRead`, off by default). Hosts always read; players read only if the host allows it. Verified in `packages/host/test/source.test.ts`.
+- Who is host and who is player: [ADR-0011](../decisions/0011-irc-style-joining.md) (IRC-style; whoever runs the server is the host; anyone joining can opt to play).
+- No sign-in or user management.
+
 ## Non-goals
 - Real accounts and sign-in (the caller decides who is host or player).
-- Hiding Secrets from players when reading source cards (decided separately).
+- Hiding Secrets from players who are allowed to read the source cards (the host setting allows full reading or none).
 - Pulling source changes into a running adventure, and promoting adventure content back to the source (F-41).
 
 ## Design
@@ -38,7 +44,7 @@ A world is a reusable source. Every adventure plays on its own copy, so play nev
 ## Verification log
 | Date | What was run | Result |
 |---|---|---|
-| 2026-10-25 | `pnpm exec vitest run`, `tsc -b`, `biome check packages` | 240 tests pass (core 91, llm 48, host 101). F-43: deep copy proven by mutating the source after the fact, source edited between two adventures, rules / plot / add-point read the copy, resume with no source, legacy log without a copy, jump and undo land on the copy. F-44: host edits via text and card, player refused on every write path with nothing saved, invalid and duplicate cards refused, every non-host action refused with its own message, player can still play, retry, continue, undo, edit and pin, automatic plot extraction not blocked. In-memory source backend and fake provider only. |
+| 2026-10-25 | `pnpm exec vitest run`, `tsc -b`, `biome check packages` | 266 tests pass (core 91, llm 48, host 101). F-43: deep copy proven by mutating the source after the fact, source edited between two adventures, rules / plot / add-point read the copy, resume with no source, legacy log without a copy, jump and undo land on the copy. F-44: host edits via text and card, player refused on every write path with nothing saved, invalid and duplicate cards refused, every non-host action refused with its own message, player can still play, retry, continue, undo, edit and pin, automatic plot extraction not blocked. In-memory source backend and fake provider only. |
 | open | Real backend | `SourceBackend` over files on disk, and who is host or player (accounts), belong to the server; not built. |
 
 ## History

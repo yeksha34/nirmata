@@ -14,24 +14,20 @@ const must = ruleCard("rule.a", "must", "Is A respected?");
 const should = ruleCard("rule.b", "should", "Is B respected?");
 
 describe("rulesToCheck", () => {
-  it("selects by severity and drops chapter-only and over-rated rules", () => {
+  it("selects by severity and drops chapter-only rules", () => {
     const chapterOnly = {
       ...ruleCard("rule.c", "must", "?"),
       fm: { ...must.fm, id: "rule.c", scope: "chapter" as const },
     };
-    const mature = {
-      ...ruleCard("rule.d", "must", "?"),
-      fm: { ...must.fm, id: "rule.d", rating: "mature" as const },
-    };
-    const all = [should, must, chapterOnly, mature];
-    expect(rulesToCheck(all, "must", "teen").map((r) => r.fm.id)).toEqual(["rule.a"]);
-    expect(rulesToCheck(all, "all", "teen").map((r) => r.fm.id)).toEqual(["rule.a", "rule.b"]);
-    expect(rulesToCheck(all, "off", "teen")).toEqual([]);
+    const all = [should, must, chapterOnly];
+    expect(rulesToCheck(all, "must").map((r) => r.fm.id)).toEqual(["rule.a"]);
+    expect(rulesToCheck(all, "all").map((r) => r.fm.id)).toEqual(["rule.a", "rule.b"]);
+    expect(rulesToCheck(all, "off")).toEqual([]);
   });
 
   it("finds the shipped example world's adventure rule", () => {
     const { cards } = loadWorld("example-world");
-    expect(rulesToCheck(cards, "all", "everyone").map((r) => r.fm.id)).toEqual(["rule.host-tone"]);
+    expect(rulesToCheck(cards, "all").map((r) => r.fm.id)).toEqual(["rule.host-tone"]);
   });
 });
 

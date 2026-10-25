@@ -24,7 +24,6 @@ describe("parseCard", () => {
       id: "char.marrow",
       kind: "character",
       always: false,
-      rating: "everyone",
       scope: "both",
       severity: "should",
     });
@@ -73,14 +72,13 @@ describe("parseWorldManifest", () => {
   it("fills defaults", () => {
     const r = parseWorldManifest('{"name":"w","title":"W"}');
     expect(r.ok && r.world).toMatchObject({
-      contentRating: "everyone",
       perspective: "second-person",
     });
   });
 
-  it("rejects bad JSON and bad ratings", () => {
+  it("rejects unreadable JSON and a missing title", () => {
     expect(parseWorldManifest("{").ok).toBe(false);
-    expect(parseWorldManifest('{"name":"w","title":"W","contentRating":"adult"}').ok).toBe(false);
+    expect(parseWorldManifest('{"name":"w"}').ok).toBe(false);
   });
 });
 

@@ -1,14 +1,5 @@
 import { z } from "zod";
 
-export const RATINGS = ["everyone", "teen", "mature"] as const;
-export const Rating = z.enum(RATINGS);
-export type Rating = z.infer<typeof Rating>;
-
-/** Higher number = more mature. Used by the content-rating gate (F-39). */
-export function ratingRank(rating: Rating): number {
-  return RATINGS.indexOf(rating);
-}
-
 export const CARD_KINDS = ["lore", "character", "place", "arc", "rule", "scene"] as const;
 export const CardKind = z.enum(CARD_KINDS);
 export type CardKind = z.infer<typeof CardKind>;
@@ -44,7 +35,6 @@ export const CardFrontmatter = z
     keywords: Keywords,
     summary: z.string().trim().default(""),
     always: z.boolean().default(false),
-    rating: Rating.default("everyone"),
     /** Rules only: where the rule applies. */
     scope: z.enum(["chapter", "adventure", "both"]).default("both"),
     /** Rules only: `must` is never dropped from context. */
@@ -60,7 +50,6 @@ export const WorldManifest = z.object({
   tagline: z.string().default(""),
   genre: z.array(z.string()).default([]),
   tone: z.array(z.string()).default([]),
-  contentRating: Rating.default("everyone"),
   perspective: z.enum(["first-person", "second-person", "third-person"]).default("second-person"),
   systems: z
     .object({

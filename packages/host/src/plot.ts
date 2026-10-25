@@ -3,6 +3,7 @@ import {
   type BuiltContext,
   buildMatcher,
   type Card,
+  CURRENT_SITUATION_ID,
   type PlotPoint,
   type PlotPointInput,
   plotPointsOf,
@@ -51,17 +52,25 @@ export function candidateCards(
       .map((i) => i.id),
   );
   return eligible
-    .filter((c) => c.fm.kind === "arc" || mentioned.has(c.fm.id) || inPrompt.has(c.fm.id))
+    .filter(
+      (c) =>
+        c.fm.kind === "arc" ||
+        c.fm.id === CURRENT_SITUATION_ID ||
+        mentioned.has(c.fm.id) ||
+        inPrompt.has(c.fm.id),
+    )
     .sort((a, b) => (a.fm.id < b.fm.id ? -1 : 1))
     .slice(0, MAX_CANDIDATES);
 }
 
 const PLOT_SYSTEM = (max: number) =>
   [
-    "You keep the plot log of an interactive adventure. Cards describe its people, places and story arcs.",
+    "You keep the plot log of an interactive story. Cards describe its people, places and story arcs.",
     "Read the log and list PLOT POINTS: things that have actually happened in the log and that change the situation of one of the listed cards.",
     "Each point is one sentence in the past tense saying who did what, and where. Use only facts stated in the log: no plans, guesses, or events that did not happen.",
     "Attach each point to the single card it affects most, using the card id exactly as listed.",
+    "Ignore anything the player only claimed that the host did not confirm, or that the story treated as untrue.",
+    `The card ${CURRENT_SITUATION_ID}, if listed, holds where the story is right now: where the player is, who is with them and what they are trying to do. Give it one point, only when that changed, describing the situation now; it replaces the earlier one.`,
     `Give at most ${max} points, and skip anything already in <known_points>.`,
     'Answer with JSON only: {"points":[{"card":"<card id>","text":"<one sentence>"}]}. If nothing qualifies, answer {"points":[]}.',
   ].join("\n");
@@ -142,9 +151,12 @@ export async function extractPlot(args: {
   turns: readonly Turn[];
   candidates: readonly Card[];
   maxPoints: number;
+  revokesSurviveUndo?: boolean;
   signal?: AbortSignal | undefined;
 }): Promise<PlotPointInput[]> {
-  const known = plotPointsOf(args.state);
+  const known = plotPointsOf(args.state, args.state.head, {
+    revokesSurviveUndo: args.revokesSurviveUndo === true,
+  });
   const { text } = await generateText(
     args.provider,
     {

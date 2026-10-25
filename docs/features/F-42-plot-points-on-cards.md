@@ -20,6 +20,12 @@ Cards stay true to the story: once something affecting a character, place or arc
 - [x] The player can add a point to a card by hand.
 - [x] An extraction failure never breaks play and is retried later.
 
+## Decisions (2026-10-25)
+- Plot points belong to the story's own copy of the cards and never change the source: **confirmed**.
+- **Revokes and undo:** a host setting, `revokesSurviveUndo` (off by default). Off: undoing a turn also undoes a revoke made after it, so the point comes back. On: a revoked point stays revoked on every branch.
+- **A current-situation card** was added (`lore.current-situation`, always on, shows only the newest point under "Right now", free until it has a point). Every story's copy gets one unless the world defines its own.
+- **Open:** whether losing everything that is never turned into a plot point or pin is acceptable long term. See [open-questions](../open-questions.md).
+
 ## Non-goals
 - Creating new cards from play.
 - Promoting points into the world (F-41).
@@ -37,4 +43,5 @@ Cards stay true to the story: once something affecting a character, place or arc
 | Date | Change |
 |---|---|
 | 2026-10-25 | Specified (ADR-0008) |
+| 2026-10-25 | Decisions recorded; revoke setting and current-situation card added |
 | 2026-10-25 | Implemented in `packages/core` (`plot`) and `packages/host` (`plot`, session methods) |

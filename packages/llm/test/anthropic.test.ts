@@ -46,7 +46,7 @@ describe("toAnthropicMessages", () => {
       { role: "assistant", content: "Opening scene." },
       { role: "user", content: "I look." },
     ]);
-    expect(out.messages[0]).toEqual({ role: "user", content: "(The adventure begins.)" });
+    expect(out.messages[0]).toEqual({ role: "user", content: "(The story begins.)" });
     expect(out.messages).toHaveLength(3);
   });
 });

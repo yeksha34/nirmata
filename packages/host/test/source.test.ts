@@ -111,13 +111,55 @@ describe("a player", () => {
       code: "forbidden",
     });
   });
+});
 
-  it("can read the cards but cannot take the copy that starts an adventure", async () => {
+describe("reading the source cards is a host setting", () => {
+  it("is off for players by default, while hosts always read", async () => {
     const { source } = memoryBackend();
-    expect((await source.list()).length).toBeGreaterThan(0);
-    expect((await source.world()).name).toBe("example-world");
+    expect((await source.list(host)).length).toBeGreaterThan(0);
+    expect((await source.world(host)).name).toBe("example-world");
+    expect(source.playersCanRead).toBe(false);
+    await expect(source.list(player)).rejects.toMatchObject({
+      code: "forbidden",
+      message: "The host has not allowed players to read the source cards.",
+    });
+    await expect(source.world(player)).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("lets the host allow players to read, and take that back", async () => {
+    const { source } = memoryBackend();
+    source.setPlayersMayRead(host, true);
+    expect((await source.list(player)).length).toBeGreaterThan(0);
+    expect((await source.world(player)).name).toBe("example-world");
+    source.setPlayersMayRead(host, false);
+    await expect(source.list(player)).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("can start allowed, and only the host can change it", async () => {
+    const { source } = memoryBackend();
+    expect(() => source.setPlayersMayRead(player, true)).toThrow(
+      "Only the host can change settings.",
+    );
+    expect(source.playersCanRead).toBe(false);
+
+    const open = new SourceCards(
+      {
+        world: async () => loadWorld("example-world").world,
+        cards: async () => loadWorld("example-world").cards,
+        save: async () => {},
+        remove: async () => {},
+      },
+      { playersMayRead: true },
+    );
+    expect((await open.list(player)).length).toBeGreaterThan(0);
+  });
+
+  it("never lets reading turn into writing or into taking the copy", async () => {
+    const { source, writes } = memoryBackend();
+    source.setPlayersMayRead(host, true);
     await expect(source.snapshot(player)).rejects.toMatchObject({ code: "forbidden" });
-    const snap = await source.snapshot(host);
-    expect(snap.cards.length).toBeGreaterThan(0);
+    await expect(source.remove(player, "char.marrow")).rejects.toMatchObject({ code: "forbidden" });
+    expect((await source.snapshot(host)).cards.length).toBeGreaterThan(0);
+    expect(writes).toEqual([]);
   });
 });

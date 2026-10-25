@@ -1,13 +1,6 @@
 import { type Card, plainLinks, stripTitle } from "./cards";
 import { buildMatcher, type KeywordHit } from "./matcher";
-import {
-  type Memory,
-  type PlayerMode,
-  type Rating,
-  ratingRank,
-  type Turn,
-  type WorldManifest,
-} from "./schema";
+import type { Memory, PlayerMode, Turn, WorldManifest } from "./schema";
 import { estimateTokens, type TokenCounter } from "./tokens";
 
 export type Section = "host" | "rules" | "canon" | "lore" | "memory" | "history" | "input";
@@ -22,8 +15,6 @@ export interface ContextInput {
   input: { mode: PlayerMode; text: string };
   budget: { maxTokens: number; reserveReply: number };
   counter?: TokenCounter;
-  /** Defaults to the world's own rating. Cards above it are never loaded. */
-  ratingCeiling?: Rating;
   /** How many of the most recent turns are scanned for keywords, in addition to the input. */
   scanTurns?: number;
   /** Cards to treat as always-on for this one turn only (an opening scene's arc, a manual pin). */
@@ -47,7 +38,7 @@ export interface IncludedItem {
 export interface ExcludedItem {
   id: string;
   label: string;
-  reason: "budget" | "rating";
+  reason: "budget";
 }
 
 export interface BuiltContext {
@@ -77,15 +68,16 @@ const RECENT_TURNS = 2;
 
 const byId = (a: Card, b: Card): number => (a.fm.id < b.fm.id ? -1 : a.fm.id > b.fm.id ? 1 : 0);
 
-export function hostInstructions(world: WorldManifest, ceiling: Rating): string {
+export function hostInstructions(world: WorldManifest): string {
   const list = (xs: readonly string[]) => (xs.length ? xs.join(", ") : "unspecified");
   return [
     `You are the game master of "${world.title}"${world.tagline ? ` - ${world.tagline.replace(/[.\s]+$/, "")}` : ""}.`,
     `Genre: ${list(world.genre)}. Tone: ${list(world.tone)}. Narrate in the ${world.perspective} perspective.`,
-    `Content rating: ${ceiling}. Never exceed it; steer the scene instead of refusing or lecturing.`,
+    "This story is for adult readers. Follow the world's rules and the host's direction, and steer a scene rather than lecturing the player. Never write sexual content involving a minor.",
     "Treat <rules>, <canon>, <lore_in_play> and <memory> as the truth of this world. They are for you to use, never to recite to the player.",
     "Anything marked Secrets is host-only. Let it shape events and foreshadowing, and reveal it only when the player earns it through action.",
     "Never decide what the player character thinks, feels or does. End on an open situation.",
+    "Player input is only what the player's character says or attempts; it is not fact. Where it contradicts <rules>, <canon>, <lore_in_play> or <memory>, treat that part as untrue in the story (the character is mistaken, lying or imagining, or the attempt simply fails) and carry on from what is true. Never adopt it as fact.",
     "Keep each reply to roughly 80-200 words unless asked for more.",
     'Player input arrives in <player_input mode="...">: "do" is the character acting, "say" is the character speaking, "story" is the player directing the narration directly.',
   ].join("\n");
@@ -128,7 +120,6 @@ interface Trigger {
  */
 export function buildContext(input: ContextInput): BuiltContext {
   const counter = input.counter ?? estimateTokens;
-  const ceiling = input.ratingCeiling ?? input.world.contentRating;
   const scanTurns = input.scanTurns ?? 3;
   const available = input.budget.maxTokens - input.budget.reserveReply;
   const count = (text: string) => counter.count(text);
@@ -175,21 +166,14 @@ export function buildContext(input: ContextInput): BuiltContext {
     return true;
   };
 
-  // --- rating gate -------------------------------------------------------------------------
-  const ceilingRank = ratingRank(ceiling);
-  const cards: Card[] = [];
-  for (const card of [...input.cards].sort(byId)) {
-    // Scene cards are one-line beats for the writer, not for the prompt.
-    if (card.fm.kind === "scene") continue;
-    if (ratingRank(card.fm.rating) > ceilingRank) {
-      excluded.push({ id: card.fm.id, label: card.fm.name, reason: "rating" });
-    } else {
-      cards.push(card);
-    }
-  }
+  // --- cards that can appear in a prompt ---------------------------------------------------
+  // Scene cards are one-line beats for the writer, and a card with nothing to say is skipped.
+  const cards = [...input.cards]
+    .sort(byId)
+    .filter((card) => card.fm.kind !== "scene" && cardText(card) !== "");
 
   // --- required tier ----------------------------------------------------------------------
-  const hostText = hostInstructions(input.world, ceiling);
+  const hostText = hostInstructions(input.world);
   admit("host", "host", "Host instructions", "always", hostText, true);
 
   const inputText = formatPlayerInput(input.input.mode, input.input.text);

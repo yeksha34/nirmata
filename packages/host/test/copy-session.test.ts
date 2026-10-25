@@ -16,7 +16,7 @@ describe("an adventure begins by duplicating the source cards", () => {
     expect(r.sink.begin).toMatchObject({ kind: "begin", parentId: null });
     expect(r.sink.begin?.world?.name).toBe("example-world");
     expect(r.sink.begin?.cards.map((c) => c.fm.id).sort()).toEqual(
-      r.cards.map((c) => c.fm.id).sort(),
+      [...r.cards.map((c) => c.fm.id), "lore.current-situation"].sort(),
     );
     // the opening scene grows from the copy
     expect(r.sink.events[0]?.parentId).toBe(r.sink.begin?.id);
@@ -29,7 +29,7 @@ describe("an adventure begins by duplicating the source cards", () => {
     expect(r.sink.all.map((e) => e.kind)).toEqual(["begin", "player", "host"]);
   });
 
-  it("plays on the copy: editing the source afterwards changes nothing in the adventure", async () => {
+  it("plays on the copy: editing the source afterwards changes nothing in the story", async () => {
     const r = rig([reply("Opening."), reply("Marrow answers.")]);
     await run(r.session.start());
 
@@ -165,12 +165,12 @@ describe("roles", () => {
     const start = await run(r.session.start());
     expect(pick(start, "error")[0]).toMatchObject({
       code: "forbidden",
-      message: "Only the host can start an adventure.",
+      message: "Only the host can start a story.",
     });
     const act = await run(r.session.submit({ mode: "do", text: "go" }));
     expect(pick(act, "error")[0]).toMatchObject({
       code: "forbidden",
-      message: "The host has not started this adventure yet.",
+      message: "The host has not started this story yet.",
     });
     expect(r.sink.all).toEqual([]);
   });
