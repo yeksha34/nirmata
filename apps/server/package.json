@@ -1,0 +1,21 @@
+{
+  "name": "@nirmata/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Runs a table: serves one world's stories to whoever joins, streams the story and the shared board live, and keeps every story on disk as plain files.",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@nirmata/core": "workspace:*",
+    "@nirmata/host": "workspace:*",
+    "@nirmata/llm": "workspace:*",
+    "hono": "^4.6.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

@@ -2,5 +2,5 @@
   "$schema": "https://biomejs.dev/schemas/2.6.2/schema.json",
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
   "linter": { "enabled": true },
-  "files": { "includes": ["packages/**/*.ts", "!**/node_modules", "!**/dist"] }
+  "files": { "includes": ["packages/**/*.ts", "apps/server/**/*.ts", "!**/node_modules", "!**/dist"] }
 }

@@ -19,10 +19,20 @@ Things not yet decided or not yet proven. When one is settled, move it to the de
 | Q25 | Kick lets the person rejoin immediately; there is no ban | Kick plus a ban for the session |
 | Q26 | Lines in a round reach the story in the order players became ready | Join order, or alphabetical |
 
+## The server, to confirm or decide
+| # | Question | Default I chose |
+|---|---|---|
+| Q27 | Players can undo and edit anyone's turn, because the permission table says so. With a shared board, one player can undo a whole round. Limit undo and edit to the host or the author? | Anyone who plays may undo and edit |
+| Q28 | A player who wrote a turn and then disconnected holds the round until the host closes it. Skip offline players automatically? | The host closes it by hand |
+| Q29 | Seats never expire: a token lasts until the person leaves, is kicked, or the server restarts. Idle timeout? | No expiry |
+| Q30 | No TLS and the live connection can take its token in the address. Enough for friends on a trusted LAN? Do you want a tunnel (Tailscale, Cloudflare) documented or an invite link with a QR code? | Assume a trusted LAN, listen on this computer only |
+| Q31 | A restart empties the board and leaves no story active; the host resumes one by hand. Resume the last story automatically? | By hand |
+| Q32 | Only one story is active at a time on a table. Fine? | One |
+
 ## Unproven (works in tests only)
 | # | Question | Needs |
 |---|---|---|
-| Q7 | Do the provider adapters work against a live KoboldCpp, Ollama, LM Studio and Anthropic? | A model running |
+| Q7 | Do the provider adapters work against a live KoboldCpp, Ollama, LM Studio and Anthropic? Does the server hold up with a real browser and a second device on the LAN? | A model running, a browser, a second device |
 | Q8 | Does a real model write faithful, non-repeating plot points and attach them to the right cards (F-42)? | A model running |
 | Q9 | Does a real model treat a player's false claim as untrue (F-45)? | A model running |
 | Q10 | Does an LLM rules judge give usable verdicts at acceptable cost and latency? | A model running |

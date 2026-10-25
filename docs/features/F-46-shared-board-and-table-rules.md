@@ -19,7 +19,7 @@ Several people can play one story fairly and without accounts: they write their 
 - [x] Lines are submitted together, attributed and tagged as one round, and answered by one reply.
 - [x] Undo, retry and the plot trigger treat a round as one turn.
 - [x] Players can prepare the next turn while the story is writing.
-- [ ] Live updates between connected people (needs the server).
+- [x] Live updates between connected people (the server, [F-47](F-47-table-server.md)).
 
 **Age confirmation ([ADR-0014](../decisions/0014-age-confirmation-production-only.md))**
 - [x] When on, joining without confirmation is refused with a plain message and nobody is seated.
@@ -32,7 +32,7 @@ Several people can play one story fairly and without accounts: they write their 
 - [x] The host cannot be targeted; kicked people can rejoin; muted drafts are not submitted.
 
 ## Non-goals
-- Real-time transport, accounts, bans, time limits on a round.
+- Accounts, bans, time limits on a round. (Real-time transport is F-47.)
 
 ## Design
 `Board` (`packages/host/src/board.ts`), `describeModeration`, `isProduction`; `by`, `round` and `roundLines` in core; `submitRound` in the session.
