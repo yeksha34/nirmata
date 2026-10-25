@@ -41,7 +41,7 @@ mind is a new ADR that links back.
 
 ## Status board
 
-Updated 2026-10-25. "Baseline" = exists in the code copied from the three source repos and works there,
+Updated 2026-10-26. "Baseline" = exists in the code copied from the three source repos and works there,
 but has not been re-verified inside Nirmata.
 
 | ID | Feature | State | Branch / tag | Notes |
@@ -74,8 +74,9 @@ but has not been re-verified inside Nirmata.
 | F-47 | The table server | Review | `feat/F-30-story-host-core` | `apps/server`: join, live board and story, saved stories, per-role views; 41 tests and one real run in demo mode. Not yet tried with a live model or a second device. [features/F-47](features/F-47-table-server.md), [ADR-0016](decisions/0016-table-server.md) |
 | F-48 | Save a story as a world | Review | `feat/F-30-story-host-core` | Core function, server route and the screen (More, Save as a new world) done, 12 tests. The new world shows up on the worlds page without a restart. [features/F-48](features/F-48-save-story-as-world.md) |
 | F-49 | Screens: join, choose a world, continue, play | Review | `feat/F-30-story-host-core` | `apps/web` built and served by the server; 11 store tests. The host's join, a turn from the composer and Ready, a player joining in with the host seeing their draft live, and phone width were checked by eye in the in-app browser; Stop/Try again/Undo, objections and hushing, a lost connection and keyboard use of the rest of the app were not. [features/F-49](features/F-49-screens-join-library-table.md) |
-| F-53 | The worlds page: pick up, explore, make and manage worlds | Review | `feat/F-30-story-host-core` | The host's front page replaces the library screen; 11 new server tests and a walk through it in the in-app browser. No card editing or restore on screen yet. [features/F-53](features/F-53-worlds-page.md) |
+| F-53 | The worlds page: pick up, explore, make and manage worlds | Review | `feat/F-30-story-host-core` | The host's front page replaces the library screen; 11 new server tests and a walk through it in the in-app browser. Cards are managed in F-55; no restore of put-away worlds on screen yet. [features/F-53](features/F-53-worlds-page.md) |
 | F-54 | The story window (a portal over the page) | Review | `feat/F-30-story-host-core` | Drag, resize, minimize to a chip, fill the page, remembered position, keyboard and phone sheet; 11 geometry tests and a walk through it with a host and a player in the in-app browser. Screen reader, reduced motion and touch dragging unchecked. [features/F-54](features/F-54-story-window.md) |
+| F-55 | The story manager (lore, characters, places, rules, arcs; XML+MD cards) | Review | `feat/F-30-story-host-core` | Cards are now XML around markdown, old YAML cards still load ([ADR-0017](decisions/0017-xml-markdown-cards.md)); the worlds page adds, edits (form or file text) and removes cards and edits the world. 19 new tests and a walk in the in-app browser. [features/F-55](features/F-55-story-manager.md) |
 | F-41 | Promote story content to the world | Proposed | | |
 | F-50 | Guided first run + simple/advanced mode | Specified | | See [ux-principles.md](ux-principles.md) |
 | F-51 | Mobile-friendly PWA | Proposed | | |

@@ -1,11 +1,6 @@
----
-id: rule.example
-kind: rule
-name: Example rule
-keywords: [example]
-scope: both          # chapter | story | both
-severity: must       # must | should
----
+<!-- scope: chapter | story | both    severity: must | should -->
+<card id="rule.example" kind="rule" name="Example rule" scope="both" severity="must">
+  <keywords>example</keywords>
 
 # Example rule
 
@@ -14,3 +9,4 @@ severity: must       # must | should
 **Check:** A yes/no question a judge can answer about a piece of text.
 
 **Why:** The reason this world needs it.
+</card>

@@ -21,5 +21,6 @@ Use `.agents/skills/record-decision`.
 | [0014](0014-age-confirmation-production-only.md) | Age confirmation exists, and is asked only in production | Accepted |
 | [0015](0015-moderation-in-the-story-voice.md) | Moderation is told in the story's voice | Accepted |
 | [0016](0016-table-server.md) | One table per server; seats by token; snapshot, then changes | Proposed |
+| [0017](0017-xml-markdown-cards.md) | A card is XML around markdown | Accepted |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.

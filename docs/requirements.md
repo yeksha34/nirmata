@@ -27,7 +27,7 @@ Status is the lifecycle state from [lifecycle.md](lifecycle.md); the board there
 | ID | Pri | Requirement | Acceptance (short) |
 |---|---|---|---|
 | F-01 | M | **World library and wizard.** Grid of worlds with portrait, title, tagline. "New world" asks title, genre, tone, perspective and creates `worlds/<name>/` from `_template`. | A new world is playable-ready in under 2 minutes with only 5 fields filled |
-| F-02 | M | **Card editor** for lore, characters, places, rules, arcs: form fields from frontmatter plus markdown body, live preview, autosave, templates per kind. | Edit a card without touching raw YAML; invalid frontmatter is flagged inline |
+| F-02 | M | **Card editor** for lore, characters, places, rules, arcs: form fields from frontmatter plus markdown body, live preview, autosave, templates per kind. | Edit a card without touching raw XML or YAML; an invalid card is flagged inline. Built as the story manager, [F-55](features/F-55-story-manager.md) |
 | F-03 | M | **Lorebook engine**: `keywords` trigger injection, `always: true` cards are permanent, a **token budget meter** shows what would be sent and why. | The meter lists each included card with its trigger |
 | F-04 | M | **Link graph and lint**: backlinks panel, broken/orphan detection, relationship graph. | `world-lint check` clean; UI shows the same results |
 | F-05 | S | **World rules**: author rules as cards with a `Check` question; run them against any text. | Rule check on a pasted paragraph returns per-rule verdicts |
@@ -70,6 +70,7 @@ Status is the lifecycle state from [lifecycle.md](lifecycle.md); the board there
 | F-52 | S | **Accessibility**: keyboard-first play, focus order, 4.5:1 contrast, reduced motion, screen-reader labels. |
 | F-53 | M | **The worlds page.** The host's page behind the story window: carry on the latest story in any world in one click, and explore, start stories in, make, rename and put away worlds without opening one first. | A host can continue a story in another world, make a world and play in it, and put a world away, all from the page |
 | F-54 | M | **The story window.** The story floats over the page in a window mounted on `<body>` (a portal), for everyone at the table: drag it, resize it, minimize it to a chip, fill the page, and it remembers where it was; on a phone it is a bottom sheet. The rest of the app stays usable behind it. | The window can be moved, resized, minimized and restored by mouse and keyboard, the story keeps running meanwhile, and a player sees the same |
+| F-55 | M | **The story manager.** Lore, characters, places, rules and story arcs are managed as cards, and the world itself is described, from the worlds page without opening the world: add, edit (as a form, or as the file's own text), remove. Cards are written as XML around markdown ([ADR-0017](decisions/0017-xml-markdown-cards.md)); older YAML cards still load. | A host can add a character, change a rule and remove a place from the page, and the cards on disk are XML+MD |
 
 ## Non-functional requirements
 

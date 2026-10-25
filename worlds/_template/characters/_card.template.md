@@ -1,11 +1,7 @@
----
-id: char.example
-kind: character
-name: Example Character
-keywords: [example]
-summary: Who they are in one line.
-role: npc            # npc | companion | antagonist | player-template
----
+<!-- role: npc | companion | antagonist | player-template -->
+<card id="char.example" kind="character" name="Example Character" role="npc">
+  <keywords>example</keywords>
+  <summary>Who they are in one line.</summary>
 
 # Example Character
 
@@ -14,3 +10,4 @@ role: npc            # npc | companion | antagonist | player-template
 - **Wants:**
 - **Secrets:** (host-only; never revealed unprompted)
 - **Relations:**
+</card>

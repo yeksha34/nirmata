@@ -33,7 +33,7 @@ The server side of each item is tested. How the screens behave has been built an
 - [ ] Works from phone width up; light and dark; keyboard reachable; honours reduced motion. (Written for it; not yet checked by eye.)
 
 ## Non-goals
-- Model setup on screen, card editing on screen, plot-point and context drawers, branch browsing ([F-50](../requirements.md) and later).
+- Model setup on screen, card editing on screen (now [F-55](F-55-story-manager.md)), plot-point and context drawers, branch browsing ([F-50](../requirements.md) and later).
 
 ## Design
 `apps/web`: React + Vite ([ADR-0001](../decisions/0001-tech-stack.md)). `store.ts` folds everything the server sends into one state (unit tested without a browser); `live.ts` is the one event-stream connection; `api.ts` the typed calls; `screens/` Join, Worlds ([F-53](F-53-worlds-page.md); it replaced the first library screen), Waiting, Table, Board. The server serves the built screens at `/` (`apps/server/src/ui.ts`) and a library of worlds (`Library`, `GET /api/worlds`, `POST /api/worlds/open`).

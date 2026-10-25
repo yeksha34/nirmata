@@ -1,9 +1,18 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import { useAct, useApp } from "../app-context";
-import { ago, list } from "../format";
-import type { Card, RecentStory, StorySummary, WorldDetail, WorldSummary } from "../types";
+import { useAct, useApp, useSave } from "../app-context";
+import { ago, list, words } from "../format";
+import type {
+  Card,
+  Manifest,
+  Perspective,
+  RecentStory,
+  StorySummary,
+  WorldDetail,
+  WorldSummary,
+} from "../types";
 import { Empty, Modal, Panel } from "../ui";
+import { Manager } from "./Manager";
 
 /**
  * The host's page behind the story window. Everything in every world is reachable from here
@@ -243,16 +252,6 @@ function CreateWorld({
 
 // ---- one world's page ------------------------------------------------------------------------
 
-const KIND_LABEL: Record<string, string> = {
-  lore: "Lore",
-  character: "Characters",
-  place: "Places",
-  arc: "Story arcs",
-  rule: "Rules",
-  scene: "Scenes",
-};
-const KIND_ORDER = Object.keys(KIND_LABEL);
-
 function WorldPage({ name, onBack }: { name: string; onBack: () => void }) {
   const { state } = useApp();
   const { act, busy } = useAct();
@@ -337,13 +336,19 @@ function WorldPage({ name, onBack }: { name: string; onBack: () => void }) {
               </ul>
             )}
           </Panel>
-          <Cards cards={cards} />
+          <Manager
+            name={name}
+            detail={detail}
+            onChanged={() => void load()}
+            onEditDetails={() => setEditing(true)}
+          />
         </>
       )}
 
       {editing && (
         <EditWorld
           world={world}
+          manifest={detail.manifest}
           onClose={() => setEditing(false)}
           onSaved={() => {
             setEditing(false);
@@ -402,64 +407,36 @@ function StartStory({ name, arcs, locked }: { name: string; arcs: Card[]; locked
   );
 }
 
-function Cards({ cards }: { cards: Card[] }) {
-  const kinds = [
-    ...KIND_ORDER.filter((k) => cards.some((c) => c.fm.kind === k)),
-    ...[...new Set(cards.map((c) => c.fm.kind))].filter((k) => !KIND_ORDER.includes(k)),
-  ];
-  return (
-    <Panel title="What's in this world">
-      {cards.length === 0 ? (
-        <Empty>
-          No cards yet. Add markdown files under <code>lore/</code>, <code>characters/</code>,{" "}
-          <code>setting/</code> or <code>plot/</code> in the world's folder.
-        </Empty>
-      ) : (
-        <>
-          {kinds.map((kind) => (
-            <section key={kind} className="card-group">
-              <h3>{KIND_LABEL[kind] ?? kind}</h3>
-              {cards
-                .filter((c) => c.fm.kind === kind)
-                .map((c) => (
-                  <details key={c.fm.id} className="card-item">
-                    <summary>
-                      <strong>{c.fm.name}</strong>
-                      {c.fm.always && <span className="chip">always in view</span>}
-                      {c.fm.summary && <span className="muted"> {c.fm.summary}</span>}
-                    </summary>
-                    <p className="card-body">{c.body.trim() || "(no text)"}</p>
-                  </details>
-                ))}
-            </section>
-          ))}
-          <p className="hint">
-            To change a card, edit its markdown file in the world's folder. Editing here comes
-            later.
-          </p>
-        </>
-      )}
-    </Panel>
-  );
-}
-
 function EditWorld({
   world,
+  manifest,
   onClose,
   onSaved,
 }: {
   world: WorldSummary;
+  manifest?: Manifest | undefined;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { act, busy } = useAct();
+  const { problem, busy, run } = useSave();
   const [title, setTitle] = useState(world.title);
   const [tagline, setTagline] = useState(world.tagline);
+  const [genre, setGenre] = useState((manifest?.genre ?? []).join(", "));
+  const [tone, setTone] = useState((manifest?.tone ?? []).join(", "));
+  const [perspective, setPerspective] = useState<Perspective>(
+    manifest?.perspective ?? "second-person",
+  );
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const done = await act(() =>
-      api.editWorld(world.name, { title: title.trim(), tagline: tagline.trim() }),
+    const done = await run(() =>
+      api.editWorld(world.name, {
+        title: title.trim(),
+        tagline: tagline.trim(),
+        genre: words(genre),
+        tone: words(tone),
+        perspective,
+      }),
     );
     if (done) onSaved();
   };
@@ -467,7 +444,7 @@ function EditWorld({
   return (
     <Modal titleId="edit-world-title" onClose={onClose}>
       <form onSubmit={submit}>
-        <h2 id="edit-world-title">Edit details</h2>
+        <h2 id="edit-world-title">Edit the world</h2>
         <label htmlFor="ew-title">Title</label>
         <input
           id="ew-title"
@@ -483,10 +460,40 @@ function EditWorld({
           maxLength={200}
           onChange={(e) => setTagline(e.target.value)}
         />
+        <label htmlFor="ew-genre">Genre</label>
+        <input
+          id="ew-genre"
+          value={genre}
+          onChange={(e) => setGenre(e.target.value)}
+          placeholder="gothic, sea"
+        />
+        <label htmlFor="ew-tone">Tone</label>
+        <input
+          id="ew-tone"
+          value={tone}
+          onChange={(e) => setTone(e.target.value)}
+          placeholder="cozy, eerie"
+        />
+        <p className="hint">Separate words with commas.</p>
+        <label htmlFor="ew-perspective">Told in</label>
+        <select
+          id="ew-perspective"
+          value={perspective}
+          onChange={(e) => setPerspective(e.target.value as Perspective)}
+        >
+          <option value="first-person">First person (I)</option>
+          <option value="second-person">Second person (you)</option>
+          <option value="third-person">Third person (they)</option>
+        </select>
         <p className="hint">
           The folder keeps its name, <code>{world.name}</code>. Stories already started keep the
           title they began with.
         </p>
+        {problem && (
+          <p className="error" role="alert">
+            {problem}
+          </p>
+        )}
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>
             Cancel

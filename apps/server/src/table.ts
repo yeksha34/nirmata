@@ -26,6 +26,7 @@ import {
 import type { Provider } from "@nirmata/llm";
 import { HttpError } from "./errors";
 import {
+  type CardInput,
   type Library,
   newStoryId,
   type RecentStory,
@@ -33,6 +34,7 @@ import {
   type StorySummary,
   type WorldDetail,
   type WorldFiles,
+  type WorldPatch,
   type WorldSummary,
   writeNewWorld,
 } from "./files";
@@ -257,11 +259,7 @@ export class Table {
   }
 
   /** Change a world's title or tagline. Host only. */
-  async editWorld(
-    seat: Seat,
-    name: string,
-    patch: { title?: string | undefined; tagline?: string | undefined },
-  ): Promise<WorldSummary> {
+  async editWorld(seat: Seat, name: string, patch: WorldPatch): Promise<WorldSummary> {
     requireCan(this.actor(seat), "source.edit");
     const found = await this.options.library.update(name, patch);
     if (this.open?.info.name === name) {
@@ -269,6 +267,25 @@ export class Table {
       this.pushWorld();
     }
     return found;
+  }
+
+  /**
+   * Add or change a card in a world's source, without opening it. Host only. A story already
+   * started keeps its own copy of the cards, so this changes only stories begun afterwards.
+   */
+  async saveCard(
+    seat: Seat,
+    name: string,
+    input: CardInput,
+  ): Promise<{ path: string; id: string }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.saveCard(name, input);
+  }
+
+  /** Delete one card from a world's source. Host only. */
+  async removeCard(seat: Seat, name: string, path: string): Promise<void> {
+    requireCan(this.actor(seat), "source.edit");
+    await this.options.library.removeCard(name, path);
   }
 
   /** Put a world away (its folder is renamed, not deleted). Host only; not while a reply is written. */
