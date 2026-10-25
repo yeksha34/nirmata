@@ -1,6 +1,6 @@
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultPlot, defaultSettings, type HostSettings } from "@nirmata/host";
 import {
@@ -11,7 +11,7 @@ import {
 } from "@nirmata/llm";
 import type { Hono } from "hono";
 import { afterEach } from "vitest";
-import { createApp, StoryFiles, Table, WorldFiles } from "../src";
+import { createApp, Library, StoryFiles, Table, type WorldFiles } from "../src";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -25,22 +25,29 @@ export type Json = any;
 
 export const HOST_KEY = "correct-horse-battery";
 
-/** A throwaway copy of the example world, so tests may write cards and stories freely. */
-export async function tempWorld(): Promise<string> {
+/** A throwaway library holding a copy of the example world, so tests may write freely. */
+export async function tempLibrary(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "nirmata-server-"));
-  const world = join(dir, "world");
-  await cp(join(REPO_ROOT, "worlds", "example-world"), world, {
+  const library = join(dir, "worlds");
+  await mkdir(library);
+  await cp(join(REPO_ROOT, "worlds", "example-world"), join(library, "example-world"), {
     recursive: true,
-    filter: (src) => !/[/]stories[/]/.test(src),
+    filter: (src) => !src.includes(`${sep}stories${sep}`),
   });
   cleanups.push(() => rm(dir, { recursive: true, force: true }));
-  return world;
+  return library;
+}
+
+/** Just the folder of the copied example world. */
+export async function tempWorld(): Promise<string> {
+  return join(await tempLibrary(), "example-world");
 }
 
 export interface Rig {
   app: Hono;
   table: Table;
   provider: FakeProvider;
+  library: Library;
   world: WorldFiles;
   stories: StoryFiles;
   settings: HostSettings;
@@ -53,14 +60,18 @@ export async function rig(
   },
   opts: {
     requireAdultConfirmation?: boolean;
-    root?: string;
+    /** An existing library folder to use instead of a fresh one. */
+    library?: string;
+    /** Which world to have open (default the example); "none" opens nothing. */
+    world?: string;
     settings?: Partial<HostSettings>;
     /** Put something between the table and the fake model, e.g. to hold a reply back. */
     wrap?: (inner: FakeProvider) => Provider;
   } = {},
 ): Promise<Rig> {
-  const root = opts.root ?? (await tempWorld());
-  const world = new WorldFiles(root);
+  const library = new Library(opts.library ?? (await tempLibrary()));
+  const worldName = opts.world ?? "example-world";
+  const world = library.open(worldName === "none" ? "example-world" : worldName);
   const stories = new StoryFiles(world.storiesDir);
   const provider = createFakeProvider(script);
   const settings: HostSettings = {
@@ -71,8 +82,7 @@ export async function rig(
   };
   const logs: string[] = [];
   const table = new Table({
-    world,
-    stories,
+    library,
     provider: opts.wrap ? opts.wrap(provider) : provider,
     settings,
     hostNick: "Dana",
@@ -80,12 +90,13 @@ export async function rig(
     requireAdultConfirmation: opts.requireAdultConfirmation ?? false,
     log: (m) => logs.push(m),
   });
+  if (opts.world !== "none") await table.useWorld(worldName);
   const app = createApp({ table, log: (m) => logs.push(m) });
   cleanups.push(async () => {
     table.close();
     await table.idle();
   });
-  return { app, table, provider, world, stories, settings, logs };
+  return { app, table, provider, library, world, stories, settings, logs };
 }
 
 /** A person at the table, talking to the app the way a browser would. */

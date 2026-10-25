@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import {
   createLlmJudge,
   defaultSettings,
@@ -15,8 +15,8 @@ import {
 } from "@nirmata/llm";
 
 export interface ServerConfig {
-  worldDir: string;
-  storiesDir: string;
+  /** The folder of worlds the host can open. Which one is open is chosen on screen. */
+  libraryDir: string;
   hostNick: string;
   hostKey: string;
   /** True when the host key was made up for this run rather than set by the owner. */
@@ -53,7 +53,7 @@ export function loadConfig(
   env: Readonly<Record<string, string | undefined>> = process.env,
   cwd = process.cwd(),
 ): ServerConfig {
-  const worldDir = resolve(cwd, env.NIRMATA_WORLD ?? "worlds/example-world");
+  const libraryDir = resolve(cwd, env.NIRMATA_WORLDS ?? "worlds");
   const kind = env.NIRMATA_PROVIDER ?? (env.NIRMATA_BASE_URL ? "openai" : undefined);
   const model = env.NIRMATA_MODEL;
   let provider: Provider;
@@ -84,8 +84,7 @@ export function loadConfig(
   const supplied = env.NIRMATA_HOST_KEY;
   const hostKey = supplied || randomBytes(18).toString("base64url");
   return {
-    worldDir,
-    storiesDir: join(worldDir, "stories"),
+    libraryDir,
     hostNick: env.NIRMATA_HOST_NICK ?? "Host",
     hostKey,
     generatedHostKey: !supplied,

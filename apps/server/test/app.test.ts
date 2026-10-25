@@ -291,7 +291,7 @@ describe("telling a story", () => {
     const sam = await new Client(first.app).asPlayer("Sam");
     await takeTurn(first, sam, "I act.");
 
-    const second = await rig([{ chunks: ["Later."] }], { root: first.world.root });
+    const second = await rig([{ chunks: ["Later."] }], { library: first.library.root });
     const again = await host(second);
     expect((await again.get("/api/stories")).body.stories.map((s: Json) => s.id)).toEqual([id]);
     expect((await again.post(`/api/stories/${id}/resume`)).status).toBe(200);

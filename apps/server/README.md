@@ -23,7 +23,7 @@ On start it prints the **host key**. Join as the host with it; everyone else joi
 | `NIRMATA_PROVIDER` | `openai`, `anthropic` or `demo` | `openai` if `NIRMATA_BASE_URL` is set |
 | `NIRMATA_MODEL`, `NIRMATA_BASE_URL`, `NIRMATA_API_KEY` / `ANTHROPIC_API_KEY` | the model | |
 | `NIRMATA_CONTEXT_TOKENS` | the model's context size, for the prompt budget | 4096 |
-| `NIRMATA_WORLD` | the world folder | `worlds/example-world` |
+| `NIRMATA_WORLDS` | the folder that holds your worlds (which one to play is chosen on screen) | `worlds` |
 | `NIRMATA_HOST_NICK` | the host's nickname | `Host` |
 | `NIRMATA_HOST_KEY` | proves you are the host | new each run |
 | `NIRMATA_PORT`, `NIRMATA_BIND` | where to listen | `8788`, `127.0.0.1` (this computer only; `0.0.0.0` for the LAN) |
@@ -44,10 +44,11 @@ Everything is JSON. Errors are always `{ "error": { "code", "message" } }` with 
 | `POST /api/play`, `/api/watch`, `/api/leave` | opt in to play, step back, leave |
 | `PUT /api/board/draft` `{mode,text}`; `POST /api/board/ready`, `/unready`, `/remark`, `/object`; `DELETE /api/board/remarks/:id` | the shared board |
 | `POST /api/board/close`, `/api/board/moderate` | host: close a round early; kick, mute, unmute, rename |
-| `GET /api/stories`, `POST /api/stories`, `POST /api/stories/:id/resume` | host: list, start (`202`), resume |
+| `GET /api/worlds`, `POST /api/worlds/open` `{name}` | host: list the library, open a world (the only world opens by itself) |
+| `GET /api/stories`, `POST /api/stories`, `POST /api/stories/:id/resume`, `POST /api/story/close` | host: list the open world's saved stories (with turns, players, a preview), start (`202`), continue, put the story away |
 | `POST /api/story/retry`, `/continue`, `/stop`, `/undo`, `/edit`, `/pin` | players and host |
 | `POST /api/story/goto`, `/break`, `/plot`, `/plot-points`, `/plot-points/undo`; `DELETE /api/story/plot-points/:id` | host |
-| `POST /api/story/save-as-world` `{name, title?, at?}` | host: save the story as a new world beside this one ([F-48](../../docs/features/F-48-save-story-as-world.md)); run the server on it with `NIRMATA_WORLD` |
+| `POST /api/story/save-as-world` `{name, title?, at?}` | host: save the story as a new world beside this one ([F-48](../../docs/features/F-48-save-story-as-world.md)); open it from the library |
 | `GET /api/source/world`, `GET/PUT /api/source/cards`, `DELETE /api/source/cards/:id` | the source cards: host, or players if the host allows reading |
 | `GET/PATCH /api/settings` | host |
 

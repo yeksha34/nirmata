@@ -22,7 +22,8 @@ The owner picked "a new world" from four ways to save a session (a world, a bran
 - [x] The original world, its source cards and the running story are not changed.
 - [x] A story started in the new world opens with the saved plot in its cards.
 - [x] Only the host can do it (it needs `source.edit`); a story from before story copies existed is refused in plain words.
-- [ ] A screen for it, and a way to switch the running server to the new world without a restart (Q33).
+- [x] The new world appears in the library at once and can be opened without a restart.
+- [ ] A screen for it (the web app).
 
 ## Non-goals
 - Merging a story back into its source world ([F-41](../requirements.md)).

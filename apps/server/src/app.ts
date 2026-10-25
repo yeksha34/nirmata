@@ -6,6 +6,7 @@ import { z } from "zod";
 import { describeError, HttpError } from "./errors";
 import { WORLD_NAME } from "./files";
 import type { Seat, Send, Table } from "./table";
+import { uiHandler } from "./ui";
 
 const Nick = z.string().trim().min(1).max(64);
 const Style = z.enum(FLAVOR_STYLES as [string, ...string[]]).optional();
@@ -71,6 +72,8 @@ export interface AppOptions {
   table: Table;
   /** Called with the cause of any failure the caller is only told "went wrong" about. */
   log?: ((message: string) => void) | undefined;
+  /** The folder of built screens to serve at the front door. */
+  ui?: string | undefined;
 }
 
 const PING_MS = 15_000;
@@ -83,7 +86,7 @@ const PING_MS = 15_000;
  * progress arrives on `GET /api/events` like everything else, so that every connection sees the
  * same story at the same moment.
  */
-export function createApp({ table, log }: AppOptions): Hono {
+export function createApp({ table, log, ui }: AppOptions): Hono {
   const app = new Hono();
 
   app.use("/api/*", bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json(tooBig(), 400) }));
@@ -129,6 +132,15 @@ export function createApp({ table, log }: AppOptions): Hono {
   // ---- one connection, everything that happens ----------------------------------------------
 
   app.get("/api/events", (c) => events(table, seatOf(c)));
+
+  // ---- the library of worlds (host) ----------------------------------------------------------
+
+  app.get("/api/worlds", async (c) => c.json({ worlds: await table.worlds(seatOf(c)) }));
+  app.post("/api/worlds/open", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(c, z.object({ name: z.string().min(1).max(64) }));
+    return c.json({ world: await table.openWorld(seat, body.name) });
+  });
 
   app.get("/api/state", (c) => c.json(table.snapshot(seatOf(c))));
   app.post("/api/leave", (c) => {
@@ -199,6 +211,10 @@ export function createApp({ table, log }: AppOptions): Hono {
     return ok(c);
   });
 
+  app.post("/api/story/close", (c) => {
+    table.closeStory(seatOf(c));
+    return ok(c);
+  });
   app.post("/api/story/retry", (c) => {
     table.retry(seatOf(c));
     return accepted(c);
@@ -308,6 +324,9 @@ export function createApp({ table, log }: AppOptions): Hono {
     const seat = seatOf(c);
     return c.json(table.changeSettings(seat, await json(c, SettingsPatch)));
   });
+
+  // last, so the screens never shadow the API
+  if (ui) app.get("*", uiHandler(ui));
 
   return app;
 }

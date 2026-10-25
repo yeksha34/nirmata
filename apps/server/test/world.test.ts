@@ -72,7 +72,8 @@ describe("saving a story as a world", () => {
     await dana.post("/api/story/save-as-world", { name: "second-act" });
 
     const next = await rig([{ chunks: ["A new beginning."] }], {
-      root: join(dirname(r.world.root), "second-act"),
+      library: r.library.root,
+      world: "second-act",
     });
     const host = new Client(next.app);
     await host.join("x", { hostKey: HOST_KEY });
@@ -91,7 +92,7 @@ describe("saving a story as a world", () => {
     const sam = await new Client(r.app).asPlayer("Sam");
     expect((await sam.post("/api/story/save-as-world", { name: "mine" })).status).toBe(403);
 
-    const taken = await dana.post("/api/story/save-as-world", { name: "world" });
+    const taken = await dana.post("/api/story/save-as-world", { name: "example-world" });
     expect(taken.status).toBe(409);
     expect(taken.body.error.message).toContain("already a world");
     for (const name of ["Bad Name", "x", "../escape", "UPPER", ""]) {
