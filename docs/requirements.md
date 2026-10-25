@@ -68,7 +68,8 @@ Status is the lifecycle state from [lifecycle.md](lifecycle.md); the board there
 | F-50 | M | **Guided first run**: opens on the example world, one-screen setup for a model, a visible "Play" button. **Simple / Advanced** toggle hides token budgets, raw prompts and sampler settings by default. |
 | F-51 | S | **Mobile-friendly PWA**: play and light edits on a phone over LAN. |
 | F-52 | S | **Accessibility**: keyboard-first play, focus order, 4.5:1 contrast, reduced motion, screen-reader labels. |
-| F-53 | M | **The portal.** The host's front page: carry on the latest story in any world in one click, and explore, start stories in, make, rename and put away worlds without opening one first. | A host can continue a story in another world, make a world and play in it, and put a world away, all from the page |
+| F-53 | M | **The worlds page.** The host's page behind the story window: carry on the latest story in any world in one click, and explore, start stories in, make, rename and put away worlds without opening one first. | A host can continue a story in another world, make a world and play in it, and put a world away, all from the page |
+| F-54 | M | **The story window.** The story floats over the page in a window mounted on `<body>` (a portal), for everyone at the table: drag it, resize it, minimize it to a chip, fill the page, and it remembers where it was; on a phone it is a bottom sheet. The rest of the app stays usable behind it. | The window can be moved, resized, minimized and restored by mouse and keyboard, the story keeps running meanwhile, and a player sees the same |
 
 ## Non-functional requirements
 

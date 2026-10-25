@@ -350,7 +350,7 @@ main {
   margin-bottom: 0.7em;
 }
 
-.portal,
+.worlds,
 .waiting {
   display: grid;
   gap: 0;
@@ -488,7 +488,16 @@ main {
 }
 .side-col {
   position: sticky;
-  top: 64px;
+  top: 8px;
+}
+/* the story window is narrower than a page: stack the board under the story when it is */
+@container storywin (max-width: 760px) {
+  .table {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .side-col {
+    position: static;
+  }
 }
 
 .story {
@@ -496,7 +505,7 @@ main {
 }
 .story-bar {
   position: sticky;
-  top: 56px;
+  top: 0;
   z-index: 3;
   display: flex;
   flex-wrap: wrap;
@@ -691,6 +700,126 @@ main {
   color: var(--muted);
 }
 
+/* ---- the story window (a portal on <body>) ---- */
+
+.win {
+  position: fixed;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: 0 10px 40px rgb(0 0 0 / 28%);
+}
+.win.is-maximized {
+  inset: 8px;
+  width: auto;
+  height: auto;
+}
+.win.is-sheet {
+  inset: auto 0 0 0;
+  width: auto;
+  height: 82dvh;
+  border-radius: 14px 14px 0 0;
+}
+.win.is-sheet.is-maximized {
+  inset: 0;
+  height: auto;
+  border-radius: 0;
+}
+.win-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px 4px 4px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.win-bar:active {
+  cursor: grabbing;
+}
+.is-sheet .win-bar,
+.is-maximized .win-bar {
+  cursor: default;
+}
+.win-grip {
+  min-width: 28px;
+  text-decoration: none;
+  color: var(--muted);
+  cursor: inherit;
+}
+.win-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--story-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.win-buttons {
+  display: flex;
+  gap: 2px;
+}
+.win-buttons button {
+  min-width: 34px;
+  min-height: 34px;
+  font-size: 1.1rem;
+  text-decoration: none;
+}
+.win-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 14px;
+  overflow: auto;
+  container: storywin / inline-size;
+}
+.win-body .story-bar {
+  padding-top: 10px;
+}
+.win-body .composer {
+  margin-bottom: 8px;
+}
+.win-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  min-height: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0 0 12px 0;
+  background: linear-gradient(135deg, transparent 55%, var(--muted) 55% 62%, transparent 62% 72%, var(--muted) 72% 79%, transparent 79%);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.win-chip {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 8;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: calc(100vw - 32px);
+  padding: 0.5em 1em;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.win-chip-title {
+  overflow: hidden;
+  font-family: var(--story-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---- dialog and toasts ---- */
 
 .dialog {
@@ -712,14 +841,20 @@ main {
   margin-top: 1.2em;
 }
 
+/* bottom left: the story window's chip lives bottom right */
 .toasts {
   position: fixed;
-  right: 16px;
+  left: 16px;
   bottom: 16px;
   z-index: 20;
   display: grid;
   gap: 8px;
   width: min(92vw, 24rem);
+}
+@media (max-width: 640px) {
+  .toasts {
+    bottom: 72px;
+  }
 }
 .toast {
   display: flex;
@@ -745,20 +880,8 @@ main {
 /* ---- small screens ---- */
 
 @media (max-width: 860px) {
-  .table {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .side-col {
-    position: static;
-  }
-  .story-bar {
-    top: 52px;
-  }
   main {
     padding: 12px;
-  }
-  .composer {
-    bottom: 8px;
   }
   .story-row {
     flex-direction: column;

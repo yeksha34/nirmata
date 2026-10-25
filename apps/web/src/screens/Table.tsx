@@ -29,18 +29,21 @@ function StoryPane() {
   const endRef = useRef<HTMLDivElement>(null);
   const stuck = useRef(true);
 
-  // follow the story as it is written, unless the reader has scrolled up to re-read
+  // follow the story as it is written, unless the reader has scrolled up to re-read; what
+  // scrolls is the story window's body
   useEffect(() => {
+    const scroller = endRef.current?.closest(".win-body");
+    if (!scroller) return;
     const onScroll = () => {
-      const gap = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
-      stuck.current = gap < 160;
+      stuck.current = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop < 160;
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => scroller.removeEventListener("scroll", onScroll);
   }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll whenever the story grows
   useEffect(() => {
-    if (stuck.current) endRef.current?.scrollIntoView({ block: "end" });
+    const scroller = endRef.current?.closest(".win-body");
+    if (stuck.current && scroller) scroller.scrollTop = scroller.scrollHeight;
   }, [turns.length, state.streaming]);
 
   if (!story) return null;

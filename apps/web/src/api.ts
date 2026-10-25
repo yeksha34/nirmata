@@ -108,7 +108,7 @@ export const api = {
     post<{ world: WorldInfo }>("/api/worlds/open", { name }).then((r) => r.world),
   closeStory: () => post("/api/story/close"),
 
-  // the portal: every world, without opening any of them
+  // the worlds page: every world, without opening any of them
   recent: () => get<{ stories: RecentStory[] }>("/api/recent").then((r) => r.stories),
   worldDetail: (name: string) => get<WorldDetail>(`/api/worlds/${encodeURIComponent(name)}`),
   createWorld: (args: { title: string; tagline?: string; premise?: string }) =>

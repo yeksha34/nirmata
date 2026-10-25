@@ -196,13 +196,19 @@ describe("which screen", () => {
   const host = { nick: "Dana", seat: "host" as const, muted: false, host: true };
   const player = { nick: "Sam", seat: "player" as const, muted: false, host: false };
 
-  it("sends the host to the portal until a story is open, and everyone to the story after", () => {
-    expect(screenFor({ ...initialState, you: host })).toBe("portal");
+  it("gives the host the worlds page, with or without a story, which floats over it", () => {
+    expect(screenFor({ ...initialState, you: host })).toBe("worlds");
     expect(
       screenFor({ ...initialState, you: host, world: { name: "w", title: "W", tagline: "" } }),
-    ).toBe("portal");
-    expect(screenFor({ ...initialState, you: host, story: story([]) })).toBe("table");
-    expect(screenFor({ ...initialState, you: player, story: story([]) })).toBe("table");
+    ).toBe("worlds");
+    expect(screenFor({ ...initialState, you: host, story: story([]) })).toBe("worlds");
+  });
+
+  it("keeps everyone else on the waiting page behind the story window", () => {
+    const world = { name: "w", title: "W", tagline: "" };
+    expect(screenFor({ ...initialState, you: player, world, story: story([]) })).toBe(
+      "waiting-story",
+    );
   });
 
   it("makes everyone else wait, saying what for", () => {

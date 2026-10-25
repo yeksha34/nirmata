@@ -1,4 +1,4 @@
-# F-53: The portal - pick up a story, explore, make and manage worlds
+# F-53: The worlds page - pick up a story, explore, make and manage worlds
 
 | | |
 |---|---|
@@ -31,10 +31,10 @@ One front door for the host. Open the app and you see the story you were in, one
 
 ## Non-goals
 - Editing cards on screen, restoring a put-away world from the app, deleting a world for good (see Q34).
-- Showing the portal to anyone but the host. Players and spectators still wait for the story.
+- Showing this page to anyone but the host. Players and spectators see who is at the table behind the story window.
 
 ## Design
-`Library` (`apps/server/src/files.ts`) gains `recent`, `detail`, `create`, `update`, `archive` and one cached `StoryFiles` per world. `Table` wraps them with host checks, plus `startStoryIn` and `resumeStoryIn`, which open the world if needed and then use the existing start and resume. Routes: `GET /api/recent`, `GET/PATCH /api/worlds/:name`, `POST /api/worlds`, `POST /api/worlds/:name/archive`, `POST /api/worlds/:name/stories`, `POST /api/worlds/:name/stories/:id/resume`. In `apps/web`, `screens/Portal.tsx` replaces the old library screen; it keeps its own page state (home or one world) and has no router.
+`Library` (`apps/server/src/files.ts`) gains `recent`, `detail`, `create`, `update`, `archive` and one cached `StoryFiles` per world. `Table` wraps them with host checks, plus `startStoryIn` and `resumeStoryIn`, which open the world if needed and then use the existing start and resume. Routes: `GET /api/recent`, `GET/PATCH /api/worlds/:name`, `POST /api/worlds`, `POST /api/worlds/:name/archive`, `POST /api/worlds/:name/stories`, `POST /api/worlds/:name/stories/:id/resume`. In `apps/web`, `screens/Worlds.tsx` replaces the old library screen; it keeps its own page state (home or one world) and has no router.
 
 ## Verification log
 | Date | What was run | Result |
@@ -46,4 +46,4 @@ One front door for the host. Open the app and you see the story you were in, one
 ## History
 | Date | Change |
 |---|---|
-| 2026-10-25 | Specified from the owner's note ("a portal for continuing a story so the rest of the worlds can be explored, created, managed"); built |
+| 2026-10-25 | Specified from the owner's note about a "portal" for continuing a story and exploring, creating and managing the other worlds; built as a landing page. The owner then explained that a portal is a floating window (see [F-54](F-54-story-window.md)); this page was renamed from "portal" to "worlds page" and now sits behind that window. Starting or continuing another story waits while one is open |
