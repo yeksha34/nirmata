@@ -5,17 +5,17 @@
 | State | Building |
 | Priority | Must |
 | Owner | unassigned |
-| Branch | `feat/F-30-adventure-host-core` |
+| Branch | `feat/F-30-story-host-core` |
 | Target tag | v0.2.0 |
 
 ## Value
-Cards stay true to the story: once something affecting a character, place or arc has happened in the adventure, that plot point appears on the card, so it is recalled whenever the card is. It is the adventure's long-term memory, visible and editable.
+Cards stay true to the story: once something affecting a character, place or arc has happened in the story, that plot point appears on the card, so it is recalled whenever the card is. It is the story's long-term memory, visible and editable.
 
 ## Acceptance criteria
 - [x] Every few player turns the host extracts plot points (past tense, one sentence, only things that happened) for existing cards and saves them in one event.
 - [x] A card's plot points appear under it in later prompts, newest eight, when the card is in context.
 - [x] The extractor sees the transcript and only the names and kinds of candidate cards, never summaries, bodies or secrets, and cannot attach points to unknown cards.
-- [x] The world's cards are never modified; points are listed in `plot/<card-id>.md` in the adventure.
+- [x] The world's cards are never modified; points are listed in `plot/<card-id>.md` in the story.
 - [x] **Undo:** undoing, retrying, editing or branching removes the points the removed turns produced; a single point can be revoked; the latest batch can be undone; a revoked point is not re-extracted.
 - [x] The player can add a point to a card by hand.
 - [x] An extraction failure never breaks play and is retried later.

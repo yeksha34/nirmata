@@ -1,4 +1,4 @@
-import { chaptersOf, contextTurnsOf, pathTo, projectAdventure, turnsOf } from "@nirmata/core";
+import { chaptersOf, contextTurnsOf, pathTo, projectStory, turnsOf } from "@nirmata/core";
 import type { GenerateRequest } from "@nirmata/llm";
 import { describe, expect, it } from "vitest";
 import { lastContent, pick, rig, run, systemContent } from "./helpers";
@@ -123,7 +123,7 @@ describe("the context window shifts live into the chapter", () => {
   it("projects the chapter to a file that grows with the story", async () => {
     const r = rig(play, { settings: { budget: TIGHT } });
     await turns(r, 8);
-    const files = projectAdventure(r.session.state);
+    const files = projectStory(r.session.state);
     const chapter = files.find((f) => f.path.startsWith("chapters/chapter-01"));
     expect(chapter?.content).toContain("> **Do:** Marrow step 1");
     expect(systemContent(r.provider.requests.at(-1))).toContain("game master");

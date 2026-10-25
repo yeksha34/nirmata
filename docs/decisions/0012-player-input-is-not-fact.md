@@ -4,7 +4,7 @@
 - Related: [F-45](../features/F-45-player-input-is-not-fact.md), [ADR-0010](0010-adults-only.md)
 
 ## Context
-The rules checker (the "gatekeeper") exists to keep generated text within the world's rules. The owner clarified its place: it is **pipelined after the text is generated**; it **does not sanitise the player's input**; and **if the input is invalid, it should be treated as untruth when generating the continuation**. (The owner also noted that "story" is the apter word than "adventure".)
+The rules checker (the "gatekeeper") exists to keep generated text within the world's rules. The owner clarified its place: it is **pipelined after the text is generated**; it **does not sanitise the player's input**; and **if the input is invalid, it should be treated as untruth when generating the continuation**. (The owner also noted that "story" is the apter word than "story".)
 
 ## Decision
 1. **The judge sees only host-written text,** after it is generated. It never filters, rewrites or rejects what a player types.
@@ -23,4 +23,4 @@ The rules checker (the "gatekeeper") exists to keep generated text within the wo
 - **A second model call to classify input as valid or not.** More cost, and it would be the sanitising step the owner ruled out.
 
 ## Terminology
-User-facing text now says **story** ("Only the host can start a story."). Code identifiers still say `Adventure*` and the folder is `adventures/`; see [glossary](../glossary.md) and TD-009.
+A run in a world is a **story**. User-facing text, code identifiers, folders and action names all say story (renamed from "adventure" on 2026-10-25); see the [glossary](../glossary.md).

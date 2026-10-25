@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  type AdventureEvent,
   applyEvent,
   CURRENT_SITUATION_ID,
   cardsWithPlot,
@@ -9,8 +8,9 @@ import {
   newEvent,
   plotEvent,
   plotPointsOf,
-  projectAdventure,
+  projectStory,
   replay,
+  type StoryEvent,
   undoLastPlotEvent,
   unplotEvent,
   withCurrentSituation,
@@ -18,9 +18,9 @@ import {
 import { card } from "./helpers";
 
 const T = "2026-10-25T10:00:00Z";
-const p = (id: string, parentId: string | null): AdventureEvent =>
+const p = (id: string, parentId: string | null): StoryEvent =>
   newEvent({ id, parentId, t: T, kind: "player", mode: "do", text: id });
-const h = (id: string, parentId: string | null): AdventureEvent =>
+const h = (id: string, parentId: string | null): StoryEvent =>
   newEvent({ id, parentId, t: T, kind: "host", text: id.toUpperCase() });
 const point = (n: number, cardId = "char.marrow") => ({
   id: `e:${n}`,
@@ -118,7 +118,7 @@ describe("revokes surviving undo", () => {
     const back = applyEvent(revoked, gotoEvent("g", T, "h2"));
     expect(undoLastPlotEvent(back, "u", T)).toBeDefined();
     expect(undoLastPlotEvent(back, "u", T, { revokesSurviveUndo: true })).toBeUndefined();
-    expect(projectAdventure(back).map((f) => f.path)).toEqual(["plot/char.marrow.md"]);
-    expect(projectAdventure(back, { revokesSurviveUndo: true })).toEqual([]);
+    expect(projectStory(back).map((f) => f.path)).toEqual(["plot/char.marrow.md"]);
+    expect(projectStory(back, { revokesSurviveUndo: true })).toEqual([]);
   });
 });

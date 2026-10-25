@@ -9,7 +9,7 @@ expert can still reach every dial. Each principle ends in something testable.
 4. **Templates for every card kind** with example text in grey, so a blank page is never the starting point.
 5. **Every turn is reversible.** Retry, Edit, Undo, Continue are always visible on the latest turn and in a menu on older ones (AI Dungeon's best idea).
 6. **Show why.** When a lore card appears in context, say which keyword triggered it. When a rule flags text, show the rule's `Check` question. Test: no card or rule acts invisibly.
-7. **Never lose work.** Autosave to disk, append-only adventure log, clear "saved" indicator. Destructive actions are undoable or confirmed with the item named.
+7. **Never lose work.** Autosave to disk, append-only story log, clear "saved" indicator. Destructive actions are undoable or confirmed with the item named.
 8. **Plain-language errors.** "Can't reach your model at http://localhost:5001. Is KoboldCpp running?" beats `ECONNREFUSED`. Every error says what to try.
 9. **Keyboard and command palette.** `Ctrl/Cmd+K` jumps to any card, world or setting. Play is fully keyboard-driven (Enter send, `Ctrl+Z` undo, `Ctrl+R` retry).
 10. **Cards look like cards.** Portrait, title, tagline, tags (Janitor-style browsing) in the library; consistent card chrome everywhere.

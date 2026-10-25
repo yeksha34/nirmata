@@ -5,11 +5,11 @@
 | State | Building |
 | Priority | Must |
 | Owner | unassigned |
-| Branch | `feat/F-30-adventure-host-core` |
+| Branch | `feat/F-30-story-host-core` |
 | Target tag | v0.2.0 |
 
 ## Value
-Long adventures stay playable without any summarising: the prompt holds the recent turns that fit, and everything older is kept, word for word, as the adventure's chapter.
+Long stories stay playable without any summarising: the prompt holds the recent turns that fit, and everything older is kept, word for word, as the story's chapter.
 
 ## Acceptance criteria
 - [x] When a turn no longer fits the prompt, the reply written with that prompt records it as outside the window (`shifted`), and it never re-enters the prompt, even if the budget grows.
@@ -23,7 +23,7 @@ Long adventures stay playable without any summarising: the prompt holds the rece
 ## Non-goals
 - Deciding where chapters break automatically (decided later).
 - Summaries of any kind.
-- Writing files to disk (the server does that from `projectAdventure`).
+- Writing files to disk (the server does that from `projectStory`).
 
 ## Design
 [ADR-0008](../decisions/0008-window-shift-and-plot-points.md). Pure parts in `packages/core` (cursor, chapters, projection); the host records the cursor on each reply.
@@ -32,7 +32,7 @@ Long adventures stay playable without any summarising: the prompt holds the rece
 | Date | What was run | Result |
 |---|---|---|
 | 2026-10-25 | `pnpm exec vitest run`, `tsc -b`, `biome check packages` | 207 tests pass at the time (240 after F-43) (core 81, llm 48, host 78). Window: cursor validated and monotonic, chapters equal the turns outside the window and window turns plus chapter turns equal the transcript, breaks, undo, retry, budget growth never re-admits a turn, no extra model call per turn. Fake provider only. |
-| open | Files on disk | The projection is pure data and tested; writing it to `adventures/<id>/` is the server's job and is not built yet. |
+| open | Files on disk | The projection is pure data and tested; writing it to `stories/<id>/` is the server's job and is not built yet. |
 
 ## History
 | Date | Change |

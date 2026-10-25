@@ -1,10 +1,10 @@
 import { stringify } from "yaml";
-import type { AdventureState } from "./events";
+import type { StoryState } from "./events";
 import { plotPointsOf } from "./plot";
 import { chaptersOf } from "./window";
 
 export interface ProjectedFile {
-  /** Relative to the adventure's folder, forward slashes. */
+  /** Relative to the story's folder, forward slashes. */
   path: string;
   content: string;
 }
@@ -30,15 +30,15 @@ function frontmatter(data: Record<string, unknown>): string {
 }
 
 /**
- * The files an adventure's current branch should have on disk: one markdown file per chapter (the
+ * The files a story's current branch should have on disk: one markdown file per chapter (the
  * turns that have left the context window, verbatim), an index of them, and one file per card
  * that has plot points. A pure function of the event log, so the server can rewrite them after
  * every change (deleting any it no longer lists) and nothing is lost if they are removed.
  *
  * `cardNames` lets plot files show a card's name instead of only its id.
  */
-export function projectAdventure(
-  state: AdventureState,
+export function projectStory(
+  state: StoryState,
   options: {
     at?: string | null;
     cardNames?: ReadonlyMap<string, string>;

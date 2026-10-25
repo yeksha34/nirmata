@@ -6,7 +6,7 @@ import { lastContent, pick, rig, ruleCard, run, systemContent, types } from "./h
 const reply = (...chunks: string[]) => ({ chunks });
 const player: Actor = { id: "guest", role: "player" };
 
-describe("an adventure begins by duplicating the source cards", () => {
+describe("a story begins by duplicating the source cards", () => {
   it("saves a `begin` event, first, holding a copy of every source card", async () => {
     const r = rig(reply("Dusk."));
     const events = await run(r.session.start());
@@ -33,7 +33,7 @@ describe("an adventure begins by duplicating the source cards", () => {
     const r = rig([reply("Opening."), reply("Marrow answers.")]);
     await run(r.session.start());
 
-    // someone edits the source cards after the adventure began
+    // someone edits the source cards after the story began
     const marrow = r.cards.find((c) => c.fm.id === "char.marrow");
     if (marrow) marrow.body = "# Marrow\n\nREWRITTEN IN THE SOURCE.";
     r.cards.splice(0, r.cards.length, ...r.cards.filter((c) => c.fm.id !== "lore.the-fog"));
@@ -45,13 +45,13 @@ describe("an adventure begins by duplicating the source cards", () => {
     expect(system).toContain("repeats the last thing said aloud"); // the card removed from the source is still there
   });
 
-  it("gives a second adventure the source as it is then, independent of the first", async () => {
+  it("gives a second story the source as it is then, independent of the first", async () => {
     const first = rig(reply("One."));
     await run(first.session.start());
     const marrow = first.cards.find((c) => c.fm.id === "char.marrow");
-    if (marrow) marrow.body = "# Marrow\n\nEDITED BEFORE THE SECOND ADVENTURE.";
+    if (marrow) marrow.body = "# Marrow\n\nEDITED BEFORE THE SECOND STORY.";
 
-    // a second adventure from the (now edited) source
+    // a second story from the (now edited) source
     const second = rig(reply("Two."));
     const copy = second.cards.find((c) => c.fm.id === "char.marrow");
     if (copy && marrow) copy.body = marrow.body;
@@ -144,7 +144,7 @@ describe("an adventure begins by duplicating the source cards", () => {
 });
 
 describe("roles", () => {
-  /** A host starts the adventure; the player's session resumes it with no source. */
+  /** A host starts the story; the player's session resumes it with no source. */
   async function started() {
     const host = rig([reply("Opening."), reply("A reply."), reply("Another."), reply("More.")], {
       settings: { plot: { ...defaultPlot, enabled: true, everyPlayerTurns: 2 } },
@@ -160,7 +160,7 @@ describe("roles", () => {
     return { host, guest };
   }
 
-  it("a player cannot start an adventure, or begin one by acting first", async () => {
+  it("a player cannot start a story, or begin one by acting first", async () => {
     const r = rig(reply("x"), { actor: player });
     const start = await run(r.session.start());
     expect(pick(start, "error")[0]).toMatchObject({
@@ -189,7 +189,7 @@ describe("roles", () => {
     expect(await guest.session.undo()).toBe(true);
   });
 
-  it("a player cannot reshape the adventure, and nothing is saved when refused", async () => {
+  it("a player cannot reshape the story, and nothing is saved when refused", async () => {
     const { guest } = await started();
     await run(guest.session.submit({ mode: "do", text: "I look around." }));
     const saved = guest.sink.all.length;

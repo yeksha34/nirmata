@@ -2,7 +2,7 @@
   "name": "nirmata",
   "private": true,
   "version": "0.1.1",
-  "description": "Build worlds, then host adventurers in them.",
+  "description": "Build worlds, then host stories in them.",
   "packageManager": "pnpm@12.15.0",
   "engines": { "node": ">=22" },
   "scripts": {

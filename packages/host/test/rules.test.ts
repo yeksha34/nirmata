@@ -25,7 +25,7 @@ describe("rulesToCheck", () => {
     expect(rulesToCheck(all, "off")).toEqual([]);
   });
 
-  it("finds the shipped example world's adventure rule", () => {
+  it("finds the shipped example world's story rule", () => {
     const { cards } = loadWorld("example-world");
     expect(rulesToCheck(cards, "all").map((r) => r.fm.id)).toEqual(["rule.host-tone"]);
   });

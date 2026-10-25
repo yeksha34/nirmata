@@ -3,10 +3,10 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   type Actor,
-  type AdventureEvent,
   type Card,
   parseCard,
   parseWorldManifest,
+  type StoryEvent,
   type WorldManifest,
 } from "@nirmata/core";
 import {
@@ -16,13 +16,13 @@ import {
   type GenerateRequest,
 } from "@nirmata/llm";
 import {
-  AdventureSession,
   defaultPlot,
   defaultSettings,
   type EventSink,
   type HostEvent,
   type HostSettings,
   type RuleJudge,
+  StorySession,
 } from "../src";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -62,7 +62,7 @@ export function ruleCard(id: string, severity: "must" | "should", check: string)
       keywords: [],
       summary: "",
       always: false,
-      scope: "adventure",
+      scope: "story",
       severity,
     } as Card["fm"],
     body: `# ${id}\n\n**Rule:** ${id} must hold.\n\n**Check:** ${check}\n`,
@@ -71,11 +71,11 @@ export function ruleCard(id: string, severity: "must" | "should", check: string)
 
 export interface MemorySink extends EventSink {
   /** The story's events: everything saved except the `begin` copy of the source cards. */
-  events: AdventureEvent[];
+  events: StoryEvent[];
   /** Everything saved, `begin` included. Use this to resume. */
-  all: AdventureEvent[];
+  all: StoryEvent[];
   /** The `begin` event, once saved. */
-  begin?: AdventureEvent;
+  begin?: StoryEvent;
   failNext?: boolean;
 }
 
@@ -97,7 +97,7 @@ export function memorySink(): MemorySink {
 }
 
 export interface Rig {
-  session: AdventureSession;
+  session: StorySession;
   provider: FakeProvider;
   sink: MemorySink;
   settings: HostSettings;
@@ -113,9 +113,9 @@ export function rig(
     filterCards?: (card: Card) => boolean;
     judge?: RuleJudge;
     settings?: Partial<HostSettings>;
-    resumeFrom?: AdventureEvent[];
+    resumeFrom?: StoryEvent[];
     sink?: MemorySink;
-    /** Distinguishes ids when two sessions share one saved adventure. */
+    /** Distinguishes ids when two sessions share one saved story. */
     idPrefix?: string;
     /** Who the session acts for; defaults to a host. */
     actor?: Actor;
@@ -134,7 +134,7 @@ export function rig(
     ...opts.settings,
   };
   let n = 0;
-  const session = AdventureSession.create(
+  const session = StorySession.create(
     {
       ...(opts.withoutSource ? {} : { world, cards }),
       ...(opts.actor ? { actor: opts.actor } : {}),

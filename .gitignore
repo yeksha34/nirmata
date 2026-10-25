@@ -25,8 +25,8 @@ services/rules-gatekeeper/data/dataset.jsonl
 services/rules-gatekeeper/data/rule_groups.json
 services/rules-gatekeeper/data/rule_scopes.json
 
-# adventure saves are personal by default; remove this line to version them
-worlds/*/adventures/*
-!worlds/*/adventures/.gitkeep
+# story saves are personal by default; remove this line to version them
+worlds/*/stories/*
+!worlds/*/stories/.gitkeep
 
 .claude/worktrees/

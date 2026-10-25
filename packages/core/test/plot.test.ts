@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  type AdventureEvent,
   applyEvent,
   buildContext,
   cardsWithPlot,
@@ -12,8 +11,9 @@ import {
   plotCursor,
   plotEvent,
   plotPointsOf,
-  projectAdventure,
+  projectStory,
   replay,
+  type StoryEvent,
   turnsSincePlot,
   undoEvent,
   undoLastPlotEvent,
@@ -22,9 +22,9 @@ import {
 import { card } from "./helpers";
 
 const T = "2026-10-25T10:00:00Z";
-const p = (id: string, parentId: string | null, text: string): AdventureEvent =>
+const p = (id: string, parentId: string | null, text: string): StoryEvent =>
   newEvent({ id, parentId, t: T, kind: "player", mode: "do", text });
-const h = (id: string, parentId: string | null, text: string): AdventureEvent =>
+const h = (id: string, parentId: string | null, text: string): StoryEvent =>
   newEvent({ id, parentId, t: T, kind: "host", text });
 
 /** p1 h1 p2 h2, then a plot event covering through h2 with two points. */
@@ -113,7 +113,7 @@ describe("undoing plot points", () => {
   it("undoing the turn that produced them removes them, and going forward again restores them", () => {
     const { state } = withPlot();
     const undo = undoEvent(state, "u", T);
-    const after = applyEvent(state, undo as AdventureEvent);
+    const after = applyEvent(state, undo as StoryEvent);
     expect(plotPointsOf(after)).toEqual([]);
     expect(plotCursor(after)).toBeNull();
     expect(plotPointsOf(applyEvent(after, gotoEvent("g", T, "pl1")))).toHaveLength(2);
@@ -143,10 +143,10 @@ describe("undoing plot points", () => {
     );
     expect(plotPointsOf(second)).toHaveLength(3);
 
-    const one = applyEvent(second, undoLastPlotEvent(second, "u1", T) as AdventureEvent);
+    const one = applyEvent(second, undoLastPlotEvent(second, "u1", T) as StoryEvent);
     expect(plotPointsOf(one).map((x) => x.id)).toEqual(["pl1:0", "pl1:1"]);
 
-    const two = applyEvent(one, undoLastPlotEvent(one, "u2", T) as AdventureEvent);
+    const two = applyEvent(one, undoLastPlotEvent(one, "u2", T) as StoryEvent);
     expect(plotPointsOf(two)).toEqual([]);
     expect(undoLastPlotEvent(two, "u3", T)).toBeUndefined();
   });
@@ -237,7 +237,7 @@ describe("cardsWithPlot", () => {
 describe("plot files", () => {
   it("lists a file per card with its points, readable by the card parser", () => {
     const { state } = withPlot();
-    const files = projectAdventure(state, { cardNames: new Map([["char.marrow", "Marrow"]]) });
+    const files = projectStory(state, { cardNames: new Map([["char.marrow", "Marrow"]]) });
     expect(files.map((f) => f.path)).toEqual(["plot/arc.fourth-light.md", "plot/char.marrow.md"]);
     const marrow = files.find((f) => f.path.endsWith("char.marrow.md"));
     expect(marrow?.content).toContain("# Marrow\n\n- Marrow opened the harbour door.\n");
@@ -251,7 +251,7 @@ describe("plot files", () => {
       state,
       unplotEvent(state, { id: "u", t: T, revokes: ["pl1:0", "pl1:1"] }),
     );
-    expect(projectAdventure(revoked)).toEqual([]);
-    expect(projectAdventure(state, { at: "h2" })).toEqual([]);
+    expect(projectStory(revoked)).toEqual([]);
+    expect(projectStory(state, { at: "h2" })).toEqual([]);
   });
 });

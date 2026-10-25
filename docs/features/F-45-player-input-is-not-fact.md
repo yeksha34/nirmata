@@ -5,7 +5,7 @@
 | State | Building |
 | Priority | Must |
 | Owner | unassigned |
-| Branch | `feat/F-30-adventure-host-core` |
+| Branch | `feat/F-30-story-host-core` |
 | Target tag | v0.2.0 |
 
 ## Value

@@ -1,16 +1,16 @@
 import type {
-  AdventureEvent,
-  AdventureState,
   BuiltContext,
   Card,
   PlayerMode,
   PlotPoint,
+  StoryEvent,
+  StoryState,
 } from "@nirmata/core";
 import type { SamplerParams } from "@nirmata/llm";
 
 /** Where events are persisted. The server writes `events.jsonl`; tests keep an array. */
 export interface EventSink {
-  append(event: AdventureEvent): Promise<void>;
+  append(event: StoryEvent): Promise<void>;
 }
 
 /** The only sources of ids and time, so a session is replayable and testable. */
@@ -85,28 +85,28 @@ export function defaultSettings(model: string, maxTokens = 4096): HostSettings {
 export type HostEvent =
   /** The exact prompt inputs for this attempt: feeds the "why is this card here" drawer. */
   | { type: "context"; context: BuiltContext }
-  /** The adventure took its copy of the source cards. Always the first event of a new one. */
-  | { type: "begun"; event: AdventureEvent; cards: number }
+  /** The story took its copy of the source cards. Always the first event of a new one. */
+  | { type: "begun"; event: StoryEvent; cards: number }
   /** The player's input was saved. */
-  | { type: "player"; event: AdventureEvent }
+  | { type: "player"; event: StoryEvent }
   /** A live token chunk of the reply being written. */
   | { type: "text"; text: string }
   /** A complete reply was saved. Flagged replies carry `violations`. */
-  | { type: "reply"; event: AdventureEvent; finishReason: string; violations: Violation[] }
+  | { type: "reply"; event: StoryEvent; finishReason: string; violations: Violation[] }
   | { type: "rule-violation"; violations: Violation[]; willRetry: boolean }
   /** A rewrite is starting: clear the text streamed so far. */
   | { type: "attempt"; n: number }
   /** The recent turns are being read for plot points. */
   | { type: "plotting"; turns: number }
   /** Plot points were saved (possibly none); `points` carry the ids used to revoke them. */
-  | { type: "plot"; event: AdventureEvent; points: PlotPoint[] }
+  | { type: "plot"; event: StoryEvent; points: PlotPoint[] }
   /** Something worth showing that did not stop the turn. */
   | { type: "warning"; message: string }
   /** The caller stopped generation; `partial` was not saved. */
   | { type: "stopped"; partial: string }
   | { type: "error"; message: string; code: string; recoverable: boolean; cause?: unknown }
   /** Always the last event of a turn. */
-  | { type: "done"; state: AdventureState };
+  | { type: "done"; state: StoryState };
 
 export interface TurnInput {
   mode: PlayerMode;

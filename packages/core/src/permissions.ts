@@ -1,6 +1,6 @@
 /**
  * Who may do what (ADR-0009). Two roles:
- * - `host`: whoever runs the adventure or owns the world. In solo play that is the player too.
+ * - `host`: whoever runs the story or owns the world. In solo play that is the player too.
  * - `player`: everyone else taking part.
  * The caller (the server) decides who holds which role; this module only answers questions.
  */
@@ -16,13 +16,13 @@ const ALLOWED = {
   /** Edit or remove the world's source cards. Never a player. */
   "source.edit": ["host"],
   /** Take the copy of the source cards and begin a story. */
-  "adventure.start": ["host"],
-  "adventure.play": ["host", "player"],
-  "adventure.undo": ["host", "player"],
-  "adventure.edit-turn": ["host", "player"],
-  "adventure.pin": ["host", "player"],
+  "story.start": ["host"],
+  "story.play": ["host", "player"],
+  "story.undo": ["host", "player"],
+  "story.edit-turn": ["host", "player"],
+  "story.pin": ["host", "player"],
   /** Jump to another branch of the story. */
-  "adventure.branch": ["host"],
+  "story.branch": ["host"],
   "plot.extract": ["host"],
   "plot.add": ["host"],
   "plot.revoke": ["host"],
@@ -35,12 +35,12 @@ export const ACTIONS = Object.keys(ALLOWED) as Action[];
 
 const REFUSAL: Record<Action, string> = {
   "source.edit": "Only the host can edit the source cards.",
-  "adventure.start": "Only the host can start a story.",
-  "adventure.play": "You can't take part in this story.",
-  "adventure.undo": "You can't undo in this story.",
-  "adventure.edit-turn": "You can't edit turns in this story.",
-  "adventure.pin": "You can't pin facts in this story.",
-  "adventure.branch": "Only the host can jump to another branch of the story.",
+  "story.start": "Only the host can start a story.",
+  "story.play": "You can't take part in this story.",
+  "story.undo": "You can't undo in this story.",
+  "story.edit-turn": "You can't edit turns in this story.",
+  "story.pin": "You can't pin facts in this story.",
+  "story.branch": "Only the host can jump to another branch of the story.",
   "plot.extract": "Only the host can update plot points.",
   "plot.add": "Only the host can add plot points.",
   "plot.revoke": "Only the host can take back plot points.",

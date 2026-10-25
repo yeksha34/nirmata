@@ -66,9 +66,9 @@ export class SourceCards {
     return this.backend.cards();
   }
 
-  /** What a new adventure copies: the world manifest and every card. Host only. */
+  /** What a new story copies: the world manifest and every card. Host only. */
   async snapshot(actor: Actor): Promise<{ world: WorldManifest; cards: Card[] }> {
-    requireCan(actor, "adventure.start");
+    requireCan(actor, "story.start");
     const [world, cards] = await Promise.all([this.backend.world(), this.backend.cards()]);
     return { world, cards };
   }

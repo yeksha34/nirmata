@@ -89,7 +89,7 @@ describe("buildContext", () => {
 
   it("keeps rule cards in scope and separates must from should", () => {
     const cards = [
-      card("rule.b", { kind: "rule", severity: "should", scope: "adventure" }, "Be kind."),
+      card("rule.b", { kind: "rule", severity: "should", scope: "story" }, "Be kind."),
       card("rule.a", { kind: "rule", severity: "must", scope: "both" }, "Never gore."),
       card("rule.chapter", { kind: "rule", scope: "chapter" }, "Chapter only."),
     ];

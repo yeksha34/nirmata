@@ -21,11 +21,10 @@ Severity: **S1** data loss / security / cannot start. **S2** feature unusable. *
 | TD-005 | Studio | `electron/` shell expects `npm install` for ~460 MB of dependencies and is not installed here. [ADR-0006](decisions/0006-stack-revision.md) drops the desktop shell from the first releases. | Delete when the React UI replaces the Studio. |
 | TD-006 | tools/*.py | Python utilities still mention the old `stories-repo` / Mentor names in comments and help text; `rewrite_chapter_mistral.py` is single-provider. | Rename on touch; fold into `packages/llm` where they remain useful. |
 | TD-008 | Server (future) | A story's `begin` event, and so its `events.jsonl`, contains every source card **including host-only Secrets**. The server must never send the log or card copies to players; spectators and players get turns, chapters and plot points. Reading the source cards is a host setting (`playersMayRead`, off by default; allowed = full cards, Secrets included). | Carry into F-37 and the server design; see ADR-0009, ADR-0011. |
-| TD-009 | Terminology | Users say **story**; the code and folders still say `Adventure*`, `adventures/`, `adventure.*` actions. User-facing messages are already "story". | Rename the identifiers in one mechanical pass before the server exists (cheapest now). See the [glossary](glossary.md). |
 | TD-007 | Terminology | Code still says "story" where Nirmata says "world" (`story_paths.py`, `.active_story.json`, `listStories`). | Rename when the Studio is rebuilt; do not rename in the baseline copy (risk without tests). |
 
 ## Closed
 
 | ID | Closed | Summary | Fix |
 |---|---|---|---|
-| (none yet) | | | |
+| TD-009 | 2026-10-25 | Code said `Adventure*` while users say story. | Renamed to `Story*` everywhere: identifiers, `stories/` folders, `story.*` action names, the `story` rule scope, docs and the skill. |

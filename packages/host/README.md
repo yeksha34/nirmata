@@ -1,9 +1,9 @@
 # @nirmata/host
 
-The game master. Runs an adventure on top of [`@nirmata/core`](../core/README.md) (prompt building, event tree) and [`@nirmata/llm`](../llm/README.md) (models). It does no I/O of its own: saving goes through an `EventSink`, ids and time through `Ports`, so sessions are testable and replayable.
+The game master. Runs a story on top of [`@nirmata/core`](../core/README.md) (prompt building, event tree) and [`@nirmata/llm`](../llm/README.md) (models). It does no I/O of its own: saving goes through an `EventSink`, ids and time through `Ports`, so sessions are testable and replayable.
 
 ```ts
-const session = AdventureSession.create({ world, cards, provider, sink, settings, judge, actor });
+const session = StorySession.create({ world, cards, provider, sink, settings, judge, actor });
 
 for await (const ev of session.start({ arcId: "arc.fourth-light" })) render(ev);
 for await (const ev of session.submit({ mode: "say", text: "Marrow, what is that light?" })) render(ev);
@@ -14,7 +14,7 @@ Every streaming call is an async generator of `HostEvent`s and **never throws**:
 | Event | Meaning |
 |---|---|
 | `context` | The prompt inputs for this attempt (powers the "why is this card here" drawer) |
-| `begun` | The adventure took its copy of the source cards (always the first event of a new one) |
+| `begun` | The story took its copy of the source cards (always the first event of a new one) |
 | `player` | The player's action was saved |
 | `text` | A live token chunk |
 | `reply` | A reply was saved (with any rule `violations`) |
@@ -25,20 +25,20 @@ Every streaming call is an async generator of `HostEvent`s and **never throws**:
 | `error` | `{ message, code, recoverable }` |
 | `done` | Last event; carries the new state |
 
-## Adventures play on a copy of the source cards
+## Stories play on a copy of the source cards
 
-([ADR-0009](../../docs/decisions/0009-adventure-copies-and-source-permissions.md), F-43.) `world` and `cards` in the deps are the **source**. `start()` copies them once into a `begin` event, the root of the adventure, and from then on the session reads its own copy from the log: prompts, rule checks, plot extraction and plot points all use it. Editing or deleting a source card later changes nothing in a running adventure, two adventures never affect each other, and a saved adventure resumes from its log alone (leave `world` and `cards` out). An older log without a `begin` still works, using the source it is given.
+([ADR-0009](../../docs/decisions/0009-story-copies-and-source-permissions.md), F-43.) `world` and `cards` in the deps are the **source**. `start()` copies them once into a `begin` event, the root of the story, and from then on the session reads its own copy from the log: prompts, rule checks, plot extraction and plot points all use it. Editing or deleting a source card later changes nothing in a running story, two stories never affect each other, and a saved story resumes from its log alone (leave `world` and `cards` out). An older log without a `begin` still works, using the source it is given.
 
 Note that the copy contains host-only text (Secrets). The log and the card copies are for the host's server; players get turns, chapters and plot points, never the cards.
 
 ## Who may do what
 
-([F-44](../../docs/features/F-43-adventure-copies-and-source-permissions.md).) A session acts for one `actor` (the joining model is IRC-style, [ADR-0011](../../docs/decisions/0011-irc-style-joining.md): whoever runs the server is the host, anyone who joins can opt to play) (`{ id, role: "host" | "player" }`, default a host running their own adventure); the server decides who is who. The table is in core's `permissions.ts`:
+([F-44](../../docs/features/F-43-story-copies-and-source-permissions.md).) A session acts for one `actor` (the joining model is IRC-style, [ADR-0011](../../docs/decisions/0011-irc-style-joining.md): whoever runs the server is the host, anyone who joins can opt to play) (`{ id, role: "host" | "player" }`, default a host running their own story); the server decides who is who. The table is in core's `permissions.ts`:
 
 | | Host | Player |
 |---|:-:|:-:|
 | Edit or remove **source cards** | yes | **no** |
-| Start an adventure | yes | no |
+| Start a story | yes | no |
 | Act, retry, continue, undo, edit own turn, pin a fact | yes | yes |
 | Jump to another branch, add or revoke plot points, break a chapter, run plot extraction, change settings | yes | no |
 
@@ -88,7 +88,7 @@ There are no rating tiers ([ADR-0010](../../docs/decisions/0010-adults-only.md))
 
 ## The context window shifts into chapters
 
-There is no summarising ([ADR-0008](../../docs/decisions/0008-window-shift-and-plot-points.md), F-40). The prompt holds the recent turns that fit the budget. When a reply is written with some older turns left out, the reply records `shifted`: the newest turn that was outside the window. That cursor only moves forward on a branch, so a turn that has left the window never returns, even if the budget grows. Turns up to the cursor are the **chapter**, verbatim (`session.chapters`, and `projectAdventure(state)` in core for files). No model call is involved. Chapters split only at `breakChapter()`; where breaks should happen automatically is a later decision.
+There is no summarising ([ADR-0008](../../docs/decisions/0008-window-shift-and-plot-points.md), F-40). The prompt holds the recent turns that fit the budget. When a reply is written with some older turns left out, the reply records `shifted`: the newest turn that was outside the window. That cursor only moves forward on a branch, so a turn that has left the window never returns, even if the budget grows. Turns up to the cursor are the **chapter**, verbatim (`session.chapters`, and `projectStory(state)` in core for files). No model call is involved. Chapters split only at `breakChapter()`; where breaks should happen automatically is a later decision.
 
 ## Plot points on cards
 

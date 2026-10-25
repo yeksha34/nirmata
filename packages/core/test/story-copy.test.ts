@@ -122,13 +122,8 @@ describe("permissions", () => {
     );
   });
 
-  it("lets players take part, and nothing that reshapes the adventure", () => {
-    const allowed: Action[] = [
-      "adventure.play",
-      "adventure.undo",
-      "adventure.edit-turn",
-      "adventure.pin",
-    ];
+  it("lets players take part, and nothing that reshapes the story", () => {
+    const allowed: Action[] = ["story.play", "story.undo", "story.edit-turn", "story.pin"];
     expect(ACTIONS.filter((a) => can(player, a)).sort()).toEqual([...allowed].sort());
   });
 

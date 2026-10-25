@@ -30,10 +30,9 @@ Things not yet decided or not yet proven. When one is settled, move it to the de
 | Q15 | **Log growth.** Replay is linear; is a periodic snapshot needed? |
 | Q16 | **Window cut point.** The window can start on a host reply, separating it from the action it answered. |
 | Q17 | **Two processes, one story.** Nothing yet prevents concurrent writers on one `events.jsonl`. |
-| Q18 | **Renaming `Adventure*` to `Story*` in code** (TD-009). Do it before the server exists. |
 
 ## Project
 | # | Question |
 |---|---|
 | Q19 | The repo lives inside OneDrive, which will sync `node_modules` and may conflict on `events.jsonl`. Move it outside? |
-| Q20 | Nothing is pushed or on a remote. The tag `v0.1.1-scaffold` is on an older commit; `v0.2.0` is only a target; the merge plan for `feat/F-30-adventure-host-core` is undecided. |
+| Q20 | Nothing is pushed or on a remote. The tag `v0.1.1-scaffold` is on an older commit; `v0.2.0` is only a target; the merge plan for `feat/F-30-story-host-core` is undecided. |

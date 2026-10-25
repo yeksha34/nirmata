@@ -14,7 +14,7 @@ The pure engine behind both the Studio and the Host. No file, network or clock a
 | `plot` | `plotPointsOf`, `plotCursor`, `turnsSincePlot`, `cardsWithPlot` (appends a card's points to its body), and event makers `plotEvent`, `unplotEvent`, `undoLastPlotEvent`, `manualPlotEvent` |
 | `situation` | The built-in always-on `lore.current-situation` card (`withCurrentSituation`) that carries where the story is right now |
 | `permissions` | `Role`, `Actor`, the one permission table, `can`, `assertCan`, `PermissionError` (plain-language messages) |
-| `projection` | `projectAdventure(state)`: the `chapters/` and `plot/` files the current branch should have on disk, as pure data |
+| `projection` | `projectStory(state)`: the `chapters/` and `plot/` files the current branch should have on disk, as pure data |
 
 ## Context priority
 
