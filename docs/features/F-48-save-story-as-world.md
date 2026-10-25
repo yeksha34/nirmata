@@ -23,7 +23,7 @@ The owner picked "a new world" from four ways to save a session (a world, a bran
 - [x] A story started in the new world opens with the saved plot in its cards.
 - [x] Only the host can do it (it needs `source.edit`); a story from before story copies existed is refused in plain words.
 - [x] The new world appears in the library at once and can be opened without a restart.
-- [ ] A screen for it (the web app).
+- [x] A screen for it ([F-49](F-49-screens-join-library-table.md)).
 
 ## Non-goals
 - Merging a story back into its source world ([F-41](../requirements.md)).
@@ -41,3 +41,4 @@ The owner picked "a new world" from four ways to save a session (a world, a bran
 | Date | Change |
 |---|---|
 | 2026-10-25 | Specified from the owner's request and answer; built and tested |
+| 2026-10-25 | Screen added; the library lists the new world at once |

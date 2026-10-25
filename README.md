@@ -21,7 +21,7 @@ Design references: SillyTavern + KoboldAI (local control, lorebooks), AI Dungeon
 | `packages/llm` model providers (OpenAI-compatible, Anthropic, fake) | Built, 48 tests; not yet tried against a live model |
 | `packages/host` game master (turns, retry/undo/branch, rule checks, context window shifting into chapters, plot points on cards) | Built, 157 tests with the fake provider |
 | `apps/server` table server (join, shared board, live story, saved stories, per-role views) | Built, 46 tests; no screens yet, see [apps/server/README.md](apps/server/README.md) |
-| React UI | Planned, see [docs/lifecycle.md](docs/lifecycle.md) |
+| `apps/web` screens (join, choose a world, continue or start a story, play on the shared board) | Built, 11 tests; not yet checked by eye in a browser, see [F-49](docs/features/F-49-screens-join-library-table.md) |
 
 ## Run the baseline Studio
 
@@ -35,11 +35,13 @@ Open http://localhost:8787/. Worlds are read from `./worlds` (override with `WOR
 
 ## Run a table
 
-Needs Node 22+ and a model (or `NIRMATA_PROVIDER=demo` to try it without one). Prints a host key; everyone else joins by nickname. Details and the API in [apps/server/README.md](apps/server/README.md).
+Needs Node 22+ and a model (or `NIRMATA_PROVIDER=demo` to try it without one). This builds the screens, starts the server and opens your browser as the host; you choose the world there. Everyone else joins at the address it prints, by name. Details and the API in [apps/server/README.md](apps/server/README.md).
 
 ```bash
-NIRMATA_PROVIDER=demo corepack pnpm --filter @nirmata/server start
+NIRMATA_PROVIDER=demo corepack pnpm start
 ```
+
+Your worlds live in `worlds/` (or the folder in `NIRMATA_WORLDS`).
 
 ## Develop the engine
 
