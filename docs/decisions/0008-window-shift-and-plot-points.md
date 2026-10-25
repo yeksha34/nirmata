@@ -3,6 +3,7 @@
 - Status: Proposed
 - Date: 2026-10-25
 - Supersedes: [ADR-0007](0007-adventure-compaction.md)
+- Amended by [ADR-0009](0009-adventure-copies-and-source-permissions.md): wherever this says plot points overlay "the world's cards", read "the adventure's own copy of the cards"; the source cards are never touched by play.
 - Related: [F-40](../features/F-40-window-shift-to-chapters.md), [F-42](../features/F-42-plot-points-on-cards.md)
 
 ## Context

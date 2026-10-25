@@ -1,9 +1,19 @@
 import { z } from "zod";
-import { formatIssues, type Memory, PlayerMode, type Turn } from "./schema";
+import type { Card } from "./cards";
+import {
+  CardFrontmatter,
+  formatIssues,
+  type Memory,
+  PlayerMode,
+  type Turn,
+  WorldManifest,
+} from "./schema";
 
 /**
  * An adventure is an append-only log of events forming a tree.
  *
+ * - The root is a `begin` event holding a deep copy of the world and its source cards: an
+ *   adventure plays on its own copy and never reads the source again (ADR-0009).
  * - Content events (`player`, `host`, `system`, `summary`, `plot`, `unplot`, `break`, `pin`,
  *   `unpin`) are tree nodes: each points at its `parentId`, and appending one makes it the new head.
  * - A `goto` event moves the head without adding a node (undo, branch navigation).
@@ -15,6 +25,7 @@ import { formatIssues, type Memory, PlayerMode, type Turn } from "./schema";
  * module pure and replayable.
  */
 export const EVENT_KINDS = [
+  "begin",
   "player",
   "host",
   "system",
@@ -35,6 +46,13 @@ export const PlotPointInput = z.object({
   text: z.string().trim().min(1),
 });
 export type PlotPointInput = z.output<typeof PlotPointInput>;
+
+/** A card as stored in a `begin` event: the parsed card, exactly as it was in the source. */
+export const StoredCard = z.object({
+  path: z.string(),
+  fm: CardFrontmatter,
+  body: z.string(),
+});
 
 export const AdventureEvent = z
   .object({
@@ -62,6 +80,10 @@ export const AdventureEvent = z
     points: z.array(PlotPointInput).default([]),
     /** `unplot` only: ids (`<plot event id>:<index>`) of points to take back. */
     revokes: z.array(z.string().min(1)).default([]),
+    /** `begin` only: the world manifest as it was when the adventure began. */
+    world: WorldManifest.optional(),
+    /** `begin` only: every source card as it was when the adventure began. */
+    cards: z.array(StoredCard).default([]),
     /** Set when this event is an edited replacement for an earlier sibling. */
     editOf: z.string().optional(),
     /** `goto` only: the node to make the head, or null for "before everything". */
@@ -73,6 +95,10 @@ export const AdventureEvent = z
     if (e.kind === "goto") {
       if (e.target === undefined) issue("target", "goto events need a target");
       if (e.parentId !== null) issue("parentId", "goto events have no parent");
+    }
+    if (e.kind === "begin") {
+      if (!e.world) issue("world", "begin events need the world manifest");
+      if (e.parentId !== null) issue("parentId", "begin must be the root of the adventure");
     }
     if (e.kind === "player" && !e.mode) issue("mode", "player events need a mode");
     if (e.kind === "unplot" && !e.revokes.length) issue("revokes", "unplot events need revokes");
@@ -142,6 +168,9 @@ function reduce(draft: Draft, ev: AdventureEvent): void {
   } else {
     if (ev.parentId !== null && !isNode(draft, ev.parentId)) {
       throw new Error(`event ${ev.id}: unknown parent "${ev.parentId}"`);
+    }
+    if (ev.kind === "begin" && [...draft.events.values()].some((e) => e.kind === "begin")) {
+      throw new Error(`begin ${ev.id}: this adventure has already begun`);
     }
     for (const [field, target] of [
       ["shifted", ev.shifted],
@@ -321,6 +350,36 @@ export function breakEvent(
     kind: "break",
     ...(title?.trim() ? { text: title.trim() } : {}),
   });
+}
+
+/**
+ * The root of an adventure: a deep copy of the world and every source card at this moment.
+ * Later changes to the source, or to the objects passed in, cannot reach it.
+ */
+export function beginEvent(args: {
+  id: string;
+  t: string;
+  world: WorldManifest;
+  cards: readonly Card[];
+}): AdventureEvent {
+  return newEvent({
+    id: args.id,
+    parentId: null,
+    t: args.t,
+    kind: "begin",
+    world: structuredClone(args.world),
+    cards: structuredClone([...args.cards]),
+  });
+}
+
+/** The world and cards this adventure plays on, from its `begin` event (undefined if it has none). */
+export function sourceOf(
+  state: AdventureState,
+  at: string | null = state.head,
+): { world: WorldManifest; cards: Card[] } | undefined {
+  const root = pathTo(state, at)[0];
+  if (root?.kind !== "begin" || !root.world) return undefined;
+  return { world: root.world, cards: root.cards };
 }
 
 export function serializeEvent(ev: AdventureEvent): string {

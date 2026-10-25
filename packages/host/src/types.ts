@@ -82,6 +82,8 @@ export function defaultSettings(model: string, maxTokens = 4096): HostSettings {
 export type HostEvent =
   /** The exact prompt inputs for this attempt: feeds the "why is this card here" drawer. */
   | { type: "context"; context: BuiltContext }
+  /** The adventure took its copy of the source cards. Always the first event of a new one. */
+  | { type: "begun"; event: AdventureEvent; cards: number }
   /** The player's input was saved. */
   | { type: "player"; event: AdventureEvent }
   /** A live token chunk of the reply being written. */
@@ -117,7 +119,9 @@ export class HostError extends Error {
       | "nothing_to_do"
       | "bad_state"
       | "judge_failed"
-      | "plot_failed",
+      | "plot_failed"
+      | "forbidden"
+      | "invalid_card",
     message: string,
   ) {
     super(message);
