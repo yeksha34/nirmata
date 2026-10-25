@@ -1,4 +1,4 @@
-import { parse as parseYaml } from "yaml";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { CardFrontmatter, formatIssues, WorldManifest } from "./schema";
 
 export interface Card {
@@ -35,6 +35,14 @@ export function parseCard(path: string, text: string): ParseCardResult {
   const result = CardFrontmatter.safeParse(raw ?? {});
   if (!result.success) return { ok: false, path, errors: formatIssues(result.error) };
   return { ok: true, card: { path, fm: result.data, body: parts.body } };
+}
+
+/** The card as a markdown file: `parseCard(path, serializeCard(card))` gives the card back. */
+export function serializeCard(card: Card): string {
+  return `---
+${stringifyYaml(card.fm, { lineWidth: 0 }).trimEnd()}
+---
+${card.body}`;
 }
 
 export function parseWorldManifest(

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { checkCards, parseCard, parseWorldManifest, plainLinks, stripTitle } from "../src";
+import {
+  checkCards,
+  parseCard,
+  parseWorldManifest,
+  plainLinks,
+  serializeCard,
+  stripTitle,
+} from "../src";
 import { card, loadWorld } from "./helpers";
 
 const VALID = `---
@@ -104,5 +111,16 @@ describe("the shipped example world", () => {
     expect(problems).toEqual([]);
     expect(cards.length).toBeGreaterThanOrEqual(5);
     expect(checkCards(cards)).toEqual([]);
+  });
+});
+
+describe("serializeCard", () => {
+  it("writes a card that parses back to the same card", () => {
+    const text =
+      '---\nid: lore.the-fog\nkind: lore\nname: The Fog\nkeywords: [fog, mist]\nsummary: "It: listens."\n---\n# The Fog\n\nIt drifts.\n';
+    const first = parseCard("lore/the_fog.md", text);
+    if (!first.ok) throw new Error(first.errors.join("; "));
+    const again = parseCard("lore/the_fog.md", serializeCard(first.card));
+    expect(again).toEqual(first);
   });
 });
