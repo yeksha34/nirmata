@@ -1,11 +1,11 @@
 ---
 name: world-builder
-description: Create or extend a Nirmata world (worlds/<name>/) - lore, characters, places, arcs and rules - from the template, keeping cards valid and linked. Use when asked to make a new world, add NPCs/places/lore/rules to a world, expand a card, or check that a world is ready to host an adventure.
+description: Create or extend a Nirmata world (worlds/<name>/) - lore, characters, places, arcs and rules - from the template, keeping cards valid and linked. Use when asked to make a new world, add NPCs/places/lore/rules to a world, expand a card, or check that a world is ready to host a story.
 ---
 
 # world-builder
 
-Read `worlds/_template/README.md` for the folder layers and `.agents/skills/story-direction` for the discipline: **lore is the source of truth; prose and adventures are derived from it and never copy it verbatim**.
+Read `worlds/_template/README.md` for the folder layers and `.agents/skills/story-direction` for the discipline: **lore is the source of truth; prose and stories are derived from it and never copy it verbatim**.
 
 ## New world
 1. Ask (or infer) only: title, tagline, genre, tone, perspective (default second-person).
@@ -20,7 +20,7 @@ Read `worlds/_template/README.md` for the folder layers and `.agents/skills/stor
 - Keep scene order out of lore, and lore explanation out of scenes.
 
 ## Rules
-Rule cards live in `.agents/rules/`: a `Rule` sentence, a yes/no `Check` question, and a `Why`. Mark `scope: adventure` for play-time rules.
+Rule cards live in `.agents/rules/`: a `Rule` sentence, a yes/no `Check` question, and a `Why`. Mark `scope: story` for play-time rules.
 
 ## Finish
 Run `node .agents/skills/world-lint/driver.mjs check` (the active world is set in `worlds/.active_story.json`). Fix broken links and orphans. A world is **ready to host** when: it lints clean, has an `always` premise card, at least one place, one character and one arc.

@@ -1,6 +1,6 @@
 # Agent guide
 
-Nirmata: build worlds, then host adventurers in them. Start at [docs/README.md](docs/README.md).
+Nirmata: build worlds, then host stories in them. Start at [docs/README.md](docs/README.md).
 
 - Skills live in `.agents/skills/` (canonical). To use them with Claude Code, expose them as `.claude/skills`:
   `New-Item -ItemType Junction -Path .claude\skills -Target .agents\skills` (PowerShell) or `ln -s ../.agents/skills .claude/skills`.
@@ -12,7 +12,7 @@ Nirmata: build worlds, then host adventurers in them. Start at [docs/README.md](
 | Skill | Use for |
 |---|---|
 | `world-builder` | Create/extend worlds and cards |
-| `adventure-host` | Run or specify a hosted adventure |
+| `story-host` | Run or specify a hosted story |
 | `world-lint` | Validate links, orphans, stats; navigate cards |
 | `story-direction` | Layering discipline: lore vs scenes vs drafts vs chapters |
 | `structured-prompts` | Write host/system prompts with clean context/output separation |

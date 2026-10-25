@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  type AdventureEvent,
   applyEvent,
   breakEvent,
   chapterPath,
@@ -8,18 +7,19 @@ import {
   contextTurnsOf,
   gotoEvent,
   newEvent,
-  projectAdventure,
+  projectStory,
   renderTurn,
   replay,
+  type StoryEvent,
   slugify,
   turnsOf,
   windowCursor,
 } from "../src";
 
 const T = "2026-10-25T10:00:00Z";
-const p = (id: string, parentId: string | null, text: string): AdventureEvent =>
+const p = (id: string, parentId: string | null, text: string): StoryEvent =>
   newEvent({ id, parentId, t: T, kind: "player", mode: "do", text });
-const h = (id: string, parentId: string | null, text: string, shifted?: string): AdventureEvent =>
+const h = (id: string, parentId: string | null, text: string, shifted?: string): StoryEvent =>
   newEvent({ id, parentId, t: T, kind: "host", text, ...(shifted ? { shifted } : {}) });
 
 /** p1 h1 p2 h2 p3 h3; h2 was written with p1/h1 outside the window, h3 with p1..p2 outside. */
@@ -171,7 +171,7 @@ describe("renderTurn", () => {
 describe("projection of chapters", () => {
   it("lists a file per chapter plus an index, and nothing before the first shift", () => {
     const { state } = story();
-    const files = projectAdventure(state);
+    const files = projectStory(state);
     expect(files.map((f) => f.path)).toEqual([
       "chapters/chapter-01-chapter-1.md",
       "chapters/index.md",
@@ -182,14 +182,14 @@ describe("projection of chapters", () => {
     expect(files[1]?.content).toContain(
       "1. [Chapter 1](chapter-01-chapter-1.md) (still being written)",
     );
-    expect(projectAdventure(replay([p("p1", null, "x")]))).toEqual([]);
-    expect(projectAdventure(state)).toEqual(projectAdventure(state));
+    expect(projectStory(replay([p("p1", null, "x")]))).toEqual([]);
+    expect(projectStory(state)).toEqual(projectStory(state));
   });
 
   it("rebuilds for any point in time", () => {
     const { state } = story();
-    expect(projectAdventure(state, { at: "h1" })).toEqual([]);
-    expect(projectAdventure(state, { at: "h2" })[0]?.content).toContain("through: h1");
+    expect(projectStory(state, { at: "h1" })).toEqual([]);
+    expect(projectStory(state, { at: "h2" })[0]?.content).toContain("through: h1");
   });
 });
 

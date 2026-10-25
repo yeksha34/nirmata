@@ -2,7 +2,7 @@
 
 | Term | Meaning |
 |---|---|
-| **Story** | One run in a world, from its first scene on. The word users should see. The code still calls it an *adventure* (`AdventureSession`, `adventures/`); see TD-009. |
+| **Story** | One run in a world, from its first scene on. Called an *adventure* until 2026-10-25; the code, folders and messages now all say story. (The old editor in `apps/studio` used "story" for what Nirmata calls a **world**; it is being retired.) |
 | **World** | A reusable folder of source cards (`worlds/<name>/`). |
 | **Source cards** | The world's own cards. Only a host edits them. A story takes a copy and never changes them. |
 | **Copy** | The story's own copy of the world and its cards, saved in its first (`begin`) event. |

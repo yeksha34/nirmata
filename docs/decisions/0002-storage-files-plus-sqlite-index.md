@@ -9,7 +9,7 @@ Existing worlds are markdown cards with cross-links in git. Play needs fast sear
 
 ## Decision
 - Authored content (cards, `world.json`, rules) stays as `.md`/`.json` files under `worlds/<name>/`.
-- Adventures are stored as append-only JSONL under `worlds/<name>/adventures/<id>/events.jsonl` plus a rendered `transcript.md`.
+- Stories are stored as append-only JSONL under `worlds/<name>/stories/<id>/events.jsonl` plus a rendered `transcript.md`.
 - A SQLite database (FTS5, later `sqlite-vec`) lives in an ignored cache directory and is **always rebuildable** from the files. It is never the only copy of anything.
 
 ## Consequences
@@ -18,4 +18,4 @@ Existing worlds are markdown cards with cross-links in git. Play needs fast sear
 - Two representations to keep in sync: handled by a rebuild-on-start and a file watcher.
 
 ## Alternatives considered
-Database-only storage (loses git and hand-editing); files-only with no index (slow search over long adventures).
+Database-only storage (loses git and hand-editing); files-only with no index (slow search over long stories).

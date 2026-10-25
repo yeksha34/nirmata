@@ -1,7 +1,7 @@
 # ADR-0011: Joining a story works like IRC: no accounts
 
 - Status: Accepted 2026-10-25
-- Related: [ADR-0009](0009-adventure-copies-and-source-permissions.md), [F-37](../requirements.md)
+- Related: [ADR-0009](0009-story-copies-and-source-permissions.md), [F-37](../requirements.md)
 
 ## Context
 Roles (host, player) needed a meaning in real use. The owner: *there is no complicated user management; anyone that joins the story's server can opt to play; think of it as IRC chat.*

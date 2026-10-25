@@ -40,7 +40,7 @@ describe("start", () => {
     expect(session.turns.map((t) => t.text)).toEqual(["Dusk settles."]);
   });
 
-  it("refuses to start an adventure twice", async () => {
+  it("refuses to start a story twice", async () => {
     const { session } = rig(reply("Hi."));
     await run(session.start());
     const again = await run(session.start());
@@ -187,7 +187,7 @@ describe("retry, continue, undo, edit", () => {
     expect(JSON.stringify(provider.requests[2]?.messages)).not.toContain("First.");
   });
 
-  it("retry on an empty adventure has nothing to do", async () => {
+  it("retry on an empty story has nothing to do", async () => {
     const { session } = rig(reply("x"));
     expect(pick(await run(session.retry()), "error")[0]?.code).toBe("nothing_to_do");
   });

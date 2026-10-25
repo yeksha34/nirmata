@@ -3,7 +3,7 @@ id: rule.example
 kind: rule
 name: Example rule
 keywords: [example]
-scope: both          # chapter | adventure | both
+scope: both          # chapter | story | both
 severity: must       # must | should
 ---
 

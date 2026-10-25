@@ -10,10 +10,10 @@ import {
 } from "./schema";
 
 /**
- * An adventure is an append-only log of events forming a tree.
+ * A story is an append-only log of events forming a tree.
  *
  * - The root is a `begin` event holding a deep copy of the world and its source cards: an
- *   adventure plays on its own copy and never reads the source again (ADR-0009).
+ *   story plays on its own copy and never reads the source again (ADR-0009).
  * - Content events (`player`, `host`, `system`, `summary`, `plot`, `unplot`, `break`, `pin`,
  *   `unpin`) are tree nodes: each points at its `parentId`, and appending one makes it the new head.
  * - A `goto` event moves the head without adding a node (undo, branch navigation).
@@ -54,7 +54,7 @@ export const StoredCard = z.object({
   body: z.string(),
 });
 
-export const AdventureEvent = z
+export const StoryEvent = z
   .object({
     id: z.string().min(1),
     parentId: z.string().min(1).nullable(),
@@ -80,9 +80,9 @@ export const AdventureEvent = z
     points: z.array(PlotPointInput).default([]),
     /** `unplot` only: ids (`<plot event id>:<index>`) of points to take back. */
     revokes: z.array(z.string().min(1)).default([]),
-    /** `begin` only: the world manifest as it was when the adventure began. */
+    /** `begin` only: the world manifest as it was when the story began. */
     world: WorldManifest.optional(),
-    /** `begin` only: every source card as it was when the adventure began. */
+    /** `begin` only: every source card as it was when the story began. */
     cards: z.array(StoredCard).default([]),
     /** Set when this event is an edited replacement for an earlier sibling. */
     editOf: z.string().optional(),
@@ -104,15 +104,15 @@ export const AdventureEvent = z
     if (e.kind === "unplot" && !e.revokes.length) issue("revokes", "unplot events need revokes");
     if (e.parentId === e.id) issue("parentId", "an event cannot be its own parent");
   });
-export type AdventureEvent = z.output<typeof AdventureEvent>;
-export type AdventureEventInput = z.input<typeof AdventureEvent>;
+export type StoryEvent = z.output<typeof StoryEvent>;
+export type StoryEventInput = z.input<typeof StoryEvent>;
 
-export function newEvent(input: AdventureEventInput): AdventureEvent {
-  return AdventureEvent.parse(input);
+export function newEvent(input: StoryEventInput): StoryEvent {
+  return StoryEvent.parse(input);
 }
 
-export interface AdventureState {
-  readonly events: ReadonlyMap<string, AdventureEvent>;
+export interface StoryState {
+  readonly events: ReadonlyMap<string, StoryEvent>;
   /** Every event id in log order, `goto`s included. */
   readonly log: readonly string[];
   /** Child node ids per parent (null = roots), in log order. `goto`s are never children. */
@@ -120,7 +120,7 @@ export interface AdventureState {
   readonly head: string | null;
 }
 
-export const emptyAdventure: AdventureState = {
+export const emptyStory: StoryState = {
   events: new Map(),
   log: [],
   children: new Map(),
@@ -128,19 +128,19 @@ export const emptyAdventure: AdventureState = {
 };
 
 interface Draft {
-  events: Map<string, AdventureEvent>;
+  events: Map<string, StoryEvent>;
   log: string[];
   children: Map<string | null, string[]>;
   head: string | null;
 }
 
-function isNode(state: { events: ReadonlyMap<string, AdventureEvent> }, id: string): boolean {
+function isNode(state: { events: ReadonlyMap<string, StoryEvent> }, id: string): boolean {
   const ev = state.events.get(id);
   return ev !== undefined && ev.kind !== "goto";
 }
 
 function isAncestorOrSelf(
-  state: { events: ReadonlyMap<string, AdventureEvent> },
+  state: { events: ReadonlyMap<string, StoryEvent> },
   from: string | null,
   target: string | undefined,
 ): boolean {
@@ -157,7 +157,7 @@ export function plotPointId(eventId: string, index: number): string {
   return `${eventId}:${index}`;
 }
 
-function reduce(draft: Draft, ev: AdventureEvent): void {
+function reduce(draft: Draft, ev: StoryEvent): void {
   if (draft.events.has(ev.id)) throw new Error(`duplicate event id "${ev.id}"`);
 
   if (ev.kind === "goto") {
@@ -204,7 +204,7 @@ function reduce(draft: Draft, ev: AdventureEvent): void {
 }
 
 /** Applies one event, returning a new state. Throws on an invalid event. */
-export function applyEvent(state: AdventureState, ev: AdventureEvent): AdventureState {
+export function applyEvent(state: StoryState, ev: StoryEvent): StoryState {
   const draft: Draft = {
     events: new Map(state.events),
     log: [...state.log],
@@ -216,15 +216,15 @@ export function applyEvent(state: AdventureState, ev: AdventureEvent): Adventure
 }
 
 /** Rebuilds state from a whole log in linear time. */
-export function replay(events: readonly AdventureEvent[]): AdventureState {
+export function replay(events: readonly StoryEvent[]): StoryState {
   const draft: Draft = { events: new Map(), log: [], children: new Map(), head: null };
   for (const ev of events) reduce(draft, ev);
   return draft;
 }
 
 /** Nodes from the root down to `id` (default: the head). */
-export function pathTo(state: AdventureState, id: string | null = state.head): AdventureEvent[] {
-  const path: AdventureEvent[] = [];
+export function pathTo(state: StoryState, id: string | null = state.head): StoryEvent[] {
+  const path: StoryEvent[] = [];
   let cur = id;
   while (cur !== null) {
     const ev = state.events.get(cur);
@@ -235,14 +235,14 @@ export function pathTo(state: AdventureState, id: string | null = state.head): A
   return path.reverse();
 }
 
-export function turnOf(ev: AdventureEvent): Turn | undefined {
+export function turnOf(ev: StoryEvent): Turn | undefined {
   if (ev.kind === "player") return { id: ev.id, role: "player", mode: ev.mode, text: ev.text };
   if (ev.kind === "host") return { id: ev.id, role: "host", text: ev.text };
   return undefined;
 }
 
 /** The conversation the player currently sees, oldest first (or as of node `at`). */
-export function turnsOf(state: AdventureState, at: string | null = state.head): Turn[] {
+export function turnsOf(state: StoryState, at: string | null = state.head): Turn[] {
   return pathTo(state, at).flatMap((ev) => turnOf(ev) ?? []);
 }
 
@@ -251,7 +251,7 @@ export function turnsOf(state: AdventureState, at: string | null = state.head): 
  * later unpinned. Asking "as of the parent" is how a retry avoids remembering the reply it
  * replaces.
  */
-export function memoryOf(state: AdventureState, at: string | null = state.head): Memory {
+export function memoryOf(state: StoryState, at: string | null = state.head): Memory {
   const memory: Memory = { summary: "", pinned: [] };
   for (const ev of pathTo(state, at)) {
     if (ev.kind === "summary") memory.summary = ev.text;
@@ -265,19 +265,17 @@ export function memoryOf(state: AdventureState, at: string | null = state.head):
 }
 
 /** Alternative replies/inputs at the same point, including `id` itself, in log order. */
-export function siblingsOf(state: AdventureState, id: string): AdventureEvent[] {
+export function siblingsOf(state: StoryState, id: string): StoryEvent[] {
   const ev = state.events.get(id);
   if (!ev || ev.kind === "goto") return [];
-  return (state.children.get(ev.parentId) ?? []).map(
-    (sid) => state.events.get(sid) as AdventureEvent,
-  );
+  return (state.children.get(ev.parentId) ?? []).map((sid) => state.events.get(sid) as StoryEvent);
 }
 
 export function lastOnPath(
-  state: AdventureState,
+  state: StoryState,
   kind: EventKind,
   at: string | null = state.head,
-): AdventureEvent | undefined {
+): StoryEvent | undefined {
   const path = pathTo(state, at);
   for (let i = path.length - 1; i >= 0; i--) {
     if (path[i]?.kind === kind) return path[i];
@@ -290,11 +288,7 @@ export function lastOnPath(
  * points and window shifts that came with it.
  * Returns the `goto` event to append, or undefined when there is nothing to undo.
  */
-export function undoEvent(
-  state: AdventureState,
-  id: string,
-  t: string,
-): AdventureEvent | undefined {
+export function undoEvent(state: StoryState, id: string, t: string): StoryEvent | undefined {
   const last = lastOnPath(state, "player");
   if (!last) return undefined;
   return newEvent({ id, parentId: null, t, kind: "goto", target: last.parentId });
@@ -305,19 +299,19 @@ export function undoEvent(
  * returned parent so it becomes a sibling of the reply it replaces (the old one stays reachable).
  * Returns undefined when there is no host reply yet.
  */
-export function retryParent(state: AdventureState): { parentId: string | null } | undefined {
+export function retryParent(state: StoryState): { parentId: string | null } | undefined {
   const last = lastOnPath(state, "host");
   return last ? { parentId: last.parentId } : undefined;
 }
 
 /** Edit = a replacement sibling carrying the new text; the original stays reachable as a branch. */
 export function editEvent(
-  state: AdventureState,
+  state: StoryState,
   targetId: string,
   text: string,
   id: string,
   t: string,
-): AdventureEvent {
+): StoryEvent {
   const target = state.events.get(targetId);
   if (!target || target.kind === "goto") throw new Error(`cannot edit unknown event "${targetId}"`);
   return newEvent({
@@ -332,17 +326,12 @@ export function editEvent(
 }
 
 /** Move the head to any node: browsing branches, or forking from an earlier turn. */
-export function gotoEvent(id: string, t: string, target: string | null): AdventureEvent {
+export function gotoEvent(id: string, t: string, target: string | null): StoryEvent {
   return newEvent({ id, parentId: null, t, kind: "goto", target });
 }
 
 /** Start a new chapter here. Where breaks happen is decided by the caller. */
-export function breakEvent(
-  state: AdventureState,
-  id: string,
-  t: string,
-  title?: string,
-): AdventureEvent {
+export function breakEvent(state: StoryState, id: string, t: string, title?: string): StoryEvent {
   return newEvent({
     id,
     parentId: state.head,
@@ -353,7 +342,7 @@ export function breakEvent(
 }
 
 /**
- * The root of an adventure: a deep copy of the world and every source card at this moment.
+ * The root of a story: a deep copy of the world and every source card at this moment.
  * Later changes to the source, or to the objects passed in, cannot reach it.
  */
 export function beginEvent(args: {
@@ -361,7 +350,7 @@ export function beginEvent(args: {
   t: string;
   world: WorldManifest;
   cards: readonly Card[];
-}): AdventureEvent {
+}): StoryEvent {
   return newEvent({
     id: args.id,
     parentId: null,
@@ -372,9 +361,9 @@ export function beginEvent(args: {
   });
 }
 
-/** The world and cards this adventure plays on, from its `begin` event (undefined if it has none). */
+/** The world and cards this story plays on, from its `begin` event (undefined if it has none). */
 export function sourceOf(
-  state: AdventureState,
+  state: StoryState,
   at: string | null = state.head,
 ): { world: WorldManifest; cards: Card[] } | undefined {
   const root = pathTo(state, at)[0];
@@ -382,13 +371,13 @@ export function sourceOf(
   return { world: root.world, cards: root.cards };
 }
 
-export function serializeEvent(ev: AdventureEvent): string {
+export function serializeEvent(ev: StoryEvent): string {
   return JSON.stringify(ev);
 }
 
 /** Parses an `events.jsonl` body. Blank lines are ignored; bad lines report their line number. */
-export function parseLog(text: string): AdventureEvent[] {
-  const events: AdventureEvent[] = [];
+export function parseLog(text: string): StoryEvent[] {
+  const events: StoryEvent[] = [];
   text.split(/\r?\n/).forEach((line, i) => {
     if (!line.trim()) return;
     let raw: unknown;
@@ -397,7 +386,7 @@ export function parseLog(text: string): AdventureEvent[] {
     } catch (e) {
       throw new Error(`events line ${i + 1}: not valid JSON (${(e as Error).message})`);
     }
-    const parsed = AdventureEvent.safeParse(raw);
+    const parsed = StoryEvent.safeParse(raw);
     if (!parsed.success) {
       throw new Error(`events line ${i + 1}: ${formatIssues(parsed.error).join("; ")}`);
     }

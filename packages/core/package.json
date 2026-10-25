@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Pure, I/O-free engine: card schema, lorebook matching, context builder, adventure event tree.",
+  "description": "Pure, I/O-free engine: card schema, lorebook matching, context builder, story event tree.",
   "exports": { ".": "./src/index.ts" },
   "dependencies": {
     "yaml": "^2.6.0",

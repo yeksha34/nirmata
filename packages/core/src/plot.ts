@@ -1,11 +1,11 @@
 import type { Card } from "./cards";
 import {
-  type AdventureEvent,
-  type AdventureState,
   newEvent,
   type PlotPointInput,
   pathTo,
   plotPointId,
+  type StoryEvent,
+  type StoryState,
   turnOf,
 } from "./events";
 import type { Turn } from "./schema";
@@ -30,7 +30,7 @@ export interface PlotPoint {
  * branch, undoing or branching away from the turns that produced them removes them too.
  */
 export function plotPointsOf(
-  state: AdventureState,
+  state: StoryState,
   at: string | null = state.head,
   options: PlotOptions = {},
 ): PlotPoint[] {
@@ -54,7 +54,7 @@ export function plotPointsOf(
 }
 
 /** The newest turn the plot extraction has already read on this branch, or null. */
-export function plotCursor(state: AdventureState, at: string | null = state.head): string | null {
+export function plotCursor(state: StoryState, at: string | null = state.head): string | null {
   const path = pathTo(state, at);
   for (let i = path.length - 1; i >= 0; i--) {
     const ev = path[i];
@@ -64,7 +64,7 @@ export function plotCursor(state: AdventureState, at: string | null = state.head
 }
 
 /** Turns written since the extraction last ran, oldest first. */
-export function turnsSincePlot(state: AdventureState, at: string | null = state.head): Turn[] {
+export function turnsSincePlot(state: StoryState, at: string | null = state.head): Turn[] {
   const path = pathTo(state, at);
   const cursor = plotCursor(state, at);
   const from = cursor === null ? 0 : path.findIndex((ev) => ev.id === cursor) + 1;
@@ -102,7 +102,7 @@ export function cardsWithPlot(
 
 /** A `plot` event holding the points found, whose `covers` becomes the new extraction cursor. */
 export function plotEvent(
-  state: AdventureState,
+  state: StoryState,
   args: {
     id: string;
     t: string;
@@ -110,7 +110,7 @@ export function plotEvent(
     points: readonly PlotPointInput[];
     model?: string;
   },
-): AdventureEvent {
+): StoryEvent {
   return newEvent({
     id: args.id,
     parentId: state.head,
@@ -124,9 +124,9 @@ export function plotEvent(
 
 /** Take back specific plot points. */
 export function unplotEvent(
-  state: AdventureState,
+  state: StoryState,
   args: { id: string; t: string; revokes: readonly string[] },
-): AdventureEvent {
+): StoryEvent {
   return newEvent({
     id: args.id,
     parentId: state.head,
@@ -141,11 +141,11 @@ export function unplotEvent(
  * any. Returns undefined when there is nothing to take back.
  */
 export function undoLastPlotEvent(
-  state: AdventureState,
+  state: StoryState,
   id: string,
   t: string,
   options: PlotOptions = {},
-): AdventureEvent | undefined {
+): StoryEvent | undefined {
   const live = plotPointsOf(state, state.head, options);
   const newest = live[live.length - 1];
   if (!newest) return undefined;
@@ -158,9 +158,9 @@ export function undoLastPlotEvent(
  * automatic extraction still reads the same turns and will not skip anything.
  */
 export function manualPlotEvent(
-  state: AdventureState,
+  state: StoryState,
   args: { id: string; t: string; card: string; text: string },
-): AdventureEvent {
+): StoryEvent {
   if (state.head === null) {
     throw new Error("There is nothing in the story yet to attach a plot point to.");
   }

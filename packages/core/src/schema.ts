@@ -36,7 +36,7 @@ export const CardFrontmatter = z
     summary: z.string().trim().default(""),
     always: z.boolean().default(false),
     /** Rules only: where the rule applies. */
-    scope: z.enum(["chapter", "adventure", "both"]).default("both"),
+    scope: z.enum(["chapter", "story", "both"]).default("both"),
     /** Rules only: `must` is never dropped from context. */
     severity: z.enum(["must", "should"]).default("should"),
     role: z.string().optional(),

@@ -1,4 +1,4 @@
-import { contextTurnsOf, plotCursor, plotPointsOf, projectAdventure } from "@nirmata/core";
+import { contextTurnsOf, plotCursor, plotPointsOf, projectStory } from "@nirmata/core";
 import { type FakeScript, type GenerateRequest, LlmError } from "@nirmata/llm";
 import { describe, expect, it } from "vitest";
 import { defaultPlot, HostError } from "../src";
@@ -298,7 +298,7 @@ describe("adding plot points by hand", () => {
     expect(systemContent(r.provider.requests.at(-1))).toContain("- The player named the quay.");
   });
 
-  it("rejects unknown cards, rules, empty text, and an empty adventure", async () => {
+  it("rejects unknown cards, rules, empty text, and an empty story", async () => {
     const r = rig(script());
     await expect(r.session.addPlotPoint("char.marrow", "x")).rejects.toMatchObject({
       code: "nothing_to_do",
@@ -330,11 +330,11 @@ describe("plot files", () => {
     const r = rig(script(), { settings: { plot: plot() } });
     await play(r, 2);
     const names = new Map([["char.marrow", "Marrow"]]);
-    const files = projectAdventure(r.session.state, { cardNames: names });
+    const files = projectStory(r.session.state, { cardNames: names });
     expect(files.map((f) => f.path)).toEqual(["plot/arc.fourth-light.md", "plot/char.marrow.md"]);
 
     await r.session.undoLastPlot();
-    expect(projectAdventure(r.session.state)).toEqual([]);
+    expect(projectStory(r.session.state)).toEqual([]);
     expect(plotPointsOf(r.session.state)).toEqual([]);
     expect(contextTurnsOf(r.session.state).length).toBe(4); // the story itself is untouched
   });

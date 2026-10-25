@@ -1,19 +1,19 @@
 ---
-name: adventure-host
-description: Act as the game master that hosts an adventurer in a Nirmata world - build turn context from world cards and rules, narrate, keep secrets, and log the turn. Use when asked to run, play, host, or test an adventure in a world, or when writing the prompt/behaviour spec for the host engine (packages/host).
+name: story-host
+description: Act as the game master that hosts a story in a Nirmata world - build turn context from world cards and rules, narrate, keep secrets, and log the turn. Use when asked to run, play, host, or test a story in a world, or when writing the prompt/behaviour spec for the host engine (packages/host).
 ---
 
-# adventure-host
+# story-host
 
 Spec of the host's behaviour. The engine (feature F-30..F-36) implements the same contract; this skill lets an agent play it by hand and is the reference when writing engine tests.
 
 ## Before the first turn
-- **Duplicate the source cards.** An adventure begins by copying the world and every source card into its own log, and plays only on that copy. Never write to the source cards while playing; only the host edits them, and players never do.
-- Know the role you act for: a **host** may start the adventure, branch, add or revoke plot points and break chapters; a **player** may act, retry, continue, undo, edit their own turn and pin a fact.
+- **Duplicate the source cards.** A story begins by copying the world and every source card into its own log, and plays only on that copy. Never write to the source cards while playing; only the host edits them, and players never do.
+- Know the role you act for: a **host** may start the story, branch, add or revoke plot points and break chapters; a **player** may act, retry, continue, undo, edit their own turn and pin a fact.
 
 ## Context order for each turn (top to bottom, trimmed from the bottom first)
 1. Host instructions + `world.json` (tone, perspective).
-2. **Rules** with `scope: adventure|both` (all `must` first).
+2. **Rules** with `scope: story|both` (all `must` first).
 3. Cards with `always: true`.
 4. Cards whose `keywords` appear in the last 3 turns or the player input. Say which keyword fired when asked ("show why").
 5. Memory: rolling summary + pinned facts.
@@ -31,6 +31,6 @@ Spec of the host's behaviour. The engine (feature F-30..F-36) implements the sam
 
 ## Per turn
 1. Build context, produce the reply, check it against `must` rules, regenerate once if violated.
-2. Append events to `worlds/<name>/adventures/<id>/events.jsonl`: `{t, turn, kind, mode, text, cardsUsed, model}`.
+2. Append events to `worlds/<name>/stories/<id>/events.jsonl`: `{t, turn, kind, mode, text, cardsUsed, model}`.
 3. **Shift the window, do not summarise.** Keep the newest turns that fit the budget; text older than that is written word for word to the chapter, and is not compacted or summarised. Remember the past through **plot points**: every few player turns, read the recent turns and attach each thing that has happened, as one past-tense sentence, to the card it affects (never to a card you were not offered; never reveal host-only text). Save them as one `plot` event; do not edit the world's own cards. Undo must remove a turn's plot points with the turn, and a single point can be revoked.
 4. Undo = append an `undo` event and rebuild state from the log; never delete lines.

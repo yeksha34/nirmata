@@ -72,11 +72,11 @@ describe("revokes surviving undo is a host setting", () => {
   });
 
   it("the plot files follow the setting", async () => {
-    const { projectAdventure } = await import("@nirmata/core");
+    const { projectStory } = await import("@nirmata/core");
     const off = await scenario(false);
     const on = await scenario(true);
-    expect(projectAdventure(off.session.state).map((f) => f.path)).toEqual(["plot/char.marrow.md"]);
-    expect(projectAdventure(on.session.state, { revokesSurviveUndo: true })).toEqual([]);
+    expect(projectStory(off.session.state).map((f) => f.path)).toEqual(["plot/char.marrow.md"]);
+    expect(projectStory(on.session.state, { revokesSurviveUndo: true })).toEqual([]);
     expect(
       plotPointsOf(on.session.state, on.session.state.head, { revokesSurviveUndo: true }),
     ).toEqual([]);

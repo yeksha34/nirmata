@@ -1,5 +1,4 @@
 import {
-  type AdventureState,
   type BuiltContext,
   buildMatcher,
   type Card,
@@ -7,6 +6,7 @@ import {
   type PlotPoint,
   type PlotPointInput,
   plotPointsOf,
+  type StoryState,
   type Turn,
   turnsSincePlot,
 } from "@nirmata/core";
@@ -19,11 +19,11 @@ const MAX_POINT_LENGTH = 240;
 const KNOWN_PER_CARD = 3;
 
 /** Player turns written since the plot extraction last ran. */
-export function playerTurnsSincePlot(state: AdventureState): number {
+export function playerTurnsSincePlot(state: StoryState): number {
   return turnsSincePlot(state).filter((t) => t.role === "player").length;
 }
 
-export function plotDue(state: AdventureState, settings: PlotSettings): boolean {
+export function plotDue(state: StoryState, settings: PlotSettings): boolean {
   return (
     settings.enabled &&
     settings.everyPlayerTurns > 0 &&
@@ -147,7 +147,7 @@ export function parsePlot(
 export async function extractPlot(args: {
   provider: Provider;
   model: string;
-  state: AdventureState;
+  state: StoryState;
   turns: readonly Turn[];
   candidates: readonly Card[];
   maxPoints: number;

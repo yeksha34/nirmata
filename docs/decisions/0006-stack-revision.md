@@ -1,4 +1,4 @@
-# ADR-0006: Stack revision: headless core, event-sourced adventures, own model adapters, no desktop shell
+# ADR-0006: Stack revision: headless core, event-sourced stories, own model adapters, no desktop shell
 
 - Status: Accepted 2026-10-25
 - Date: 2026-10-25
@@ -10,7 +10,7 @@ The first stack proposal was shaped by the code that was copied in (a Node serve
 
 ## Decision
 1. `packages/core` is a pure, I/O-free TypeScript engine; disk, network and clock are adapters.
-2. Adventures are an append-only **event tree** (`events.jsonl`, `id` + `parentId`); retry, undo and branch are head moves; state is a reducer.
+2. Stories are an append-only **event tree** (`events.jsonl`, `id` + `parentId`); retry, undo and branch are head moves; state is a reducer.
 3. Delivery is a Node LTS launcher serving the UI to a browser, installable as a PWA. **No desktop shell** in the first releases.
 4. API is Hono typed RPC with SSE streaming; WebSocket only for presence. This replaces the REST + TanStack Query pairing.
 5. Model access uses **in-house thin adapters** with pass-through sampler parameters, not the Vercel AI SDK. Optional `node-llama-cpp` provides a zero-setup local model.

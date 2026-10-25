@@ -1,4 +1,4 @@
-import { type AdventureState, pathTo, turnOf } from "./events";
+import { pathTo, type StoryState, turnOf } from "./events";
 import type { Turn } from "./schema";
 
 /**
@@ -6,7 +6,7 @@ import type { Turn } from "./schema";
  * `shifted`, the newest turn that was already outside it. The cursor only ever moves forward on a
  * branch, so a turn that has left the window never comes back, even if the budget later grows.
  */
-export function windowCursor(state: AdventureState, at: string | null = state.head): string | null {
+export function windowCursor(state: StoryState, at: string | null = state.head): string | null {
   const path = pathTo(state, at);
   for (let i = path.length - 1; i >= 0; i--) {
     const ev = path[i];
@@ -16,7 +16,7 @@ export function windowCursor(state: AdventureState, at: string | null = state.he
 }
 
 /** The turns still eligible for the prompt: everything after the window cursor. */
-export function contextTurnsOf(state: AdventureState, at: string | null = state.head): Turn[] {
+export function contextTurnsOf(state: StoryState, at: string | null = state.head): Turn[] {
   const path = pathTo(state, at);
   const cursor = windowCursor(state, at);
   const from = cursor === null ? 0 : path.findIndex((ev) => ev.id === cursor) + 1;
@@ -48,7 +48,7 @@ export interface Chapter {
  * split at `break` events. With no break there is one chapter. Text still inside the window is not
  * in any chapter yet; it joins as the window shifts. Where breaks happen is decided elsewhere.
  */
-export function chaptersOf(state: AdventureState, at: string | null = state.head): Chapter[] {
+export function chaptersOf(state: StoryState, at: string | null = state.head): Chapter[] {
   const cursor = windowCursor(state, at);
   if (cursor === null) return [];
   const path = pathTo(state, at);

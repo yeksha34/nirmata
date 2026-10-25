@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  type AdventureEvent,
   applyEvent,
   editEvent,
-  emptyAdventure,
+  emptyStory,
   gotoEvent,
   memoryOf,
   newEvent,
@@ -11,6 +10,7 @@ import {
   pathTo,
   replay,
   retryParent,
+  type StoryEvent,
   serializeEvent,
   siblingsOf,
   turnsOf,
@@ -44,16 +44,16 @@ describe("event tree", () => {
 
   it("applyEvent matches replay and leaves the old state untouched", () => {
     const { events, state } = story();
-    const step = events.reduce(applyEvent, emptyAdventure);
+    const step = events.reduce(applyEvent, emptyStory);
     expect(step.head).toBe(state.head);
-    expect(emptyAdventure.log).toEqual([]);
+    expect(emptyStory.log).toEqual([]);
   });
 
   it("undo removes the last player action and everything after, keeping it reachable", () => {
     const { state } = story();
     const undo = undoEvent(state, "u1", T);
     expect(undo).toBeDefined();
-    const after = applyEvent(state, undo as AdventureEvent);
+    const after = applyEvent(state, undo as StoryEvent);
     expect(turnsOf(after).map((t) => t.text)).toEqual(["Opening."]);
     // the undone branch still exists and can be revisited
     expect(after.events.has("e3")).toBe(true);
@@ -158,10 +158,10 @@ describe("event tree", () => {
   });
 
   it("replays thousands of events in linear time", () => {
-    const events: AdventureEvent[] = [];
+    const events: StoryEvent[] = [];
     let parent: string | null = null;
     for (let i = 0; i < 6000; i++) {
-      const e: AdventureEvent = i % 2 ? host(parent) : player(parent);
+      const e: StoryEvent = i % 2 ? host(parent) : player(parent);
       events.push(e);
       parent = e.id;
     }

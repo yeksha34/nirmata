@@ -3,7 +3,7 @@ id: rule.host-tone
 kind: rule
 name: Host tone
 keywords: [tone]
-scope: adventure
+scope: story
 severity: should
 ---
 
