@@ -6,11 +6,12 @@
   "packageManager": "pnpm@12.15.0",
   "engines": { "node": ">=22" },
   "scripts": {
+    "start": "corepack pnpm --filter @nirmata/web build && corepack pnpm --filter @nirmata/server start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b",
-    "lint": "biome check packages apps/server",
-    "format": "biome format --write packages apps/server"
+    "typecheck": "tsc -b && tsc -p apps/web",
+    "lint": "biome check packages apps/server apps/web",
+    "format": "biome format --write packages apps/server apps/web"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

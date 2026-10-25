@@ -16,7 +16,7 @@ NIRMATA_PROVIDER=openai NIRMATA_BASE_URL=http://localhost:5001 NIRMATA_MODEL=my-
 NIRMATA_PROVIDER=demo corepack pnpm --filter @nirmata/server start
 ```
 
-On start it prints the **host key**. Join as the host with it; everyone else joins with a nickname.
+On start it opens your browser on the **host link** (it contains the host key, in the part after `#` that is never sent anywhere), also printed in the terminal. Everyone else joins at the address with a nickname. The built screens (`apps/web`) are served at `/`; build them with `corepack pnpm --filter @nirmata/web build`, or use `corepack pnpm start` from the repo root, which does both.
 
 | Variable | Meaning | Default |
 |---|---|---|
@@ -26,6 +26,7 @@ On start it prints the **host key**. Join as the host with it; everyone else joi
 | `NIRMATA_WORLDS` | the folder that holds your worlds (which one to play is chosen on screen) | `worlds` |
 | `NIRMATA_HOST_NICK` | the host's nickname | `Host` |
 | `NIRMATA_HOST_KEY` | proves you are the host | new each run |
+| `NIRMATA_OPEN` | set to `0` to stop it opening your browser | opens |
 | `NIRMATA_PORT`, `NIRMATA_BIND` | where to listen | `8788`, `127.0.0.1` (this computer only; `0.0.0.0` for the LAN) |
 | `NODE_ENV=production` | joiners must confirm they are adults ([ADR-0014](../../docs/decisions/0014-age-confirmation-production-only.md)) | off |
 
