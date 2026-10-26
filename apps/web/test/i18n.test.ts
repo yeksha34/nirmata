@@ -67,4 +67,18 @@ describe("labels in Hindi", () => {
       "Some message nobody wrote Hindi for.",
     );
   });
+
+  it("translates what the card reader says about a card it cannot read", () => {
+    for (const message of [
+      "name: Required",
+      "the card has no closing </card> at the end of the file",
+      "not a card: the file should start with <card …> (or an older --- block)",
+      'id: id must look like "kind.slug" (lowercase letters, digits, hyphens)',
+      "kind: Invalid enum value. Expected 'lore' | 'rule', received 'dragon'",
+      "lore/oops.md: name: Required",
+      'duplicate id "lore.a" in lore/b.md (first used in lore/a.md)',
+    ]) {
+      expect(hindi(message) ?? bilingual(message), message).not.toBe(message);
+    }
+  });
 });

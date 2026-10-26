@@ -19,11 +19,14 @@ import { Modal } from "./ui";
 /** A tooltip whose words swap to English like any label. Wrap one control. */
 export function Tip({
   text,
+  content,
   values,
   below,
   children,
 }: {
   text: string;
+  /** What the bubble shows when it is more than one text (a list of chapter titles). */
+  content?: ReactNode;
   values?: Record<string, string | number>;
   below?: boolean;
   children: ReactElement<{ "aria-describedby"?: string }>;
@@ -33,7 +36,7 @@ export function Tip({
     <span className={below ? "tip below" : "tip"}>
       {cloneElement(children, { "aria-describedby": id })}
       <span role="tooltip" id={id} className="tip-bubble">
-        <T with={values}>{text}</T>
+        {content ?? <T with={values}>{text}</T>}
       </span>
     </span>
   );

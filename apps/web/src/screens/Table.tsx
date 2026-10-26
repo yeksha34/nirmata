@@ -115,7 +115,9 @@ function Prose({ text }: { text: string }) {
         .map((p, i) => (
           // paragraphs never reorder, so the position is a fine key
           // biome-ignore lint/suspicious/noArrayIndexKey: see above
-          <p key={i}>{p.trim()}</p>
+          <p key={i}>
+            <T>{p.trim()}</T>
+          </p>
         ))}
     </>
   );
@@ -135,7 +137,10 @@ function PlayerLines({ turns }: { turns: TurnView[] }) {
       {turns.map((t) => (
         <p key={t.id}>
           {t.by && <strong>{t.by} </strong>}
-          <span className="chip">{MODE_LABEL[t.mode ?? "do"]}</span> {t.text}
+          <span className="chip">
+            <T>{MODE_LABEL[t.mode ?? "do"]}</T>
+          </span>{" "}
+          {t.text}
         </p>
       ))}
     </blockquote>
@@ -176,11 +181,21 @@ function StoryBar() {
           </span>
         </Tip>
         {chapters.length > 0 && (
-          <span className="muted" title={chapters.map((c) => c.title).join(", ")}>
-            <T with={{ n: chapters.length }}>
-              {chapters.length === 1 ? "{n} chapter written" : "{n} chapters written"}
-            </T>
-          </span>
+          <Tip
+            text="Chapters"
+            content={chapters.map((c, i) => (
+              <span key={c.title}>
+                {i > 0 && ", "}
+                <T>{c.title}</T>
+              </span>
+            ))}
+          >
+            <span className="muted">
+              <T with={{ n: chapters.length }}>
+                {chapters.length === 1 ? "{n} chapter written" : "{n} chapters written"}
+              </T>
+            </span>
+          </Tip>
         )}
       </div>
       <div className="story-bar-actions">

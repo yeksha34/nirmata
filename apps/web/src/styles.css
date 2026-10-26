@@ -1718,3 +1718,15 @@ label.choice-opt:has(input:focus-visible) {
     gap: 6px;
   }
 }
+
+.syntax .tr {
+  display: grid;
+}
+.syntax .tr > .hi,
+.syntax .tr > .en {
+  white-space: pre;
+}
+.syntax .tr > .hi {
+  font-family: ui-monospace, "Cascadia Code", Consolas, "Noto Sans Devanagari Variable", monospace;
+  line-height: 1.5;
+}

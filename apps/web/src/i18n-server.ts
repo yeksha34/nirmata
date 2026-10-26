@@ -152,6 +152,96 @@ export const HI_SERVER: Record<string, string> = {
   "{label} reported an error: {why}": "{label} ने त्रुटि बताई: {why}",
   "Stopped.": "रोक दिया गया।",
 
+  // a card or a world that cannot be read (from the card reader and its schema)
+  "not a card: the file should start with <card …> (or an older --- block)":
+    "यह पत्रक नहीं है: संचिका <card …> से (या पुराने --- खंड से) शुरू होनी चाहिए",
+  "frontmatter is not valid YAML: {why}": "फ्रंटमैटर मान्य YAML नहीं है: {why}",
+  'could not read the card\'s opening tag near "{near}" (write each field as name="value")':
+    'पत्रक का आरंभिक टैग "{near}" के पास पढ़ा नहीं जा सका (हर क्षेत्र को name="value" के रूप में लिखें)',
+  'the field "{key}" is written twice in the opening tag': 'क्षेत्र "{key}" आरंभिक टैग में दो बार लिखा है',
+  "the card has no closing </card> at the end of the file":
+    "संचिका के अंत में पत्रक का समापन </card> नहीं है",
+  "<{tag}>: {why}": "<{tag}>: {why}",
+  "<{tag}> is never closed (write </{tag}>)": "<{tag}> कभी बंद नहीं किया गया (</{tag}> लिखें)",
+  '<data> needs a key, as in <data key="mood">…</data>':
+    '<data> को एक कुंजी चाहिए, जैसे <data key="mood">…</data>',
+  '<data key="{key}"> does not hold valid JSON': '<data key="{key}"> में मान्य JSON नहीं है',
+  "the part <{tag}> is written twice": "अंग <{tag}> दो बार लिखा है",
+  "world.json is not valid JSON: {why}": "world.json मान्य JSON नहीं है: {why}",
+  "world.json: {why}": "world.json: {why}",
+  'duplicate id "{id}" in {path} (first used in {first})':
+    'पहचान "{id}" दोहराई गई है, {path} में (पहली बार {first} में प्रयुक्त)',
+  "{path}.md: {why}": "{path}.md: {why}",
+  "{field}: Required": "{field}: आवश्यक है",
+  "{field}: Invalid input": "{field}: अमान्य इनपुट",
+  "{field}: Invalid enum value. Expected {options}, received {got}":
+    "{field}: अमान्य मान। अपेक्षित {options}, मिला {got}",
+  "{field}: String must contain at least {n} character(s)": "{field}: कम से कम {n} अक्षर होने चाहिए",
+  "{field}: Expected {expected}, received {got}": "{field}: अपेक्षित {expected}, मिला {got}",
+  '{field}: id must look like "kind.slug" (lowercase letters, digits, hyphens)':
+    '{field}: पहचान "kind.slug" जैसी होनी चाहिए (छोटे अक्षर, अंक, हाइफ़न)',
+  "{field}: a field name is lowercase letters, digits and hyphens":
+    "{field}: अंग का नाम छोटे अक्षर, अंक और हाइफ़न से बनता है",
+  "Raise the context size, lower the reply reserve, or shorten the rules marked must.":
+    "संदर्भ-आकार बढ़ाएँ, उत्तर के लिए रखा स्थान घटाएँ, या ‘अनिवार्य’ चिह्नित नियम छोटे करें।",
+
+  // more announcements, the board, the model's answers, files and a damaged story
+  "{host} speaks a word of leaving; the door swings wide and an unseen wind sweeps {target} through it.":
+    "{host} विदा का एक शब्द बोलते हैं; द्वार खुल जाता है और एक अदृश्य हवा {target} को उससे बाहर बहा ले जाती है।",
+  "{host} snaps out a roll of heavy tape and mummifies {target}, who is carried out like a parcel.":
+    "{host} मोटी टेप का एक गट्ठर खींच निकालते हैं और {target} को ममी बना देते हैं, जिन्हें पार्सल की तरह उठाकर बाहर ले जाया जाता है।",
+  "{host}'s halberd hooks {target} by the collar, and the guards haul them out of the room.":
+    "{host} का हलबर्ड {target} को कॉलर से अटका लेता है, और पहरेदार उन्हें कमरे से घसीट ले जाते हैं।",
+  "{host} pulls a lever; the chair under {target} shoots up the chimney.":
+    "{host} एक लीवर खींचते हैं; {target} के नीचे की कुर्सी चिमनी से ऊपर उछल जाती है।",
+  "{host} breathes out a hush-spell; {target}'s voice folds up like paper and goes quiet.":
+    "{host} एक मौन-मंत्र फूँकते हैं; {target} की वाणी कागज़ की तरह तह होकर चुप हो जाती है।",
+  "{host} presses a neat length of tape across {target}'s lips.":
+    "{host} {target} के होंठों पर सलीके से टेप की एक पट्टी दबा देते हैं।",
+  "{host}'s gauntlet clamps gently over {target}'s mouth.":
+    "{host} का दस्ताना {target} के मुँह पर धीरे से कस जाता है।",
+  "{host} lays the flat of a sword across {target}'s lips, and {target} knows to say no more.":
+    "{host} तलवार की चपटी धार {target} के होंठों पर रख देते हैं, और {target} समझ जाते हैं कि अब और नहीं कहना।",
+  "{host} snaps a finger; the stillness on {target}'s tongue melts away.":
+    "{host} चुटकी बजाते हैं; {target} की जीभ की निस्तब्धता पिघल जाती है।",
+  "{host} lifts the tape from {target}'s lips, and they may speak again.":
+    "{host} {target} के होंठों से टेप उठा लेते हैं, और वे फिर बोल सकते हैं।",
+  "{host} lifts the gauntlet from {target}'s mouth.": "{host} {target} के मुँह से दस्ताना उठा लेते हैं।",
+  "{host} chalks a rune in the air, and {target} answers to {newName} from now on.":
+    "{host} हवा में एक रून खींचते हैं, और {target} अब से {newName} कहलाते हैं।",
+  "{host} slaps a fresh strip of tape across {target}'s badge and scrawls {newName} on it.":
+    "{host} {target} के बिल्ले पर टेप की नई पट्टी चिपकाकर उस पर {newName} लिख देते हैं।",
+  "{host} chisels a new name into {target}'s shield: {newName}.":
+    "{host} {target} की ढाल पर नया नाम उकेरते हैं: {newName}।",
+  "{host}'s dagger scratches {newName} over {target}'s old name on the table.":
+    "{host} का खंजर पटल पर {target} के पुराने नाम के ऊपर {newName} खरोंच देता है।",
+  "{nick} has not written anything yet to object to.": "{nick} ने अभी आपत्ति करने को कुछ नहीं लिखा।",
+  '"{nick}" has not joined this table.': '"{nick}" इस पटल पर नहीं जुड़ा।',
+  "{who} did not return JSON.": "{who} ने JSON नहीं लौटाया।",
+  "{who} returned JSON that could not be read.": "{who} ने ऐसा JSON लौटाया जो पढ़ा नहीं जा सका।",
+  "Something went wrong: {why}": "कुछ गड़बड़ हो गई: {why}",
+  "{label} sent an empty reply.": "{label} ने खाली उत्तर भेजा।",
+  "Connected to {label}. {n} models available.": "{label} से जुड़ गए। {n} मॉडल उपलब्ध हैं।",
+  "Connected to {label}. {n} model available.": "{label} से जुड़ गए। {n} मॉडल उपलब्ध है।",
+  "Connected to {label}, but it reports no models. Load one first.":
+    "{label} से जुड़ गए, पर वह कोई मॉडल नहीं बताता। पहले कोई लोड करें।",
+  '"{id}" is not a story id.': '"{id}" कथा-पहचान नहीं है।',
+  "{name}/world.json is not valid JSON; fix it by hand first.":
+    "{name}/world.json मान्य JSON नहीं है; पहले उसे हाथ से ठीक करें।",
+  "The story is saved, but its chapter files could not be written: {why}":
+    "कथा संचित है, पर इसकी अध्याय-संचिकाएँ लिखी नहीं जा सकीं: {why}",
+  'duplicate event id "{id}"': 'घटना-पहचान "{id}" दोहराई गई है',
+  'goto {id}: unknown target "{target}"': 'goto {id}: अज्ञात लक्ष्य "{target}"',
+  'event {id}: unknown parent "{parent}"': 'घटना {id}: अज्ञात जनक "{parent}"',
+  "begin {id}: this story has already begun": "begin {id}: यह कथा पहले ही आरंभ हो चुकी है",
+  'event {id}: {what} "{ref}" is not on its branch': 'घटना {id}: {what} "{ref}" इसकी शाखा में नहीं है',
+  'unplot {id}: "{ref}" is not a plot point on its branch':
+    'unplot {id}: "{ref}" इसकी शाखा में कथानक-बिंदु नहीं है',
+  'unknown event "{id}"': 'अज्ञात घटना "{id}"',
+  'cannot edit unknown event "{id}"': 'अज्ञात घटना "{id}" संपादित नहीं की जा सकती',
+  "events line {n}: not valid JSON ({why})": "घटना-पंक्ति {n}: मान्य JSON नहीं ({why})",
+  "events line {n}: {why}": "घटना-पंक्ति {n}: {why}",
+
   // announcements in the story's own voice (a player hushed, let speak, renamed, sent away)
   "A banishing sigil flares under {target}'s feet, and with a pop of sulphur they are whisked out of the room.":
     "{target} के पैरों तले एक निष्कासन-चिह्न दहक उठता है, और गंधक की चटक के साथ वे कमरे से उड़ा दिए जाते हैं।",

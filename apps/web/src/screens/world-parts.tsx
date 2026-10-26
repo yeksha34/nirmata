@@ -3,7 +3,7 @@ import { api } from "../api";
 import { useAct, useApp, useSave } from "../app-context";
 import { Choice, Field } from "../controls";
 import { agoParts, words } from "../format";
-import { T } from "../i18n";
+import { Both, T } from "../i18n";
 import type { Card, Manifest, Perspective, StorySummary, WorldSummary } from "../types";
 import { Modal, Panel } from "../ui";
 
@@ -14,7 +14,12 @@ import { Modal, Panel } from "../ui";
 function Ago({ iso }: { iso: string }) {
   const when = agoParts(iso);
   if (!when) return null;
-  if ("date" in when) return <>{when.date}</>;
+  if ("date" in when) {
+    const at = new Date(Date.parse(iso));
+    const format = (locale: string) =>
+      at.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
+    return <Both hi={format("hi-IN")} en={format("en-GB")} />;
+  }
   return <T with={{ n: when.n }}>{when.text}</T>;
 }
 

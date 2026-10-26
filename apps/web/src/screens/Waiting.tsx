@@ -9,11 +9,11 @@ import { People } from "./Board";
  */
 export function Waiting() {
   const { state } = useApp();
-  const host = state.board?.host ?? "The host";
+  const host = state.board?.host ?? <T>The host</T>;
   if (state.story) {
     return (
       <div className="waiting">
-        <Panel title={state.world?.title ?? "The story"}>
+        <Panel plain title={state.world?.title ?? "The story"}>
           <p className="lead">
             <T>The story is open in the window.</T>
           </p>
@@ -29,7 +29,7 @@ export function Waiting() {
   }
   return (
     <div className="waiting">
-      <Panel title={state.world ? state.world.title : "Waiting for the host"}>
+      <Panel plain={!!state.world} title={state.world ? state.world.title : "Waiting for the host"}>
         <p className="lead">
           {state.world ? (
             <T with={{ host }}>
