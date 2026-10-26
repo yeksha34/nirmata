@@ -10,6 +10,19 @@ export const HI_TEXT: Record<string, string> = {
   "A new chapter begins.": "एक नया अध्याय आरंभ होता है।",
   "Looking for plot points…": "कथानक-बिंदु खोजे जा रहे हैं…",
 
+  // questions and choices
+  OK: "ठीक है",
+  Begin: "आरंभ",
+  "No particular part": "कोई विशेष भूमिका नहीं",
+  "Someone in the story": "कथा का कोई पात्र",
+  Companion: "साथी",
+  Antagonist: "विरोधी",
+  "Starting character": "आरंभिक पात्र",
+  "fog, mist, haze": "कोहरा, धुंध, गुबार",
+  "gothic, sea": "गॉथिक, समुद्र",
+  "cozy, eerie": "आरामदायक, रहस्यमय",
+  "Part in the story": "कथा में भूमिका",
+
   // header and jump box
   "Open a world to jump to its cards as well.": "इसके पत्रकों पर भी जाने के लिए कोई संसार खोलें।",
   World: "संसार",

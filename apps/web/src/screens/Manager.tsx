@@ -1,8 +1,9 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api";
 import { useSave } from "../app-context";
-import { list, words } from "../format";
-import { bilingual, T } from "../i18n";
+import { Choice, Field } from "../controls";
+import { words } from "../format";
+import { T } from "../i18n";
 import type {
   BrokenCard,
   Card,
@@ -219,7 +220,7 @@ export function WorldFacts({ manifest, onEdit }: { manifest: Manifest; onEdit: (
           <T>Genre</T>
         </dt>
         <dd>
-          {list(manifest.genre) || (
+          {manifest.genre.join(", ") || (
             <span className="muted">
               <T>None yet.</T>
             </span>
@@ -229,7 +230,7 @@ export function WorldFacts({ manifest, onEdit }: { manifest: Manifest; onEdit: (
           <T>Tone</T>
         </dt>
         <dd>
-          {list(manifest.tone) || (
+          {manifest.tone.join(", ") || (
             <span className="muted">
               <T>None yet.</T>
             </span>
@@ -435,20 +436,12 @@ export function CardEditor({
 
       {options.length > 1 && (
         <div>
-          <label htmlFor="cf-template">
-            <T>{card ? "Parts from" : "Start from"}</T>
-          </label>
-          <select
-            id="cf-template"
+          <Choice
+            legend={card ? "Parts from" : "Start from"}
             value={templateId}
-            onChange={(e) => pickTemplate(e.target.value)}
-          >
-            {options.map((t) => (
-              <option key={t.id} value={t.id}>
-                {bilingual(t.label)}
-              </option>
-            ))}
-          </select>
+            options={options.map((t) => ({ value: t.id, label: t.label }))}
+            onChange={pickTemplate}
+          />
           <p className="hint">
             {template && <T>{template.description}</T>}{" "}
             {card && <T>Parts you have filled in are kept.</T>}
@@ -476,12 +469,13 @@ export function CardEditor({
               <T>· what brings this card into a scene</T>
             </span>
           </label>
-          <input
-            id="cf-keywords"
-            value={keywords}
-            onChange={(e) => setKeywords(e.target.value)}
-            placeholder="fog, mist, haze"
-          />
+          <Field placeholder="fog, mist, haze" empty={!keywords}>
+            <input
+              id="cf-keywords"
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+            />
+          </Field>
         </div>
       </div>
 
@@ -499,58 +493,44 @@ export function CardEditor({
       </p>
 
       {kind === "character" && (
-        <>
-          <label htmlFor="cf-role">
-            <T>Part in the story</T>
-          </label>
-          <input
-            id="cf-role"
-            value={role}
-            list="cf-roles"
-            maxLength={40}
-            placeholder="npc, companion, antagonist…"
-            onChange={(e) => setRole(e.target.value)}
-          />
-          <datalist id="cf-roles">
-            <option value="npc" />
-            <option value="companion" />
-            <option value="antagonist" />
-            <option value="player-template" />
-          </datalist>
-        </>
+        <Choice
+          legend="Part in the story"
+          value={role}
+          options={[
+            { value: "", label: "No particular part" },
+            { value: "npc", label: "Someone in the story" },
+            { value: "companion", label: "Companion" },
+            { value: "antagonist", label: "Antagonist" },
+            { value: "player-template", label: "Starting character" },
+            ...(role && !["npc", "companion", "antagonist", "player-template"].includes(role)
+              ? [{ value: role, label: role, raw: true }]
+              : []),
+          ]}
+          onChange={setRole}
+        />
       )}
 
       {kind === "rule" && (
         <div className="two">
-          <div>
-            <label htmlFor="cf-severity">
-              <T>How strict</T>
-            </label>
-            <select
-              id="cf-severity"
-              value={severity}
-              onChange={(e) => setSeverity(e.target.value as "must" | "should")}
-            >
-              <option value="should">
-                {bilingual("Should: dropped first if space runs short")}
-              </option>
-              <option value="must">{bilingual("Must: never dropped")}</option>
-            </select>
-          </div>
-          <div>
-            <label htmlFor="cf-scope">
-              <T>Applies to</T>
-            </label>
-            <select
-              id="cf-scope"
-              value={scope}
-              onChange={(e) => setScope(e.target.value as "chapter" | "story" | "both")}
-            >
-              <option value="both">{bilingual("Stories and chapters")}</option>
-              <option value="story">{bilingual("Stories only")}</option>
-              <option value="chapter">{bilingual("Chapters only")}</option>
-            </select>
-          </div>
+          <Choice
+            legend="How strict"
+            value={severity}
+            options={[
+              { value: "should", label: "Should: dropped first if space runs short" },
+              { value: "must", label: "Must: never dropped" },
+            ]}
+            onChange={setSeverity}
+          />
+          <Choice
+            legend="Applies to"
+            value={scope}
+            options={[
+              { value: "both", label: "Stories and chapters" },
+              { value: "story", label: "Stories only" },
+              { value: "chapter", label: "Chapters only" },
+            ]}
+            onChange={setScope}
+          />
         </div>
       )}
 
@@ -581,7 +561,11 @@ export function CardEditor({
                 value={values[p.id] ?? ""}
                 onChange={(e) => setValues({ ...values, [p.id]: e.target.value })}
               />
-              {p.hint && <p className="hint">{p.hint}</p>}
+              {p.hint && (
+                <p className="hint">
+                  <T>{p.hint}</T>
+                </p>
+              )}
             </div>
           ))}
         </fieldset>
@@ -631,7 +615,7 @@ export function CardEditor({
 
       {problem && (
         <p className="error" role="alert">
-          {problem}
+          <T>{problem}</T>
         </p>
       )}
       <div className="editor-actions">
@@ -718,7 +702,7 @@ export function CardTextDialog({
         </details>
         {problem && (
           <p className="error" role="alert">
-            {problem}
+            <T>{problem}</T>
           </p>
         )}
         <div className="dialog-actions">
@@ -762,7 +746,7 @@ export function RemoveCard({
       </p>
       {problem && (
         <p className="error" role="alert">
-          {problem}
+          <T>{problem}</T>
         </p>
       )}
       <div className="dialog-actions">

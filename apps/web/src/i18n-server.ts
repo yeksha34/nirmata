@@ -1,0 +1,189 @@
+// Hindi for what the server says to people: its errors, refusals, notices and the in-the-story
+// lines that announce a hushed or renamed player. The server sends English; the screen matches the
+// text against these (a `{mark}` stands for the part that changes: a name, a file, a count) and
+// shows the Hindi with the English on hover. A message with no match shows in English alone.
+export const HI_SERVER: Record<string, string> = {
+  // the server and the table
+  "Something went wrong on the server. Try again.": "सर्वर पर कुछ गड़बड़ हो गई। फिर प्रयास करें।",
+  "Something went wrong with the story.": "कथा में कुछ गड़बड़ हो गई।",
+  "Something went wrong with the story. The host can try again.":
+    "कथा में कुछ गड़बड़ हो गई। मेज़बान फिर प्रयास कर सकते हैं।",
+  "That request is not right: {why}": "वह अनुरोध ठीक नहीं है: {why}",
+  "Pick a nickname to join with.": "जुड़ने के लिए कोई उपनाम चुनें।",
+  "There is nothing at that address.": "उस पते पर कुछ नहीं है।",
+  "A world needs a title.": "संसार को एक शीर्षक चाहिए।",
+  "A card needs a name.": "पत्रक को एक नाम चाहिए।",
+  "Say which card to remove.": "बताएँ कि कौन-सा पत्रक हटाना है।",
+  "A world's name uses lowercase letters, digits and hyphens.":
+    "संसार के नाम में छोटे अक्षर, अंक और हाइफ़न होते हैं।",
+  "A world's name uses lowercase letters, digits and hyphens, 2 to 40 characters.":
+    "संसार के नाम में छोटे अक्षर, अंक और हाइफ़न होते हैं, 2 से 40 अक्षर।",
+  "Only the host can see the settings.": "केवल मेज़बान सेटिंग देख सकते हैं।",
+  "That is too much to send at once.": "इतना सब एक साथ नहीं भेजा जा सकता।",
+  "Choose a world first.": "पहले कोई संसार चुनें।",
+  "That host key is not right.": "वह मेज़बान-कुंजी सही नहीं है।",
+  "The table is full. Try again later.": "पटल भरा है। बाद में फिर प्रयास करें।",
+  "Join the table first.": "पहले पटल पर आएँ।",
+  "You left the table.": "आपने पटल छोड़ दिया।",
+  "You are no longer at this table.": "आप अब इस पटल पर नहीं हैं।",
+  "You were sent away from the table.": "आपको पटल से विदा कर दिया गया।",
+  "Opt in to play before you do that.": "यह करने से पहले खेलने के लिए सम्मिलित हों।",
+  "Your voice is hushed for now: you can read, but not do that.":
+    "अभी आपकी वाणी रोकी गई है: आप पढ़ सकते हैं, पर यह नहीं कर सकते।",
+  "There is nothing on the board to close, or the story is busy.":
+    "बंद करने को पटल पर कुछ नहीं है, या कथा व्यस्त है।",
+  "There is no such moment in this story.": "इस कथा में ऐसा कोई क्षण नहीं है।",
+  "There is no story yet. The host can start one.": "अभी कोई कथा नहीं है। मेज़बान एक आरंभ कर सकते हैं।",
+  "The story is busy writing. Wait for it to finish.":
+    "कथा लिखने में व्यस्त है। उसके पूरा होने की प्रतीक्षा करें।",
+
+  // worlds, stories and cards on disk
+  "That path is outside the world's folder.": "वह पथ संसार के फ़ोल्डर के बाहर है।",
+  "This world has no world.json.": "इस संसार में world.json नहीं है।",
+  'A card\'s path must be a .md file inside {dirs} (got "{path}").':
+    'पत्रक का पथ {dirs} के भीतर की .md संचिका होना चाहिए (मिला: "{path}")।',
+  'There is already a world called "{name}". Pick another name.':
+    '"{name}" नाम का संसार पहले से है। कोई और नाम चुनें।',
+  'There is no story "{id}".': '"{id}" नाम की कोई कथा नहीं है।',
+  'There is no world "{name}".': '"{name}" नाम का कोई संसार नहीं है।',
+  "There is no card at {path}.": "{path} पर कोई पत्रक नहीं है।",
+  'There is no card "{id}" in this world.': 'इस संसार में "{id}" नाम का कोई पत्रक नहीं है।',
+  'There is no card "{id}" to remove.': 'हटाने के लिए "{id}" नाम का कोई पत्रक नहीं है।',
+  "That card cannot be read, so it cannot be edited as a form. Edit it as text.":
+    "वह पत्रक पढ़ा नहीं जा सकता, इसलिए उसे फ़ॉर्म से संपादित नहीं किया जा सकता। उसे पाठ के रूप में संपादित करें।",
+  "That card is not valid: {why}": "वह पत्रक मान्य नहीं है: {why}",
+  'Couldn\'t put "{name}" away ({why}). Close anything using its folder and try again.':
+    '"{name}" को समेटा नहीं जा सका ({why})। इसके फ़ोल्डर का उपयोग करने वाली हर चीज़ बंद करें और फिर प्रयास करें।',
+  'The saved story "{id}" is damaged: {why}': 'संचित कथा "{id}" क्षतिग्रस्त है: {why}',
+  "The host has not allowed players to read the source cards.":
+    "मेज़बान ने खिलाड़ियों को मूल पत्रक पढ़ने की अनुमति नहीं दी है।",
+  "This story has no copy of its cards to save a world from.":
+    "इस कथा के पास अपने पत्रकों की प्रति नहीं है जिससे संसार संचित किया जा सके।",
+
+  // permissions
+  "Only the host can edit the source cards.": "केवल मेज़बान मूल पत्रक संपादित कर सकते हैं।",
+  "Only the host can start a story.": "केवल मेज़बान कथा आरंभ कर सकते हैं।",
+  "You can't take part in this story.": "आप इस कथा में भाग नहीं ले सकते।",
+  "You can't undo in this story.": "आप इस कथा में पूर्ववत नहीं कर सकते।",
+  "You can't edit turns in this story.": "आप इस कथा में बारियाँ संपादित नहीं कर सकते।",
+  "You can't pin facts in this story.": "आप इस कथा में तथ्य टाँक नहीं सकते।",
+  "Only the host can jump to another branch of the story.":
+    "केवल मेज़बान कथा की किसी दूसरी शाखा पर जा सकते हैं।",
+  "Only the host can update plot points.": "केवल मेज़बान कथानक-बिंदु अद्यतन कर सकते हैं।",
+  "Only the host can add plot points.": "केवल मेज़बान कथानक-बिंदु जोड़ सकते हैं।",
+  "Only the host can take back plot points.": "केवल मेज़बान कथानक-बिंदु वापस ले सकते हैं।",
+  "Only the host can start a new chapter.": "केवल मेज़बान नया अध्याय आरंभ कर सकते हैं।",
+  "Only the host can change settings.": "केवल मेज़बान सेटिंग बदल सकते हैं।",
+  "Only the host can wield that power.": "केवल मेज़बान उस शक्ति का प्रयोग कर सकते हैं।",
+
+  // the board
+  'The nickname "{nick}" is already taken at this table.':
+    'उपनाम "{nick}" इस पटल पर पहले से लिया जा चुका है।',
+  "The host cannot leave the table.": "मेज़बान पटल नहीं छोड़ सकते।",
+  "The host keeps their seat at the table.": "मेज़बान पटल पर अपना आसन बनाए रखते हैं।",
+  "Keep a turn under {n} characters.": "बारी {n} अक्षरों से कम रखें।",
+  "Keep a remark under {n} characters.": "टिप्पणी {n} अक्षरों से कम रखें।",
+  "Write your turn before marking it ready.": "तैयार चिह्नित करने से पहले अपनी बारी लिखें।",
+  "Object to someone else's turn.": "किसी और की बारी पर आपत्ति करें।",
+  "You can only take back your own remarks.": "आप केवल अपनी टिप्पणियाँ वापस ले सकते हैं।",
+  "Pick a nickname of 1 to 24 letters, digits or {chars} (no spaces).":
+    "1 से 24 अक्षरों, अंकों या {chars} का उपनाम चुनें (रिक्त स्थान नहीं)।",
+  "Opt in to play before writing a turn.": "बारी लिखने से पहले खेलने के लिए सम्मिलित हों।",
+  "Your voice is hushed for now: you can read, but not write.":
+    "अभी आपकी वाणी रोकी गई है: आप पढ़ सकते हैं, लिख नहीं सकते।",
+  "That power cannot be used on the host.": "वह शक्ति मेज़बान पर प्रयोग नहीं की जा सकती।",
+  "Write something first.": "पहले कुछ लिखें।",
+
+  // the storyteller
+  "This story has already started.": "यह कथा पहले ही आरंभ हो चुकी है।",
+  "Type something to do or say first.": "पहले कुछ करने या कहने के लिए लिखें।",
+  "The host has not started this story yet.": "मेज़बान ने अभी यह कथा आरंभ नहीं की।",
+  "There is no reply to retry yet.": "दोबारा आज़माने के लिए अभी कोई उत्तर नहीं है।",
+  "The reply to retry does not follow a player action.":
+    "दोबारा आज़माया जाने वाला उत्तर किसी खिलाड़ी की क्रिया के बाद का नहीं है।",
+  "There is no turn to answer.": "उत्तर देने के लिए कोई बारी नहीं है।",
+  "There is nothing to continue yet.": "आगे बढ़ाने को अभी कुछ नहीं है।",
+  "Write what happened first.": "पहले लिखें कि क्या हुआ।",
+  "Nothing has happened yet to attach a plot point to.": "कथानक-बिंदु जोड़ने के लिए अभी कुछ घटित नहीं हुआ।",
+  "There is nothing in the story yet to attach a plot point to.":
+    "कथा में अभी कथानक-बिंदु जोड़ने को कुछ नहीं है।",
+  "That plot point is not in force on this branch.": "वह कथानक-बिंदु इस शाखा में लागू नहीं है।",
+  "Nothing has happened yet to end a chapter.": "अध्याय समाप्त करने के लिए अभी कुछ घटित नहीं हुआ।",
+  "This story has no cards to play with.": "इस कथा के पास खेलने के लिए कोई पत्रक नहीं है।",
+  "There are no source cards to start this story from.":
+    "इस कथा को आरंभ करने के लिए कोई मूल पत्रक नहीं हैं।",
+  "A turn is already in progress.": "एक बारी पहले से चल रही है।",
+  "Could not save the story: {why}": "कथा संचित नहीं की जा सकी: {why}",
+  "The model sent back an empty reply. Try again, or check the model and context size in Settings.":
+    "मॉडल ने खाली उत्तर लौटाया। फिर प्रयास करें, या सेटिंग में मॉडल और संदर्भ-आकार जाँचें।",
+  "The reply was cut off at the length limit. Use Continue to finish it, or raise the maximum reply length.":
+    "उत्तर लंबाई की सीमा पर कट गया। उसे पूरा करने के लिए ‘आगे बढ़ें’ का प्रयोग करें, या अधिकतम उत्तर-लंबाई बढ़ाएँ।",
+  "The rule check could not run, so this reply was not checked ({why}).":
+    "नियम-जाँच चल नहीं सकी, इसलिए इस उत्तर की जाँच नहीं हुई ({why})।",
+  "There is nothing new to read for plot points yet.": "कथानक-बिंदुओं के लिए अभी पढ़ने को कुछ नया नहीं है।",
+  "No card is mentioned in the recent story, so there is nothing to attach plot points to.":
+    "हाल की कथा में किसी पत्रक का उल्लेख नहीं है, इसलिए कथानक-बिंदु जोड़ने को कुछ नहीं है।",
+  "Plot points could not be updated this time ({why}). Play continues and it will be tried again.":
+    "इस बार कथानक-बिंदु अद्यतन नहीं हो सके ({why})। खेल जारी है और फिर प्रयास किया जाएगा।",
+
+  // the model
+  "The prompt is longer than this model can read. Lower the context size in Settings, or shorten your rules.":
+    "संकेत इस मॉडल के पढ़ने से लंबा है। सेटिंग में संदर्भ-आकार घटाएँ, या अपने नियम छोटे करें।",
+  "{label} rejected the API key. Check or re-enter it in Settings.":
+    "{label} ने API कुंजी अस्वीकार कर दी। सेटिंग में उसे जाँचें या फिर से दर्ज करें।",
+  "{label} refused the request (permission denied). Check that your key has access to this model.":
+    "{label} ने अनुरोध अस्वीकार कर दिया (अनुमति नहीं)। जाँचें कि आपकी कुंजी को इस मॉडल की पहुँच है।",
+  '{label} does not have a model called "{model}", or the address is wrong. Pick another model in Settings.':
+    '{label} के पास "{model}" नाम का मॉडल नहीं है, या पता गलत है। सेटिंग में कोई और मॉडल चुनें।',
+  "{label} did not recognise that address ({url}). Check the address in Settings.":
+    "{label} उस पते ({url}) को पहचान नहीं सका। सेटिंग में पता जाँचें।",
+  "{label} says you are sending requests too fast or are out of quota. Wait a moment and try again.":
+    "{label} कहता है कि आप अनुरोध बहुत तेज़ भेज रहे हैं या कोटा समाप्त है। थोड़ी प्रतीक्षा करें और फिर प्रयास करें।",
+  "{label} rejected the request: {why}": "{label} ने अनुरोध अस्वीकार कर दिया: {why}",
+  "{label} rejected the request.": "{label} ने अनुरोध अस्वीकार कर दिया।",
+  "{label} had a problem on its side (error {n}). Try again; if it keeps happening, check its logs.":
+    "{label} की ओर से समस्या हुई (त्रुटि {n})। फिर प्रयास करें; बार-बार हो तो उसके लॉग जाँचें।",
+  "{label} answered with an unexpected status ({n}).":
+    "{label} ने अप्रत्याशित स्थिति ({n}) के साथ उत्तर दिया।",
+  "Can't reach {label} at {url}. If you use KoboldCpp, Ollama or LM Studio, make sure it is running and the port matches.":
+    "{url} पर {label} तक नहीं पहुँच पा रहे। यदि आप KoboldCpp, Ollama या LM Studio प्रयोग करते हैं, तो सुनिश्चित करें कि वह चल रहा है और पोर्ट मेल खाता है।",
+  "Can't reach {label} at {url}. Check your internet connection and the address in Settings.":
+    "{url} पर {label} तक नहीं पहुँच पा रहे। अपना इंटरनेट कनेक्शन और सेटिंग में दिया पता जाँचें।",
+  "{label} reported an error: {why}": "{label} ने त्रुटि बताई: {why}",
+  "Stopped.": "रोक दिया गया।",
+
+  // announcements in the story's own voice (a player hushed, let speak, renamed, sent away)
+  "A banishing sigil flares under {target}'s feet, and with a pop of sulphur they are whisked out of the room.":
+    "{target} के पैरों तले एक निष्कासन-चिह्न दहक उठता है, और गंधक की चटक के साथ वे कमरे से उड़ा दिए जाते हैं।",
+  "A strip of tape as long as the hall wraps {target} snugly; with a tug from {host}, out they go.":
+    "भवन जितनी लंबी एक पट्टी {target} को कसकर लपेट लेती है; {host} के एक झटके से वे बाहर चले जाते हैं।",
+  "A net flung by {host} tangles {target}, and they are dragged to the door.":
+    "{host} का फेंका जाल {target} को उलझा लेता है, और उन्हें खींचकर द्वार तक ले जाया जाता है।",
+  "The floor beneath {target} gives way with a clack of hidden hinges, and they drop out of sight.":
+    "{target} के नीचे का फ़र्श छिपी कब्ज़ों की खटक के साथ खुल जाता है, और वे ओझल हो जाते हैं।",
+  "A spell of stillness settles on {target}'s tongue.":
+    "{target} की जीभ पर निस्तब्धता का मंत्र उतर आता है।",
+  "A strip of black tape seals {target}'s mouth.":
+    "काली पट्टी की एक पट्टी {target} का मुँह बंद कर देती है।",
+  "A velvet muzzle drops from the rafters and snaps shut over {target}'s mouth.":
+    "छत की कड़ियों से एक मखमली मुखावरण गिरता है और {target} के मुँह पर चटक से बंद हो जाता है।",
+  "A curtain on a spring whisks around {target}, muffling every word.":
+    "कमानी वाला एक परदा {target} के चारों ओर घूम जाता है, और हर शब्द दब जाता है।",
+  "The hush lifts from {target}, and their voice returns.":
+    "{target} से निस्तब्धता हट जाती है, और उनकी वाणी लौट आती है।",
+  "The tape peels away from {target}'s mouth with a rip.": "{target} के मुँह से पट्टी चर्र से उतर जाती है।",
+  "The sword-flat leaves {target}'s lips, and they may speak again.":
+    "तलवार की चपटी धार {target} के होंठों से हट जाती है, और वे फिर बोल सकते हैं।",
+  "The muzzle clicks open and drops away from {target}.":
+    "मुखावरण खटाक से खुलकर {target} से गिर जाता है।",
+  "The curtain whips back, and {target} can be heard again.":
+    "परदा झटके से हट जाता है, और {target} फिर सुनाई देने लगते हैं।",
+  "A naming-charm crackles over the table: {target} is now called {newName}.":
+    "पटल के ऊपर एक नाम-मंत्र चटकता है: {target} अब {newName} कहलाते हैं।",
+  "A new label is taped over {target}'s old one: {newName}.":
+    "{target} के पुराने नाम-पत्र पर नया चिपका दिया जाता है: {newName}।",
+  "A trick-lock clicks and {target}'s name-plate spins around to read {newName}.":
+    "एक चतुर ताला खटकता है और {target} की नाम-पट्टिका घूमकर {newName} पढ़वाने लगती है।",
+  "A hidden panel flips on {target}'s seat; the name on it now says {newName}.":
+    "{target} के आसन पर एक छिपी पट्टी पलट जाती है; उस पर लिखा नाम अब {newName} कहता है।",
+};

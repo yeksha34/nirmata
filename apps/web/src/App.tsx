@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { api, seat } from "./api";
 import { AppProvider } from "./app-context";
+import { AskProvider } from "./controls";
 import { HeaderBar } from "./header";
 import { T, useTapToTranslate } from "./i18n";
 import { useLive } from "./live";
@@ -97,26 +98,32 @@ export function App() {
   return (
     <AppProvider value={{ state, dispatch, leave }}>
       <NavProvider>
-        {!token || !state.you ? (
-          <Join info={info} problem={joinError ?? (state.kicked || undefined)} onJoined={joined} />
-        ) : (
-          <div className="shell">
-            <HeaderBar />
-            <main>
-              {screen === "worlds" && <Worlds />}
-              {(screen === "waiting-world" || screen === "waiting-story") && <Waiting />}
-            </main>
-            {state.story && (
-              <StoryWindow
-                title={state.world?.title ?? "Story"}
-                working={state.streaming !== null || state.story.busy}
-              >
-                <TableScreen />
-              </StoryWindow>
-            )}
-          </div>
-        )}
-        <Toasts />
+        <AskProvider>
+          {!token || !state.you ? (
+            <Join
+              info={info}
+              problem={joinError ?? (state.kicked || undefined)}
+              onJoined={joined}
+            />
+          ) : (
+            <div className="shell">
+              <HeaderBar />
+              <main>
+                {screen === "worlds" && <Worlds />}
+                {(screen === "waiting-world" || screen === "waiting-story") && <Waiting />}
+              </main>
+              {state.story && (
+                <StoryWindow
+                  title={state.world?.title ?? "Story"}
+                  working={state.streaming !== null || state.story.busy}
+                >
+                  <TableScreen />
+                </StoryWindow>
+              )}
+            </div>
+          )}
+          <Toasts />
+        </AskProvider>
       </NavProvider>
     </AppProvider>
   );

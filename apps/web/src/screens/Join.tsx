@@ -81,7 +81,7 @@ export function Join({
 
         {(error ?? problem) && (
           <p className="error" role="alert">
-            {error ?? problem}
+            <T>{error ?? problem ?? ""}</T>
           </p>
         )}
         <button

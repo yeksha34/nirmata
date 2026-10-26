@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { bilingual } from "./i18n";
+import { Tip } from "./controls";
 import {
   type Box,
   clampBox,
@@ -188,25 +188,27 @@ export function StoryWindow({
         )}
         <span className="win-title">{title}</span>
         <div className="win-buttons" data-no-drag>
-          <button
-            type="button"
-            className="plain"
-            aria-label="Minimize the story"
-            title={bilingual("Minimize")}
-            onClick={() => show("minimized")}
-          >
-            –
-          </button>
-          {!narrow && (
+          <Tip below text="Minimize">
             <button
               type="button"
               className="plain"
-              aria-label={maximized ? "Restore the story window" : "Fill the page"}
-              title={bilingual(maximized ? "Restore" : "Fill the page")}
-              onClick={() => show(maximized ? "open" : "maximized")}
+              aria-label="Minimize the story"
+              onClick={() => show("minimized")}
             >
-              {maximized ? "❐" : "□"}
+              –
             </button>
+          </Tip>
+          {!narrow && (
+            <Tip below text={maximized ? "Restore" : "Fill the page"}>
+              <button
+                type="button"
+                className="plain"
+                aria-label={maximized ? "Restore the story window" : "Fill the page"}
+                onClick={() => show(maximized ? "open" : "maximized")}
+              >
+                {maximized ? "❐" : "□"}
+              </button>
+            </Tip>
           )}
         </div>
       </header>

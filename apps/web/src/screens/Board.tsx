@@ -1,8 +1,9 @@
 import { type FormEvent, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
+import { Field, Tip, useAsk } from "../controls";
 import { MODE_LABEL } from "../format";
-import { bilingual, T } from "../i18n";
+import { T } from "../i18n";
 import { waitingFor } from "../store";
 import type { Draft, Participant, Remark } from "../types";
 import { Empty, Panel, SeatBadge } from "../ui";
@@ -12,22 +13,23 @@ export function People() {
   const { state } = useApp();
   const board = state.board;
   const { act } = useAct();
+  const ask = useAsk();
   if (!board) return null;
   const hostView = state.you?.host === true;
   const online = new Set(board.online.map((n) => n.toLowerCase()));
 
-  const mod = (p: Participant, action: "kick" | "mute" | "unmute") => {
+  const mod = async (p: Participant, action: "kick" | "mute" | "unmute") => {
     if (
       action === "kick" &&
-      !window.confirm(bilingual("Send {nick} away from the table?", { nick: p.nick }))
+      !(await ask.confirm("Send {nick} away from the table?", { nick: p.nick }, "Send away"))
     )
       return;
     void act(() => api.moderate({ action, nick: p.nick }));
   };
-  const rename = (p: Participant) => {
-    const next = window
-      .prompt(bilingual("A new name for {nick}:", { nick: p.nick }), p.nick)
-      ?.trim();
+  const rename = async (p: Participant) => {
+    const next = (
+      await ask.prompt("A new name for {nick}:", p.nick, { nick: p.nick }, "Rename")
+    )?.trim();
     if (next && next !== p.nick)
       void act(() => api.moderate({ action: "rename", nick: p.nick, newNick: next }));
   };
@@ -37,10 +39,9 @@ export function People() {
       <ul className="people">
         {board.participants.map((p) => (
           <li key={p.nick}>
-            <span
-              className={`dot dot-${online.has(p.nick.toLowerCase()) ? "live" : "lost"}`}
-              title={bilingual(online.has(p.nick.toLowerCase()) ? "Here" : "Not connected")}
-            />
+            <Tip text={online.has(p.nick.toLowerCase()) ? "Here" : "Not connected"}>
+              <span className={`dot dot-${online.has(p.nick.toLowerCase()) ? "live" : "lost"}`} />
+            </Tip>
             <span className="nick">{p.nick}</span>
             <SeatBadge seat={p.seat} muted={p.muted} />
             {hostView && p.seat !== "host" && (
@@ -65,7 +66,9 @@ export function People() {
       {board.notices.length > 0 && (
         <ul className="notices" aria-label="What has happened at the table">
           {board.notices.slice(-4).map((n) => (
-            <li key={n.id}>{n.text}</li>
+            <li key={n.id}>
+              <T>{n.text}</T>
+            </li>
           ))}
         </ul>
       )}
@@ -167,11 +170,13 @@ function DraftCard({
           </span>
         )}
         {draft.objections > 0 && (
-          <span className="objection-count" title={bilingual("Objections still standing")}>
-            <T with={{ n: draft.objections }}>
-              {draft.objections === 1 ? "{n} objection" : "{n} objections"}
-            </T>
-          </span>
+          <Tip text="Objections still standing">
+            <span className="objection-count">
+              <T with={{ n: draft.objections }}>
+                {draft.objections === 1 ? "{n} objection" : "{n} objections"}
+              </T>
+            </span>
+          </Tip>
         )}
       </div>
       <p>{draft.text}</p>
@@ -182,15 +187,16 @@ function DraftCard({
       )}
       {objecting && (
         <form className="inline-form" onSubmit={send}>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={bilingual("Why not, {nick}?", { nick: draft.nick })}
-            aria-label={`Your objection to ${draft.nick}'s turn`}
-            maxLength={500}
-            // biome-ignore lint/a11y/noAutofocus: the person just asked to type here
-            autoFocus
-          />
+          <Field placeholder="Why not, {nick}?" values={{ nick: draft.nick }} empty={!text}>
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              aria-label={`Your objection to ${draft.nick}'s turn`}
+              maxLength={500}
+              // biome-ignore lint/a11y/noAutofocus: the person just asked to type here
+              autoFocus
+            />
+          </Field>
           <button type="submit" disabled={!text.trim()}>
             <T>Object</T>
           </button>
@@ -232,13 +238,14 @@ function Remarks() {
       )}
       {canSpeak(me) ? (
         <form className="inline-form" onSubmit={talk}>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={bilingual("Say something to the table")}
-            aria-label="Say something to the table"
-            maxLength={500}
-          />
+          <Field placeholder="Say something to the table" empty={!text}>
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              aria-label="Say something to the table"
+              maxLength={500}
+            />
+          </Field>
           <button type="submit" disabled={!text.trim()}>
             <T>Say</T>
           </button>
@@ -272,15 +279,16 @@ function RemarkLine({ remark, mine }: { remark: Remark; mine: boolean }) {
         </em>
       )}
       {mine && (
-        <button
-          type="button"
-          className="plain"
-          aria-label="Take back"
-          title={bilingual("Take back")}
-          onClick={() => act(() => api.withdraw(remark.id))}
-        >
-          ×
-        </button>
+        <Tip text="Take back">
+          <button
+            type="button"
+            className="plain"
+            aria-label="Take back"
+            onClick={() => act(() => api.withdraw(remark.id))}
+          >
+            ×
+          </button>
+        </Tip>
       )}
     </li>
   );

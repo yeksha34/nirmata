@@ -50,4 +50,21 @@ describe("labels in Hindi", () => {
     expect(bilingual("{n} min ago", { n: 5 })).toBe("5 मिनट पहले · 5 min ago");
     expect(fill("{unknown} stays", {})).toBe("{unknown} stays");
   });
+
+  it("finds the sentence a finished message from the server came from", () => {
+    expect(bilingual('There is no world "ashfall".')).toBe(
+      '"ashfall" नाम का कोई संसार नहीं है। · There is no world "ashfall".',
+    );
+    expect(
+      bilingual(
+        "A banishing sigil flares under Sam's feet, and with a pop of sulphur they are whisked out of the room.",
+      ),
+    ).toContain("Sam");
+    expect(bilingual("That card is not valid: name: A card needs a name.")).toContain(
+      "वह पत्रक मान्य नहीं है",
+    );
+    expect(bilingual("Some message nobody wrote Hindi for.")).toBe(
+      "Some message nobody wrote Hindi for.",
+    );
+  });
 });

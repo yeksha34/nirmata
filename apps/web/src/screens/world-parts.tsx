@@ -1,8 +1,9 @@
 import { type FormEvent, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp, useSave } from "../app-context";
+import { Choice, Field } from "../controls";
 import { agoParts, words } from "../format";
-import { bilingual, T } from "../i18n";
+import { T } from "../i18n";
 import type { Card, Manifest, Perspective, StorySummary, WorldSummary } from "../types";
 import { Modal, Panel } from "../ui";
 
@@ -182,17 +183,15 @@ export function StartStory({
       <div className="new-story">
         {arcs.length > 0 && (
           <>
-            <label htmlFor="arc">
-              <T>Begin with</T>
-            </label>
-            <select id="arc" value={arc} onChange={(e) => setArc(e.target.value)}>
-              <option value="">{bilingual("Let the story begin its own way")}</option>
-              {arcs.map((a) => (
-                <option key={a.fm.id} value={a.fm.id}>
-                  {a.fm.name}
-                </option>
-              ))}
-            </select>
+            <Choice
+              legend="Begin with"
+              value={arc}
+              options={[
+                { value: "", label: "Let the story begin its own way" },
+                ...arcs.map((a) => ({ value: a.fm.id, label: a.fm.name, raw: true })),
+              ]}
+              onChange={setArc}
+            />
           </>
         )}
         <button
@@ -276,36 +275,28 @@ export function EditWorld({
         <label htmlFor="ew-genre">
           <T>Genre</T>
         </label>
-        <input
-          id="ew-genre"
-          value={genre}
-          onChange={(e) => setGenre(e.target.value)}
-          placeholder="gothic, sea"
-        />
+        <Field placeholder="gothic, sea" empty={!genre}>
+          <input id="ew-genre" value={genre} onChange={(e) => setGenre(e.target.value)} />
+        </Field>
         <label htmlFor="ew-tone">
           <T>Tone</T>
         </label>
-        <input
-          id="ew-tone"
-          value={tone}
-          onChange={(e) => setTone(e.target.value)}
-          placeholder="cozy, eerie"
-        />
+        <Field placeholder="cozy, eerie" empty={!tone}>
+          <input id="ew-tone" value={tone} onChange={(e) => setTone(e.target.value)} />
+        </Field>
         <p className="hint">
           <T>Separate words with commas.</T>
         </p>
-        <label htmlFor="ew-perspective">
-          <T>Told in</T>
-        </label>
-        <select
-          id="ew-perspective"
+        <Choice
+          legend="Told in"
           value={perspective}
-          onChange={(e) => setPerspective(e.target.value as Perspective)}
-        >
-          <option value="first-person">{bilingual("First person (I)")}</option>
-          <option value="second-person">{bilingual("Second person (you)")}</option>
-          <option value="third-person">{bilingual("Third person (they)")}</option>
-        </select>
+          options={[
+            { value: "first-person", label: "First person (I)" },
+            { value: "second-person", label: "Second person (you)" },
+            { value: "third-person", label: "Third person (they)" },
+          ]}
+          onChange={setPerspective}
+        />
         <p className="hint">
           <T with={{ name: <code>{world.name}</code> }}>
             {
@@ -315,7 +306,7 @@ export function EditWorld({
         </p>
         {problem && (
           <p className="error" role="alert">
-            {problem}
+            <T>{problem}</T>
           </p>
         )}
         <div className="dialog-actions">
