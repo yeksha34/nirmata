@@ -149,7 +149,20 @@ function StoryBar() {
     <div className="story-bar">
       <div className="story-bar-left">
         <span className="saved" title={`Saved automatically as ${story?.id ?? ""}`}>
-          ● Saved
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>{" "}
+          Saved
         </span>
         {chapters.length > 0 && (
           <span className="muted" title={chapters.map((c) => c.title).join(", ")}>
@@ -176,6 +189,7 @@ function StoryBar() {
             </button>
             <button
               type="button"
+              className="primary"
               disabled={!canAct || busy}
               onClick={() => act(api.continueStory)}
               title="Let the story go on"
