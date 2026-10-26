@@ -3,7 +3,7 @@ import { api } from "../api";
 import { useSave } from "../app-context";
 import { Choice, Field } from "../controls";
 import { words } from "../format";
-import { T } from "../i18n";
+import { Both, T } from "../i18n";
 import type {
   BrokenCard,
   Card,
@@ -13,7 +13,7 @@ import type {
   Manifest,
   Perspective,
 } from "../types";
-import { Modal } from "../ui";
+import { Modal, Problems } from "../ui";
 
 /**
  * The story manager's pieces: a world's cards as a list grouped by kind, an editor for one card
@@ -37,6 +37,17 @@ export const PERSPECTIVE: Record<Perspective, string> = {
   "second-person": "Second person (you)",
   "third-person": "Third person (they)",
 };
+
+const SYNTAX_HI = `<card id="char.marrow" kind="character" name="मैरो" role="npc">
+  <keywords>मैरो, रखवाला</keywords>
+  <summary>उत्तरी दीप का कठोर रखवाला।</summary>
+  <appearance>मौसम की मार झेला तैलचर्म का कोट, एक दीप-अंधी आँख।</appearance>
+  <wants>चौथा दीप बुझ जाए।</wants>
+
+# मैरो
+
+बाकी सब, सादे मार्कडाउन में।
+</card>`;
 
 const SYNTAX = `<card id="char.marrow" kind="character" name="Marrow" role="npc">
   <keywords>marrow, keeper</keywords>
@@ -109,7 +120,10 @@ export function CardList({
             {broken.map((b) => (
               <li key={b.path}>
                 <code>{b.path}</code>
-                <span className="error"> {b.problems.join("; ")}</span>
+                <span className="error">
+                  {" "}
+                  <Problems list={b.problems} />
+                </span>
                 <span className="card-actions">
                   <button
                     type="button"
@@ -402,7 +416,7 @@ export function CardEditor({
           <p className="eyebrow">
             <T>{card ? `${k.one} card` : `New ${k.one.toLowerCase()}`}</T>
           </p>
-          <h2 className="editor-title">{name.trim() || "Untitled"}</h2>
+          <h2 className="editor-title">{name.trim() || <T>Untitled</T>}</h2>
         </div>
         <div className="editor-status">
           <span className={isSaved ? "saved-flag is-saved" : "saved-flag"} role="status">
@@ -667,7 +681,11 @@ export function CardTextDialog({
         <h2 id="card-text-title">
           <code>{path}</code>
         </h2>
-        {problems && problems.length > 0 && <p className="error">{problems.join("; ")}</p>}
+        {problems && problems.length > 0 && (
+          <p className="error">
+            <Problems list={problems} />
+          </p>
+        )}
         <label htmlFor="ct-text">
           <T>The file</T>
         </label>
@@ -683,7 +701,9 @@ export function CardTextDialog({
           <summary className="hint">
             <T>How a card is written</T>
           </summary>
-          <pre className="syntax">{SYNTAX}</pre>
+          <pre className="syntax">
+            <Both hi={SYNTAX_HI} en={SYNTAX} />
+          </pre>
           <p className="hint">
             <T
               with={{

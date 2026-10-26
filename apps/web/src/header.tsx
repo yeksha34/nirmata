@@ -1,5 +1,6 @@
 import { api } from "./api";
 import { useAct, useApp } from "./app-context";
+import { Tip } from "./controls";
 import { T } from "./i18n";
 import { JumpBox, SHORTCUT, useJump, useNav } from "./nav";
 import { Brand, SeatBadge } from "./ui";
@@ -59,10 +60,9 @@ export function HeaderBar() {
         </button>
       )}
       {jump.open && <JumpBox onClose={jump.hide} />}
-      <span
-        className={`dot dot-${state.connection}`}
-        role="status"
-        title={
+      <Tip
+        below
+        text={
           state.connection === "live"
             ? "Connected"
             : state.connection === "lost"
@@ -70,10 +70,12 @@ export function HeaderBar() {
               : "Connecting…"
         }
       >
-        <span className="sr-only">
-          {state.connection === "live" ? "Connected" : "Connection lost, trying again"}
+        <span className={`dot dot-${state.connection}`} role="status">
+          <span className="sr-only">
+            {state.connection === "live" ? "Connected" : "Connection lost, trying again"}
+          </span>
         </span>
-      </span>
+      </Tip>
       {you && (
         <details className="menu">
           <summary>

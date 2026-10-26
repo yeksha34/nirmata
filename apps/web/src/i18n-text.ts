@@ -23,6 +23,24 @@ export const HI_TEXT: Record<string, string> = {
   "cozy, eerie": "आरामदायक, रहस्यमय",
   "Part in the story": "कथा में भूमिका",
 
+  // the demo storyteller's scripted reply
+  "The lamp gutters. Somewhere beyond the glass, something large turns over in its sleep. (This is the demo storyteller; connect a model to hear the real one.) What do you do?":
+    "दीप टिमटिमाता है। शीशे के उस पार कहीं कोई विशाल चीज़ नींद में करवट बदलती है। (यह डेमो कथावाचक है; असली कथावाचक को सुनने के लिए कोई मॉडल जोड़ें।) आप क्या करते हैं?",
+
+  // connection, the window's chip and small statuses
+  "Chapter {n}": "अध्याय {n}",
+  Chapters: "अध्याय",
+  Connected: "जुड़ा है",
+  "Connection lost. Trying again…": "संपर्क टूट गया। फिर प्रयास हो रहा है…",
+  "Connecting…": "जुड़ रहा है…",
+  "writing…": "लिखा जा रहा है…",
+  story: "कथा",
+  Untitled: "बिना शीर्षक",
+  hushed: "चुप कराया गया",
+  "The host": "मेज़बान",
+  "A reply broke a rule ({text}).": "एक उत्तर ने नियम तोड़ा ({text})।",
+  "Something went wrong ({n}).": "कुछ गड़बड़ हो गई ({n})।",
+
   // header and jump box
   "Open a world to jump to its cards as well.": "इसके पत्रकों पर भी जाने के लिए कोई संसार खोलें।",
   World: "संसार",

@@ -309,8 +309,25 @@ export const bilingual = (english: string, values?: Record<string, string | numb
   return `${found.filled ? found.hi : fill(found.hi, values)} · ${fill(english, values)}`;
 };
 
+/** Two versions of anything (not only text): Hindi shows, and the English comes on hover. */
+export function Both({ hi, en }: { hi: ReactNode; en: ReactNode }) {
+  return (
+    <span className="tr">
+      <span className="hi" lang="hi" aria-hidden="true">
+        {hi}
+      </span>
+      <span className="en" lang="en">
+        {en}
+      </span>
+    </span>
+  );
+}
+
 /** Every English text with its Hindi (for the tests that check them). */
 export const entries = (): Array<[string, string]> => Object.entries(HI);
+
+/** Whether a text, or a finished sentence like it, has Hindi. */
+export const hasHindi = (english: string): boolean => lookup(english) !== undefined;
 
 /** The Hindi for a label, if there is any. */
 export const hindi = (english: string): string | undefined => HI[english];

@@ -37,8 +37,28 @@ export function SeatBadge({ seat, muted }: { seat: SeatKind; muted?: boolean }) 
   return (
     <span className={`badge badge-${seat}`}>
       <T>{SEAT_LABEL[seat]}</T>
-      {muted ? " · hushed" : ""}
+      {muted && (
+        <>
+          {" · "}
+          <T>hushed</T>
+        </>
+      )}
     </span>
+  );
+}
+
+/** Problems found in a card or a world, each shown in Hindi (with its English on hover). */
+export function Problems({ list }: { list: readonly string[] }) {
+  return (
+    <>
+      {list.map((text, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: the problems never reorder
+        <span key={i}>
+          {i > 0 && "; "}
+          <T>{text}</T>
+        </span>
+      ))}
+    </>
   );
 }
 
@@ -72,19 +92,20 @@ export function Toasts() {
 
 export function Panel({
   title,
+  plain,
   aside,
   children,
 }: {
   title: string;
+  /** The title is something a person wrote (a world's name), so it is not translated. */
+  plain?: boolean;
   aside?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className="panel">
       <div className="panel-head">
-        <h2>
-          <T>{title}</T>
-        </h2>
+        <h2>{plain ? title : <T>{title}</T>}</h2>
         {aside}
       </div>
       {children}

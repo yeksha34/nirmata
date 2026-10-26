@@ -115,6 +115,7 @@ export function App() {
               {state.story && (
                 <StoryWindow
                   title={state.world?.title ?? "Story"}
+                  heading={state.world ? undefined : <T>Story</T>}
                   working={state.streaming !== null || state.story.busy}
                 >
                   <TableScreen />

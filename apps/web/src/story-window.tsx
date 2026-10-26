@@ -8,6 +8,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Tip } from "./controls";
+import { T } from "./i18n";
 import {
   type Box,
   clampBox,
@@ -50,10 +51,13 @@ type Drag = { kind: "move" | "size"; id: number; x: number; y: number; start: Bo
  */
 export function StoryWindow({
   title,
+  heading,
   working,
   children,
 }: {
   title: string;
+  /** What the title bar shows, when it is words of the app's own rather than a world's name. */
+  heading?: ReactNode;
   /** The story is being written right now: shown on the chip when the window is minimized. */
   working: boolean;
   children: ReactNode;
@@ -143,8 +147,10 @@ export function StoryWindow({
         aria-label={`Open the story: ${title}`}
       >
         <span className={`dot ${working ? "dot-live" : ""}`} aria-hidden="true" />
-        <span className="win-chip-title">{title}</span>
-        <span className="muted">{working ? "writing…" : "story"}</span>
+        <span className="win-chip-title">{heading ?? title}</span>
+        <span className="muted">
+          <T>{working ? "writing…" : "story"}</T>
+        </span>
       </button>,
       document.body,
     );
@@ -186,7 +192,7 @@ export function StoryWindow({
         ) : (
           <span className="win-grip" aria-hidden="true" />
         )}
-        <span className="win-title">{title}</span>
+        <span className="win-title">{heading ?? title}</span>
         <div className="win-buttons" data-no-drag>
           <Tip below text="Minimize">
             <button
