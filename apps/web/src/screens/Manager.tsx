@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api";
 import { useSave } from "../app-context";
 import { list, words } from "../format";
+import { bilingual, T } from "../i18n";
 import type {
   BrokenCard,
   Card,
@@ -116,14 +117,14 @@ export function CardList({
                       onDialog({ is: "text", path: b.path, file: b.file, problems: b.problems })
                     }
                   >
-                    Fix as text
+                    <T>Fix as text</T>
                   </button>
                   <button
                     type="button"
                     className="plain"
                     onClick={() => onDialog({ is: "remove", path: b.path, name: b.path })}
                   >
-                    Remove
+                    <T>Remove</T>
                   </button>
                 </span>
               </li>
@@ -137,7 +138,9 @@ export function CardList({
       )}
       {present.map((k) => (
         <section key={k.id} className="card-group" aria-label={k.group}>
-          <h3 className="eyebrow quiet">{k.group}</h3>
+          <h3 className="eyebrow quiet">
+            <T>{k.group}</T>
+          </h3>
           <ul className="card-rows">
             {cards
               .filter((c) => c.fm.kind === k.id)
@@ -160,7 +163,9 @@ export function CardList({
 
       {picking ? (
         <fieldset className="kind-picker">
-          <legend className="eyebrow quiet">New card</legend>
+          <legend className="eyebrow quiet">
+            <T>New card</T>
+          </legend>
           <div>
             {KINDS.map((k) => (
               <button
@@ -171,17 +176,17 @@ export function CardList({
                   onNew(k.id);
                 }}
               >
-                {k.one}
+                <T>{k.one}</T>
               </button>
             ))}
             <button type="button" className="plain" onClick={() => setPicking(false)}>
-              Cancel
+              <T>Cancel</T>
             </button>
           </div>
         </fieldset>
       ) : (
         <button type="button" className="dashed" onClick={() => setPicking(true)}>
-          <span aria-hidden="true">＋</span> New card
+          <span aria-hidden="true">＋</span> <T>New card</T>
         </button>
       )}
     </div>
@@ -194,19 +199,47 @@ export function WorldFacts({ manifest, onEdit }: { manifest: Manifest; onEdit: (
   return (
     <>
       <dl className="facts">
-        <dt>Title</dt>
+        <dt>
+          <T>Title</T>
+        </dt>
         <dd>{manifest.title}</dd>
-        <dt>A line about it</dt>
-        <dd>{manifest.tagline || <span className="muted">None yet.</span>}</dd>
-        <dt>Genre</dt>
-        <dd>{list(manifest.genre) || <span className="muted">None yet.</span>}</dd>
-        <dt>Tone</dt>
-        <dd>{list(manifest.tone) || <span className="muted">None yet.</span>}</dd>
-        <dt>Told in</dt>
+        <dt>
+          <T>A line about it</T>
+        </dt>
+        <dd>
+          {manifest.tagline || (
+            <span className="muted">
+              <T>None yet.</T>
+            </span>
+          )}
+        </dd>
+        <dt>
+          <T>Genre</T>
+        </dt>
+        <dd>
+          {list(manifest.genre) || (
+            <span className="muted">
+              <T>None yet.</T>
+            </span>
+          )}
+        </dd>
+        <dt>
+          <T>Tone</T>
+        </dt>
+        <dd>
+          {list(manifest.tone) || (
+            <span className="muted">
+              <T>None yet.</T>
+            </span>
+          )}
+        </dd>
+        <dt>
+          <T>Told in</T>
+        </dt>
         <dd>{PERSPECTIVE[manifest.perspective]}</dd>
       </dl>
       <button type="button" onClick={onEdit}>
-        Edit the world
+        <T>Edit the world</T>
       </button>
     </>
   );
@@ -357,11 +390,13 @@ export function CardEditor({
   return (
     <form className="editor" onSubmit={submit}>
       <button type="button" className="plain back-to-list" onClick={onBack}>
-        ← All cards
+        <T>← All cards</T>
       </button>
       <header className="editor-head">
         <div>
-          <p className="eyebrow">{card ? `${k.one} card` : `New ${k.one.toLowerCase()}`}</p>
+          <p className="eyebrow">
+            <T>{card ? `${k.one} card` : `New ${k.one.toLowerCase()}`}</T>
+          </p>
           <h2 className="editor-title">{name.trim() || "Untitled"}</h2>
         </div>
         <div className="editor-status">
@@ -381,14 +416,14 @@ export function CardEditor({
                 <path d="M5 12.5l4.5 4.5L19 7.5" />
               </svg>
             )}
-            {status}
+            <T>{status}</T>
           </span>
           {card && (
             <button
               type="button"
               onClick={() => onDialog({ is: "text", path: card.path, file: card.file ?? "" })}
             >
-              View raw file
+              <T>View raw file</T>
             </button>
           )}
         </div>
@@ -404,7 +439,7 @@ export function CardEditor({
           >
             {options.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.label}
+                {bilingual(t.label)}
               </option>
             ))}
           </select>
@@ -416,7 +451,9 @@ export function CardEditor({
 
       <div className="two">
         <div>
-          <label htmlFor="cf-name">Name</label>
+          <label htmlFor="cf-name">
+            <T>Name</T>
+          </label>
           <input
             id="cf-name"
             value={name}
@@ -438,7 +475,9 @@ export function CardEditor({
         </div>
       </div>
 
-      <label htmlFor="cf-summary">Summary</label>
+      <label htmlFor="cf-summary">
+        <T>Summary</T>
+      </label>
       <input
         id="cf-summary"
         value={summary}
@@ -449,7 +488,9 @@ export function CardEditor({
 
       {kind === "character" && (
         <>
-          <label htmlFor="cf-role">Part in the story</label>
+          <label htmlFor="cf-role">
+            <T>Part in the story</T>
+          </label>
           <input
             id="cf-role"
             value={role}
@@ -470,26 +511,32 @@ export function CardEditor({
       {kind === "rule" && (
         <div className="two">
           <div>
-            <label htmlFor="cf-severity">How strict</label>
+            <label htmlFor="cf-severity">
+              <T>How strict</T>
+            </label>
             <select
               id="cf-severity"
               value={severity}
               onChange={(e) => setSeverity(e.target.value as "must" | "should")}
             >
-              <option value="should">Should: dropped first if space runs short</option>
-              <option value="must">Must: never dropped</option>
+              <option value="should">
+                {bilingual("Should: dropped first if space runs short")}
+              </option>
+              <option value="must">{bilingual("Must: never dropped")}</option>
             </select>
           </div>
           <div>
-            <label htmlFor="cf-scope">Applies to</label>
+            <label htmlFor="cf-scope">
+              <T>Applies to</T>
+            </label>
             <select
               id="cf-scope"
               value={scope}
               onChange={(e) => setScope(e.target.value as "chapter" | "story" | "both")}
             >
-              <option value="both">Stories and chapters</option>
-              <option value="story">Stories only</option>
-              <option value="chapter">Chapters only</option>
+              <option value="both">{bilingual("Stories and chapters")}</option>
+              <option value="story">{bilingual("Stories only")}</option>
+              <option value="chapter">{bilingual("Chapters only")}</option>
             </select>
           </div>
         </div>
@@ -498,17 +545,21 @@ export function CardEditor({
       <label className="check">
         <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} />
         <span>
-          Always in the storyteller's view
+          <T>Always in the storyteller's view</T>
           <span className="faint"> · use sparingly: it costs space in every turn</span>
         </span>
       </label>
 
       {parts.length > 0 && (
         <fieldset className="parts">
-          <legend>The details</legend>
+          <legend>
+            <T>The details</T>
+          </legend>
           {parts.map((p) => (
             <div key={p.id}>
-              <label htmlFor={`cf-part-${p.id}`}>{p.label}</label>
+              <label htmlFor={`cf-part-${p.id}`}>
+                <T>{p.label}</T>
+              </label>
               <textarea
                 id={`cf-part-${p.id}`}
                 rows={2}
@@ -560,7 +611,7 @@ export function CardEditor({
       )}
       <div className="editor-actions">
         <button type="submit" className="primary" disabled={busy || !name.trim() || !dirty}>
-          Save
+          <T>Save</T>
         </button>
         {card && (
           <button
@@ -568,7 +619,7 @@ export function CardEditor({
             className="danger"
             onClick={() => onDialog({ is: "remove", path: card.path, name: card.fm.name })}
           >
-            Remove
+            <T>Remove</T>
           </button>
         )}
       </div>
@@ -608,7 +659,9 @@ export function CardTextDialog({
           <code>{path}</code>
         </h2>
         {problems && problems.length > 0 && <p className="error">{problems.join("; ")}</p>}
-        <label htmlFor="ct-text">The file</label>
+        <label htmlFor="ct-text">
+          <T>The file</T>
+        </label>
         <textarea
           id="ct-text"
           className="code"
@@ -618,7 +671,9 @@ export function CardTextDialog({
           onChange={(e) => setText(e.target.value)}
         />
         <details>
-          <summary className="hint">How a card is written</summary>
+          <summary className="hint">
+            <T>How a card is written</T>
+          </summary>
           <pre className="syntax">{SYNTAX}</pre>
           <p className="hint">
             The fields are attributes of <code>&lt;card&gt;</code>; <code>&lt;keywords&gt;</code>,{" "}
@@ -634,10 +689,10 @@ export function CardTextDialog({
         )}
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>
-            Cancel
+            <T>Cancel</T>
           </button>
           <button type="submit" className="primary" disabled={busy || !text.trim()}>
-            Save
+            <T>Save</T>
           </button>
         </div>
       </form>
@@ -673,7 +728,7 @@ export function RemoveCard({
       )}
       <div className="dialog-actions">
         <button type="button" onClick={onClose}>
-          Keep it
+          <T>Keep it</T>
         </button>
         <button
           type="button"
@@ -683,7 +738,7 @@ export function RemoveCard({
             if (await run(() => api.removeCard(world, path))) onSaved();
           }}
         >
-          Remove the card
+          <T>Remove the card</T>
         </button>
       </div>
     </Modal>

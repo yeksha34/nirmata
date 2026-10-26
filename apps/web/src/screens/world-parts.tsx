@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp, useSave } from "../app-context";
 import { ago, list, words } from "../format";
+import { bilingual, T } from "../i18n";
 import type { Card, Manifest, Perspective, StorySummary, WorldSummary } from "../types";
 import { Modal, Panel } from "../ui";
 
@@ -22,7 +23,7 @@ export function OpenStoryNotice() {
         Put it away (it stays saved) to start or continue a different one.
       </p>
       <button type="button" disabled={busy || writing} onClick={() => act(api.closeStory)}>
-        Put the story away
+        <T>Put the story away</T>
       </button>
     </Panel>
   );
@@ -65,7 +66,7 @@ export function StoryRow({
         disabled={busy || story.damaged}
         onClick={onContinue}
       >
-        Continue
+        <T>Continue</T>
       </button>
     </li>
   );
@@ -94,8 +95,12 @@ export function CreateWorld({
   return (
     <Modal titleId="new-world-title" onClose={onClose}>
       <form onSubmit={submit}>
-        <h2 id="new-world-title">New world</h2>
-        <label htmlFor="nw-title">Title</label>
+        <h2 id="new-world-title">
+          <T>New world</T>
+        </h2>
+        <label htmlFor="nw-title">
+          <T>Title</T>
+        </label>
         <input
           id="nw-title"
           value={title}
@@ -103,14 +108,18 @@ export function CreateWorld({
           onChange={(e) => setTitle(e.target.value)}
           required
         />
-        <label htmlFor="nw-tagline">A line about it (optional)</label>
+        <label htmlFor="nw-tagline">
+          <T>A line about it (optional)</T>
+        </label>
         <input
           id="nw-tagline"
           value={tagline}
           maxLength={200}
           onChange={(e) => setTagline(e.target.value)}
         />
-        <label htmlFor="nw-premise">What is it like? (optional)</label>
+        <label htmlFor="nw-premise">
+          <T>What is it like? (optional)</T>
+        </label>
         <textarea
           id="nw-premise"
           rows={5}
@@ -124,10 +133,10 @@ export function CreateWorld({
         </p>
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>
-            Cancel
+            <T>Cancel</T>
           </button>
           <button type="submit" className="primary" disabled={busy || !title.trim()}>
-            Make the world
+            <T>Make the world</T>
           </button>
         </div>
       </form>
@@ -152,9 +161,11 @@ export function StartStory({
       <div className="new-story">
         {arcs.length > 0 && (
           <>
-            <label htmlFor="arc">Begin with</label>
+            <label htmlFor="arc">
+              <T>Begin with</T>
+            </label>
             <select id="arc" value={arc} onChange={(e) => setArc(e.target.value)}>
-              <option value="">Let the story begin its own way</option>
+              <option value="">{bilingual("Let the story begin its own way")}</option>
               {arcs.map((a) => (
                 <option key={a.fm.id} value={a.fm.id}>
                   {a.fm.name}
@@ -169,7 +180,7 @@ export function StartStory({
           disabled={busy}
           onClick={() => act(() => api.startStoryIn(name, arc || undefined))}
         >
-          Start a new story
+          <T>Start a new story</T>
         </button>
         <p className="hint">
           The story takes its own copy of the world's cards, so changing the world later never
@@ -217,8 +228,12 @@ export function EditWorld({
   return (
     <Modal titleId="edit-world-title" onClose={onClose}>
       <form onSubmit={submit}>
-        <h2 id="edit-world-title">Edit the world</h2>
-        <label htmlFor="ew-title">Title</label>
+        <h2 id="edit-world-title">
+          <T>Edit the world</T>
+        </h2>
+        <label htmlFor="ew-title">
+          <T>Title</T>
+        </label>
         <input
           id="ew-title"
           value={title}
@@ -226,37 +241,47 @@ export function EditWorld({
           onChange={(e) => setTitle(e.target.value)}
           required
         />
-        <label htmlFor="ew-tagline">A line about it</label>
+        <label htmlFor="ew-tagline">
+          <T>A line about it</T>
+        </label>
         <input
           id="ew-tagline"
           value={tagline}
           maxLength={200}
           onChange={(e) => setTagline(e.target.value)}
         />
-        <label htmlFor="ew-genre">Genre</label>
+        <label htmlFor="ew-genre">
+          <T>Genre</T>
+        </label>
         <input
           id="ew-genre"
           value={genre}
           onChange={(e) => setGenre(e.target.value)}
           placeholder="gothic, sea"
         />
-        <label htmlFor="ew-tone">Tone</label>
+        <label htmlFor="ew-tone">
+          <T>Tone</T>
+        </label>
         <input
           id="ew-tone"
           value={tone}
           onChange={(e) => setTone(e.target.value)}
           placeholder="cozy, eerie"
         />
-        <p className="hint">Separate words with commas.</p>
-        <label htmlFor="ew-perspective">Told in</label>
+        <p className="hint">
+          <T>Separate words with commas.</T>
+        </p>
+        <label htmlFor="ew-perspective">
+          <T>Told in</T>
+        </label>
         <select
           id="ew-perspective"
           value={perspective}
           onChange={(e) => setPerspective(e.target.value as Perspective)}
         >
-          <option value="first-person">First person (I)</option>
-          <option value="second-person">Second person (you)</option>
-          <option value="third-person">Third person (they)</option>
+          <option value="first-person">{bilingual("First person (I)")}</option>
+          <option value="second-person">{bilingual("Second person (you)")}</option>
+          <option value="third-person">{bilingual("Third person (they)")}</option>
         </select>
         <p className="hint">
           The folder keeps its name, <code>{world.name}</code>. Stories already started keep the
@@ -269,10 +294,10 @@ export function EditWorld({
         )}
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>
-            Cancel
+            <T>Cancel</T>
           </button>
           <button type="submit" className="primary" disabled={busy || !title.trim()}>
-            Save
+            <T>Save</T>
           </button>
         </div>
       </form>
@@ -307,7 +332,7 @@ export function PutAway({
       )}
       <div className="dialog-actions">
         <button type="button" onClick={onClose}>
-          Keep it
+          <T>Keep it</T>
         </button>
         <button
           type="button"
@@ -318,7 +343,7 @@ export function PutAway({
             if (done) onDone();
           }}
         >
-          Put it away
+          <T>Put it away</T>
         </button>
       </div>
     </Modal>

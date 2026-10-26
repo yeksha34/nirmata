@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { api } from "./api";
+import { T } from "./i18n";
 import type { CardKind, WorldSummary } from "./types";
 import { Modal } from "./ui";
 
@@ -159,7 +160,7 @@ export function JumpBox({ onClose }: { onClose: () => void }) {
   return (
     <Modal titleId="jump-title" onClose={onClose}>
       <h2 id="jump-title" className="sr-only">
-        Jump to a world or card
+        <T>Jump to a world or card</T>
       </h2>
       <input
         // biome-ignore lint/a11y/noAutofocus: the box exists only to be typed in

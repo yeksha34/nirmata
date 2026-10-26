@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { api } from "../api";
+import { T } from "../i18n";
 import type { TableInfo } from "../types";
 import { Brand } from "../ui";
 
@@ -45,7 +46,9 @@ export function Join({
             : "Pick a name to come in."}
         </p>
 
-        <label htmlFor="nick">Your name</label>
+        <label htmlFor="nick">
+          <T>Your name</T>
+        </label>
         <input
           id="nick"
           value={nick}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useState } from "react";
 import { api, seat } from "./api";
 import { AppProvider } from "./app-context";
 import { HeaderBar } from "./header";
+import { T, useTapToTranslate } from "./i18n";
 import { useLive } from "./live";
 import { NavProvider } from "./nav";
 import { Join } from "./screens/Join";
@@ -77,6 +78,7 @@ export function App() {
   }, []);
 
   useLive(token, dispatch, leave);
+  useTapToTranslate();
 
   const joined = (nextToken: string) => {
     seat.save(nextToken);
@@ -87,7 +89,7 @@ export function App() {
   if (booting)
     return (
       <div className="boot" role="status">
-        Opening the table…
+        <T>Opening the table…</T>
       </div>
     );
 

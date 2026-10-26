@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
+import { T } from "../i18n";
 import { useNav } from "../nav";
 import type { CardKind, WorldDetail, WorldSummary } from "../types";
 import { Empty, Panel } from "../ui";
@@ -85,14 +86,16 @@ export function Workspace({ name }: { name: string }) {
   if (detail === undefined)
     return (
       <div className="ws-wrap">
-        <Empty>Opening the world…</Empty>
+        <Empty>
+          <T>Opening the world…</T>
+        </Empty>
       </div>
     );
   if (detail === null)
     return (
       <div className="ws-wrap">
         <button type="button" className="plain" onClick={nav.home}>
-          ← All worlds
+          <T>← All worlds</T>
         </button>
         <Empty>This world could not be opened. The reason is shown above.</Empty>
       </div>
@@ -116,7 +119,9 @@ export function Workspace({ name }: { name: string }) {
       <OpenStoryNotice />
       <div className="ws" data-editing={editingCard ? "true" : "false"}>
         <aside className="ws-rail" aria-label="Your worlds">
-          <p className="eyebrow quiet">Your worlds</p>
+          <p className="eyebrow quiet">
+            <T>Your worlds</T>
+          </p>
           <ul>
             {worlds.map((w) => (
               <li key={w.name}>
@@ -133,10 +138,10 @@ export function Workspace({ name }: { name: string }) {
             ))}
           </ul>
           <button type="button" className="dashed" onClick={() => setCreating(true)}>
-            <span aria-hidden="true">＋</span> New world
+            <span aria-hidden="true">＋</span> <T>New world</T>
           </button>
           <button type="button" className="plain home-link" onClick={nav.home}>
-            ← Front page
+            <T>← Front page</T>
           </button>
         </aside>
 
@@ -160,7 +165,7 @@ export function Workspace({ name }: { name: string }) {
                       : "Start a story"
                 }
               >
-                {latest ? "Continue" : "Play"}
+                <T>{latest ? "Continue" : "Play"}</T>
               </button>
             )}
           </header>
@@ -173,7 +178,7 @@ export function Workspace({ name }: { name: string }) {
                 world away.
               </p>
               <button type="button" className="danger" onClick={() => setPutting(true)}>
-                Put away
+                <T>Put away</T>
               </button>
             </Panel>
           ) : (
@@ -186,7 +191,7 @@ export function Workspace({ name }: { name: string }) {
                     aria-current={tab === t.id ? "true" : undefined}
                     onClick={() => setTab(t.id)}
                   >
-                    {t.label}
+                    <T>{t.label}</T>
                     {t.id === "cards" && <span className="tab-count"> {cards.length}</span>}
                     {t.id === "stories" && <span className="tab-count"> {stories.length}</span>}
                   </button>
@@ -239,7 +244,7 @@ export function Workspace({ name }: { name: string }) {
                   )}
                   <div className="world-danger">
                     <button type="button" className="danger" onClick={() => setPutting(true)}>
-                      Put away
+                      <T>Put away</T>
                     </button>
                     <p className="hint">
                       Nothing is deleted: the folder is renamed, and renaming it back brings it
@@ -284,7 +289,9 @@ export function Workspace({ name }: { name: string }) {
           )}
           {!(tab === "cards" && editingCard) && (
             <div className="editor-empty">
-              <p className="eyebrow quiet">Cards</p>
+              <p className="eyebrow quiet">
+                <T>Cards</T>
+              </p>
               <p>
                 {cards.length === 0
                   ? "This world has no cards yet. Make a character, a place or a rule and the storyteller will use it."
@@ -296,7 +303,7 @@ export function Workspace({ name }: { name: string }) {
               </p>
               {tab !== "cards" && (
                 <button type="button" onClick={() => setTab("cards")}>
-                  Go to the cards
+                  <T>Go to the cards</T>
                 </button>
               )}
             </div>

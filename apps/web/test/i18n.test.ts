@@ -1,0 +1,32 @@
+import { describe, expect, it } from "vitest";
+import { CARD_TEMPLATES } from "../../../packages/core/src/templates";
+import { bilingual, hindi } from "../src/i18n";
+
+describe("labels in Hindi", () => {
+  it("has Hindi for the words the design shows, and none for what people write", () => {
+    expect(hindi("Worlds")).toBe("संसार");
+    expect(hindi("Play")).toBe("खेलें");
+    expect(hindi("Marrow")).toBeUndefined();
+  });
+
+  it("gives Hindi and English together where markup cannot go", () => {
+    expect(bilingual("Cards")).toBe("पत्रक · Cards");
+    expect(bilingual("Something with no Hindi")).toBe("Something with no Hindi");
+  });
+
+  it("covers every template's name and every part's name", () => {
+    const missing: string[] = [];
+    for (const t of CARD_TEMPLATES) {
+      if (!hindi(t.label)) missing.push(t.label);
+      for (const f of t.fields) if (!hindi(f.label)) missing.push(f.label);
+    }
+    expect([...new Set(missing)]).toEqual([]);
+  });
+
+  it("is Devanagari, not a copy of the English", () => {
+    for (const t of CARD_TEMPLATES) {
+      const text = hindi(t.label);
+      if (text) expect(text).toMatch(/[ऀ-ॿ]/);
+    }
+  });
+});
