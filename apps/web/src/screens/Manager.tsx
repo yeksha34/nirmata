@@ -10,28 +10,27 @@ import type {
   CardTemplate,
   Manifest,
   Perspective,
-  WorldDetail,
 } from "../types";
-import { Empty, Modal, Panel } from "../ui";
+import { Modal } from "../ui";
 
 /**
- * The story manager: a world's lore, characters, places, rules and story arcs as cards, and the
- * world itself, all editable from the worlds page without opening the world. A card is a file in
- * the world's folder, written as XML around markdown; the form fills it in, and "As text" shows
- * and edits the file itself. Stories already begun keep their own copy of the cards.
+ * The story manager's pieces: a world's cards as a list grouped by kind, an editor for one card
+ * (a form, or the file's own text), and the world's own description. A card is a file in the
+ * world's folder, written as XML around markdown with its named parts as tags. Stories already
+ * begun keep their own copy of the cards.
  */
 
-const TABS: Array<{ id: "world" | CardKind; label: string; one?: string }> = [
-  { id: "world", label: "World" },
-  { id: "lore", label: "Lore", one: "lore entry" },
-  { id: "character", label: "Characters", one: "character" },
-  { id: "place", label: "Places", one: "place" },
-  { id: "rule", label: "Rules", one: "rule" },
-  { id: "arc", label: "Story arcs", one: "story arc" },
-  { id: "scene", label: "Scenes", one: "scene" },
+export const KINDS: Array<{ id: CardKind; group: string; one: string }> = [
+  { id: "character", group: "Characters", one: "Character" },
+  { id: "place", group: "Places", one: "Place" },
+  { id: "lore", group: "Lore", one: "Lore entry" },
+  { id: "rule", group: "Rules", one: "Rule" },
+  { id: "arc", group: "Story arcs", one: "Story arc" },
+  { id: "scene", group: "Scenes", one: "Scene" },
 ];
+const kindOf = (id: CardKind) => KINDS.find((k) => k.id === id) ?? (KINDS[0] as (typeof KINDS)[0]);
 
-const PERSPECTIVE: Record<Perspective, string> = {
+export const PERSPECTIVE: Record<Perspective, string> = {
   "first-person": "First person (I)",
   "second-person": "Second person (you)",
   "third-person": "Third person (they)",
@@ -48,119 +47,150 @@ const SYNTAX = `<card id="char.marrow" kind="character" name="Marrow" role="npc"
 Anything else, as plain markdown.
 </card>`;
 
-type Dialog =
-  | { is: "form"; kind: CardKind; card?: Card }
+/** "life-outside-the-story" as "Life outside the story", for a part no template names. */
+export const humanize = (id: string) => {
+  const text = id.replace(/-/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+let templatesOnce: Promise<CardTemplate[]> | undefined;
+
+/** The card templates, fetched once; without them the editor is plain notes. */
+export function useTemplates(): CardTemplate[] {
+  const [templates, setTemplates] = useState<CardTemplate[]>([]);
+  useEffect(() => {
+    templatesOnce ??= api.cardTemplates().catch(() => {
+      templatesOnce = undefined;
+      return [];
+    });
+    void templatesOnce.then(setTemplates);
+  }, []);
+  return templates;
+}
+
+export type Dialog =
   | { is: "text"; path: string; file: string; problems?: string[] }
   | { is: "remove"; path: string; name: string };
 
-export function Manager({
-  name,
-  detail,
-  onChanged,
-  onEditDetails,
+// ---- the list --------------------------------------------------------------------------------
+
+export function CardList({
+  cards,
+  broken,
+  selected,
+  onSelect,
+  onNew,
+  onDialog,
 }: {
-  name: string;
-  detail: WorldDetail;
-  onChanged: () => void;
-  onEditDetails: () => void;
+  cards: Card[];
+  broken: BrokenCard[];
+  selected: string | undefined;
+  onSelect: (path: string) => void;
+  onNew: (kind: CardKind) => void;
+  onDialog: (d: Dialog) => void;
 }) {
-  const { cards, broken, manifest } = detail;
-  const [tab, setTab] = useState<"world" | CardKind>("world");
-  const [dialog, setDialog] = useState<Dialog>();
-  const [templates, setTemplates] = useState<CardTemplate[]>([]);
-  useEffect(() => {
-    api
-      .cardTemplates()
-      .then(setTemplates)
-      .catch(() => setTemplates([])); // without them the form is plain notes
-  }, []);
-  const labelOf = (id: string) =>
-    templates.flatMap((t) => t.fields).find((f) => f.id === id)?.label ?? humanize(id);
-  const tabs = TABS.filter((t) => t.id !== "scene" || cards.some((c) => c.fm.kind === "scene"));
-  const shown = tab === "world" ? [] : cards.filter((c) => c.fm.kind === tab);
-  const current = TABS.find((t) => t.id === tab);
-  const close = () => setDialog(undefined);
-  const saved = () => {
-    close();
-    onChanged();
-  };
-
+  const [picking, setPicking] = useState(false);
+  const present = KINDS.filter((k) => cards.some((c) => c.fm.kind === k.id));
   return (
-    <Panel title="Story manager">
-      {broken.length > 0 && <Broken broken={broken} onDialog={setDialog} />}
+    <div className="card-index">
+      {broken.length > 0 && (
+        <div className="broken">
+          <strong>
+            {broken.length === 1
+              ? "One card can't be read"
+              : `${broken.length} cards can't be read`}
+          </strong>
+          <p className="hint">
+            Stories can't start until they are fixed or removed. Nothing else is affected.
+          </p>
+          <ul>
+            {broken.map((b) => (
+              <li key={b.path}>
+                <code>{b.path}</code>
+                <span className="error"> {b.problems.join("; ")}</span>
+                <span className="card-actions">
+                  <button
+                    type="button"
+                    className="plain"
+                    onClick={() =>
+                      onDialog({ is: "text", path: b.path, file: b.file, problems: b.problems })
+                    }
+                  >
+                    Fix as text
+                  </button>
+                  <button
+                    type="button"
+                    className="plain"
+                    onClick={() => onDialog({ is: "remove", path: b.path, name: b.path })}
+                  >
+                    Remove
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      <nav className="tabs" aria-label="What to manage">
-        {tabs.map((t) => {
-          const count =
-            t.id === "world" ? undefined : cards.filter((c) => c.fm.kind === t.id).length;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              aria-current={tab === t.id ? "true" : undefined}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-              {count !== undefined && <span className="tab-count"> {count}</span>}
-            </button>
-          );
-        })}
-      </nav>
-
-      {tab === "world" ? (
-        manifest && <WorldFacts manifest={manifest} onEdit={onEditDetails} />
-      ) : (
-        <>
-          <div className="manager-head">
-            <button
-              type="button"
-              className="primary"
-              onClick={() => setDialog({ is: "form", kind: tab })}
-            >
-              New {current?.one}
-            </button>
-            {tab === "rule" && (
-              <p className="hint">Rules are checked against everything the storyteller writes.</p>
-            )}
-          </div>
-          {shown.length === 0 ? (
-            <Empty>No {current?.label.toLowerCase()} yet.</Empty>
-          ) : (
-            <ul className="card-list">
-              {shown.map((c) => (
-                <CardRow key={c.path} card={c} labelOf={labelOf} onDialog={setDialog} />
+      {cards.length === 0 && broken.length === 0 && (
+        <p className="empty">No cards yet. Make the first one below.</p>
+      )}
+      {present.map((k) => (
+        <section key={k.id} className="card-group" aria-label={k.group}>
+          <h3 className="eyebrow quiet">{k.group}</h3>
+          <ul className="card-rows">
+            {cards
+              .filter((c) => c.fm.kind === k.id)
+              .map((c) => (
+                <li key={c.path}>
+                  <button
+                    type="button"
+                    className="card-row"
+                    aria-current={selected === c.path ? "true" : undefined}
+                    onClick={() => onSelect(c.path)}
+                  >
+                    <strong>{c.fm.name}</strong>
+                    {c.fm.summary && <span className="muted">{c.fm.summary}</span>}
+                  </button>
+                </li>
               ))}
-            </ul>
-          )}
-        </>
-      )}
+          </ul>
+        </section>
+      ))}
 
-      <p className="hint">
-        Stories already begun keep their own copy of the cards, so changes here show up in stories
-        you start afterwards.
-      </p>
-
-      {dialog?.is === "form" && (
-        <CardFormDialog
-          world={name}
-          kind={dialog.kind}
-          card={dialog.card}
-          templates={templates}
-          onClose={close}
-          onSaved={saved}
-        />
+      {picking ? (
+        <fieldset className="kind-picker">
+          <legend className="eyebrow quiet">New card</legend>
+          <div>
+            {KINDS.map((k) => (
+              <button
+                key={k.id}
+                type="button"
+                onClick={() => {
+                  setPicking(false);
+                  onNew(k.id);
+                }}
+              >
+                {k.one}
+              </button>
+            ))}
+            <button type="button" className="plain" onClick={() => setPicking(false)}>
+              Cancel
+            </button>
+          </div>
+        </fieldset>
+      ) : (
+        <button type="button" className="dashed" onClick={() => setPicking(true)}>
+          <span aria-hidden="true">＋</span> New card
+        </button>
       )}
-      {dialog?.is === "text" && (
-        <CardTextDialog world={name} {...dialog} onClose={close} onSaved={saved} />
-      )}
-      {dialog?.is === "remove" && (
-        <RemoveCard world={name} {...dialog} onClose={close} onSaved={saved} />
-      )}
-    </Panel>
+    </div>
   );
 }
 
-function WorldFacts({ manifest, onEdit }: { manifest: Manifest; onEdit: () => void }) {
+// ---- the world's own description -------------------------------------------------------------
+
+export function WorldFacts({ manifest, onEdit }: { manifest: Manifest; onEdit: () => void }) {
   return (
     <>
       <dl className="facts">
@@ -182,110 +212,7 @@ function WorldFacts({ manifest, onEdit }: { manifest: Manifest; onEdit: () => vo
   );
 }
 
-function Broken({ broken, onDialog }: { broken: BrokenCard[]; onDialog: (d: Dialog) => void }) {
-  return (
-    <div className="broken">
-      <strong>
-        {broken.length === 1 ? "One card can't be read" : `${broken.length} cards can't be read`}
-      </strong>
-      <p className="hint">
-        Stories can't start until they are fixed or removed. Nothing else is affected.
-      </p>
-      <ul>
-        {broken.map((b) => (
-          <li key={b.path}>
-            <code>{b.path}</code>
-            <span className="error"> {b.problems.join("; ")}</span>
-            <span className="card-actions">
-              <button
-                type="button"
-                className="plain"
-                onClick={() =>
-                  onDialog({ is: "text", path: b.path, file: b.file, problems: b.problems })
-                }
-              >
-                Fix as text
-              </button>
-              <button
-                type="button"
-                className="plain"
-                onClick={() => onDialog({ is: "remove", path: b.path, name: b.path })}
-              >
-                Remove
-              </button>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function CardRow({
-  card,
-  labelOf,
-  onDialog,
-}: {
-  card: Card;
-  labelOf: (id: string) => string;
-  onDialog: (d: Dialog) => void;
-}) {
-  const { fm } = card;
-  return (
-    <li className="card-item">
-      <details>
-        <summary>
-          <strong>{fm.name}</strong>
-          {fm.always && <span className="chip">always in view</span>}
-          {fm.kind === "rule" && fm.severity === "must" && <span className="chip">must</span>}
-          {fm.summary && <span className="muted"> {fm.summary}</span>}
-        </summary>
-        {fm.keywords && fm.keywords.length > 0 && (
-          <p className="hint">Comes up when someone says: {list(fm.keywords)}</p>
-        )}
-        {Object.entries(fm.fields ?? {}).map(([id, text]) => (
-          <p key={id} className="card-part">
-            <strong>{labelOf(id)}:</strong> {text}
-          </p>
-        ))}
-        {card.body.trim() ? (
-          <p className="card-body">{card.body.trim()}</p>
-        ) : (
-          Object.keys(fm.fields ?? {}).length === 0 && <p className="card-body">(no text)</p>
-        )}
-      </details>
-      <span className="card-actions">
-        <button
-          type="button"
-          className="plain"
-          onClick={() => onDialog({ is: "form", kind: fm.kind, card })}
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          className="plain"
-          onClick={() => onDialog({ is: "text", path: card.path, file: card.file ?? "" })}
-        >
-          As text
-        </button>
-        <button
-          type="button"
-          className="plain danger"
-          onClick={() => onDialog({ is: "remove", path: card.path, name: fm.name })}
-        >
-          Remove
-        </button>
-      </span>
-    </li>
-  );
-}
-
-/** "life-outside-the-story" as "Life outside the story", for a part no template names. */
-const humanize = (id: string) => {
-  const text = id.replace(/-/g, " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
-};
+// ---- the editor ------------------------------------------------------------------------------
 
 /** The template whose parts best match a card's own (plain notes when it has none). */
 function bestTemplate(options: CardTemplate[], have: string[]): CardTemplate | undefined {
@@ -302,23 +229,45 @@ function bestTemplate(options: CardTemplate[], have: string[]): CardTemplate | u
   return best;
 }
 
-function CardFormDialog({
+/** Cards that link to this one: their text mentions its file name. */
+function linkedFrom(card: Card, all: Card[]): Card[] {
+  const file = card.path.split("/").pop() ?? card.path;
+  return all.filter(
+    (c) =>
+      c.path !== card.path &&
+      [c.body, ...Object.values(c.fm.fields ?? {})].some(
+        (t) => t.includes(`/${file}`) || t.includes(`(${file}`),
+      ),
+  );
+}
+
+const trimmed = (fields: Record<string, string>) =>
+  Object.fromEntries(
+    Object.entries(fields)
+      .filter(([, t]) => t.trim())
+      .map(([k, t]) => [k, t.trim()]),
+  );
+
+export function CardEditor({
   world,
   kind,
   card,
+  all,
   templates,
-  onClose,
   onSaved,
+  onBack,
+  onDialog,
 }: {
   world: string;
   kind: CardKind;
-  card?: Card;
+  card?: Card | undefined;
+  all: Card[];
   templates: CardTemplate[];
-  onClose: () => void;
-  onSaved: () => void;
+  onSaved: (path: string) => void;
+  onBack: () => void;
+  onDialog: (d: Dialog) => void;
 }) {
   const { problem, busy, run } = useSave();
-  const label = TABS.find((t) => t.id === kind)?.one ?? "card";
   const options = templates.filter((t) => t.kind === kind);
   const [values, setValues] = useState<Record<string, string>>(card?.fm.fields ?? {});
   const [templateId, setTemplateId] = useState(
@@ -333,6 +282,7 @@ function CardFormDialog({
   const [scope, setScope] = useState(card?.fm.scope ?? "both");
   const [severity, setSeverity] = useState(card?.fm.severity ?? "should");
   const [body, setBody] = useState(card?.body ?? "");
+  const k = kindOf(kind);
 
   // the template's parts first, then any part the card has that the template does not name
   const named = template?.fields ?? [];
@@ -342,6 +292,32 @@ function CardFormDialog({
       .filter((id) => (values[id] ?? "").trim() && !named.some((f) => f.id === id))
       .map((id) => ({ id, label: humanize(id), hint: "" })),
   ];
+
+  const now = JSON.stringify({
+    name: name.trim(),
+    summary: summary.trim(),
+    keywords: words(keywords),
+    always,
+    ...(kind === "character" ? { role: role.trim() } : {}),
+    ...(kind === "rule" ? { scope, severity } : {}),
+    fields: trimmed(Object.fromEntries(parts.map((p) => [p.id, values[p.id] ?? ""]))),
+    body,
+  });
+  const before = card
+    ? JSON.stringify({
+        name: card.fm.name,
+        summary: card.fm.summary ?? "",
+        keywords: card.fm.keywords ?? [],
+        always: card.fm.always ?? false,
+        ...(kind === "character" ? { role: card.fm.role ?? "" } : {}),
+        ...(kind === "rule"
+          ? { scope: card.fm.scope ?? "both", severity: card.fm.severity ?? "should" }
+          : {}),
+        fields: trimmed(card.fm.fields ?? {}),
+        body: card.body,
+      })
+    : "";
+  const dirty = !card || now !== before;
 
   const pickTemplate = (id: string) => {
     setTemplateId(id);
@@ -367,165 +343,242 @@ function CardFormDialog({
       ...(kind === "character" ? { role: role.trim() } : {}),
       ...(kind === "rule" ? { scope, severity } : {}),
     };
-    if (await run(() => api.saveCard(world, { ...(card ? { path: card.path } : {}), form }))) {
-      onSaved();
-    }
+    let path: string | undefined;
+    const done = await run(async () => {
+      path = (await api.saveCard(world, { ...(card ? { path: card.path } : {}), form })).path;
+    });
+    if (done && path) onSaved(path);
   };
 
+  const links = card ? linkedFrom(card, all) : [];
+  const status = busy ? "Saving…" : !card ? "Not saved yet" : dirty ? "Unsaved changes" : "Saved";
+  const isSaved = card && !dirty && !busy;
+
   return (
-    <Modal titleId="card-form-title" onClose={onClose} wide>
-      <form onSubmit={submit}>
-        <h2 id="card-form-title">{card ? `Edit ${card.fm.name}` : `New ${label}`}</h2>
-
-        {options.length > 1 && (
-          <>
-            <label htmlFor="cf-template">{card ? "Parts from" : "Start from"}</label>
-            <select
-              id="cf-template"
-              value={templateId}
-              onChange={(e) => pickTemplate(e.target.value)}
-            >
-              {options.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <p className="hint">
-              {template?.description} {card && "Parts you have filled in are kept."}
-            </p>
-          </>
-        )}
-
-        <label htmlFor="cf-name">Name</label>
-        <input
-          id="cf-name"
-          value={name}
-          maxLength={120}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <label htmlFor="cf-summary">One line about it</label>
-        <input
-          id="cf-summary"
-          value={summary}
-          maxLength={300}
-          onChange={(e) => setSummary(e.target.value)}
-        />
-        <p className="hint">Shown to the storyteller even when the whole card is not brought up.</p>
-
-        {kind === "character" && (
-          <>
-            <label htmlFor="cf-role">Part in the story</label>
-            <input
-              id="cf-role"
-              value={role}
-              list="cf-roles"
-              maxLength={40}
-              placeholder="npc, companion, antagonist…"
-              onChange={(e) => setRole(e.target.value)}
-            />
-            <datalist id="cf-roles">
-              <option value="npc" />
-              <option value="companion" />
-              <option value="antagonist" />
-              <option value="player-template" />
-            </datalist>
-          </>
-        )}
-
-        {kind === "rule" && (
-          <div className="two">
-            <div>
-              <label htmlFor="cf-severity">How strict</label>
-              <select
-                id="cf-severity"
-                value={severity}
-                onChange={(e) => setSeverity(e.target.value as "must" | "should")}
-              >
-                <option value="should">Should: dropped first if space runs short</option>
-                <option value="must">Must: never dropped</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="cf-scope">Applies to</label>
-              <select
-                id="cf-scope"
-                value={scope}
-                onChange={(e) => setScope(e.target.value as "chapter" | "story" | "both")}
-              >
-                <option value="both">Stories and chapters</option>
-                <option value="story">Stories only</option>
-                <option value="chapter">Chapters only</option>
-              </select>
-            </div>
-          </div>
-        )}
-
-        <label htmlFor="cf-keywords">Comes up when someone says</label>
-        <input
-          id="cf-keywords"
-          value={keywords}
-          onChange={(e) => setKeywords(e.target.value)}
-          placeholder="fog, mist, haze"
-        />
-        <p className="hint">Words that bring this card into view, separated by commas.</p>
-
-        <label className="check">
-          <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} />
-          Always in the storyteller's view
-        </label>
-        <p className="hint">Use sparingly: it uses space in every turn.</p>
-
-        {parts.length > 0 && (
-          <fieldset className="parts">
-            <legend>The details</legend>
-            {parts.map((p) => (
-              <div key={p.id}>
-                <label htmlFor={`cf-part-${p.id}`}>{p.label}</label>
-                <textarea
-                  id={`cf-part-${p.id}`}
-                  rows={2}
-                  value={values[p.id] ?? ""}
-                  onChange={(e) => setValues({ ...values, [p.id]: e.target.value })}
-                />
-                {p.hint && <p className="hint">{p.hint}</p>}
-              </div>
-            ))}
-          </fieldset>
-        )}
-
-        <label htmlFor="cf-body">{parts.length > 0 ? "More notes" : "The card"}</label>
-        <textarea
-          id="cf-body"
-          rows={parts.length > 0 ? 4 : 10}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-        />
-        <p className="hint">
-          Markdown. Link to other cards with relative paths, as in{" "}
-          <code>[The Fog](../lore/the_fog.md)</code>.
-        </p>
-
-        {problem && (
-          <p className="error" role="alert">
-            {problem}
-          </p>
-        )}
-        <div className="dialog-actions">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="primary" disabled={busy || !name.trim()}>
-            Save
-          </button>
+    <form className="editor" onSubmit={submit}>
+      <button type="button" className="plain back-to-list" onClick={onBack}>
+        ← All cards
+      </button>
+      <header className="editor-head">
+        <div>
+          <p className="eyebrow">{card ? `${k.one} card` : `New ${k.one.toLowerCase()}`}</p>
+          <h2 className="editor-title">{name.trim() || "Untitled"}</h2>
         </div>
-      </form>
-    </Modal>
+        <div className="editor-status">
+          <span className={isSaved ? "saved-flag is-saved" : "saved-flag"} role="status">
+            {isSaved && (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+            )}
+            {status}
+          </span>
+          {card && (
+            <button
+              type="button"
+              onClick={() => onDialog({ is: "text", path: card.path, file: card.file ?? "" })}
+            >
+              View raw file
+            </button>
+          )}
+        </div>
+      </header>
+
+      {options.length > 1 && (
+        <div>
+          <label htmlFor="cf-template">{card ? "Parts from" : "Start from"}</label>
+          <select
+            id="cf-template"
+            value={templateId}
+            onChange={(e) => pickTemplate(e.target.value)}
+          >
+            {options.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <p className="hint">
+            {template?.description} {card && "Parts you have filled in are kept."}
+          </p>
+        </div>
+      )}
+
+      <div className="two">
+        <div>
+          <label htmlFor="cf-name">Name</label>
+          <input
+            id="cf-name"
+            value={name}
+            maxLength={120}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="cf-keywords">
+            Keywords <span className="faint">· what brings this card into a scene</span>
+          </label>
+          <input
+            id="cf-keywords"
+            value={keywords}
+            onChange={(e) => setKeywords(e.target.value)}
+            placeholder="fog, mist, haze"
+          />
+        </div>
+      </div>
+
+      <label htmlFor="cf-summary">Summary</label>
+      <input
+        id="cf-summary"
+        value={summary}
+        maxLength={300}
+        onChange={(e) => setSummary(e.target.value)}
+      />
+      <p className="hint">Shown to the storyteller even when the whole card is not brought up.</p>
+
+      {kind === "character" && (
+        <>
+          <label htmlFor="cf-role">Part in the story</label>
+          <input
+            id="cf-role"
+            value={role}
+            list="cf-roles"
+            maxLength={40}
+            placeholder="npc, companion, antagonist…"
+            onChange={(e) => setRole(e.target.value)}
+          />
+          <datalist id="cf-roles">
+            <option value="npc" />
+            <option value="companion" />
+            <option value="antagonist" />
+            <option value="player-template" />
+          </datalist>
+        </>
+      )}
+
+      {kind === "rule" && (
+        <div className="two">
+          <div>
+            <label htmlFor="cf-severity">How strict</label>
+            <select
+              id="cf-severity"
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value as "must" | "should")}
+            >
+              <option value="should">Should: dropped first if space runs short</option>
+              <option value="must">Must: never dropped</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="cf-scope">Applies to</label>
+            <select
+              id="cf-scope"
+              value={scope}
+              onChange={(e) => setScope(e.target.value as "chapter" | "story" | "both")}
+            >
+              <option value="both">Stories and chapters</option>
+              <option value="story">Stories only</option>
+              <option value="chapter">Chapters only</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      <label className="check">
+        <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} />
+        <span>
+          Always in the storyteller's view
+          <span className="faint"> · use sparingly: it costs space in every turn</span>
+        </span>
+      </label>
+
+      {parts.length > 0 && (
+        <fieldset className="parts">
+          <legend>The details</legend>
+          {parts.map((p) => (
+            <div key={p.id}>
+              <label htmlFor={`cf-part-${p.id}`}>{p.label}</label>
+              <textarea
+                id={`cf-part-${p.id}`}
+                rows={2}
+                value={values[p.id] ?? ""}
+                onChange={(e) => setValues({ ...values, [p.id]: e.target.value })}
+              />
+              {p.hint && <p className="hint">{p.hint}</p>}
+            </div>
+          ))}
+        </fieldset>
+      )}
+
+      <label htmlFor="cf-body">
+        {parts.length > 0 ? "More notes" : "Body"} <span className="faint">· markdown</span>
+      </label>
+      <textarea
+        id="cf-body"
+        rows={parts.length > 0 ? 4 : 10}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+      />
+      <p className="hint">
+        Link to other cards with relative paths, as in <code>[The Fog](../lore/the_fog.md)</code>.
+      </p>
+
+      {card && (
+        <p className="linked">
+          {links.length > 0 ? (
+            <>
+              Linked from{" "}
+              {links.map((c, i) => (
+                <span key={c.path}>
+                  {i > 0 && (i === links.length - 1 ? " and " : ", ")}
+                  <strong>{c.fm.name}</strong>
+                </span>
+              ))}
+              .
+            </>
+          ) : (
+            "No other card links to this one yet."
+          )}
+        </p>
+      )}
+
+      {problem && (
+        <p className="error" role="alert">
+          {problem}
+        </p>
+      )}
+      <div className="editor-actions">
+        <button type="submit" className="primary" disabled={busy || !name.trim() || !dirty}>
+          Save
+        </button>
+        {card && (
+          <button
+            type="button"
+            className="danger"
+            onClick={() => onDialog({ is: "remove", path: card.path, name: card.fm.name })}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+    </form>
   );
 }
 
-function CardTextDialog({
+// ---- dialogs: the raw file, and removing ------------------------------------------------------
+
+export function CardTextDialog({
   world,
   path,
   file,
@@ -552,7 +605,7 @@ function CardTextDialog({
     <Modal titleId="card-text-title" onClose={onClose} wide>
       <form onSubmit={submit}>
         <h2 id="card-text-title">
-          Edit <code>{path}</code> as text
+          <code>{path}</code>
         </h2>
         {problems && problems.length > 0 && <p className="error">{problems.join("; ")}</p>}
         <label htmlFor="ct-text">The file</label>
@@ -568,9 +621,10 @@ function CardTextDialog({
           <summary className="hint">How a card is written</summary>
           <pre className="syntax">{SYNTAX}</pre>
           <p className="hint">
-            The fields are attributes of <code>&lt;card&gt;</code>; <code>&lt;keywords&gt;</code>{" "}
-            and <code>&lt;summary&gt;</code> come first; everything after them is markdown, left as
-            written. Cards written the older way, with a <code>---</code> block, are read too.
+            The fields are attributes of <code>&lt;card&gt;</code>; <code>&lt;keywords&gt;</code>,{" "}
+            <code>&lt;summary&gt;</code> and any named part such as <code>&lt;appearance&gt;</code>{" "}
+            come first; everything after them is markdown, left as written. Cards written the older
+            way, with a <code>---</code> block, are read too.
           </p>
         </details>
         {problem && (
@@ -591,7 +645,7 @@ function CardTextDialog({
   );
 }
 
-function RemoveCard({
+export function RemoveCard({
   world,
   path,
   name,

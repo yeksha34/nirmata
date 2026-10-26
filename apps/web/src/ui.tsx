@@ -1,20 +1,23 @@
 import { type ReactNode, useEffect, useRef } from "react";
-import { api } from "./api";
-import { useAct, useApp } from "./app-context";
+import { useApp } from "./app-context";
 import type { SeatKind } from "./types";
 
 export function Brand() {
   return (
     <span className="brand">
-      <svg viewBox="0 0 32 32" width="22" height="22" role="img" aria-label="Nirmata">
-        <rect width="32" height="32" rx="7" fill="currentColor" />
-        <path
-          d="M8 24V8l16 16V8"
-          stroke="var(--paper)"
-          strokeWidth="3"
-          fill="none"
-          strokeLinejoin="round"
-        />
+      <svg
+        viewBox="0 0 24 24"
+        width="26"
+        height="26"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 2v2M9 4h6M8 7h8l1 10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z" />
+        <path d="M12 10c1.6 1.6 1.6 3.2 0 4.8-1.6-1.6-1.6-3.2 0-4.8z" />
       </svg>
       <span>Nirmata</span>
     </span>
@@ -33,58 +36,6 @@ export function SeatBadge({ seat, muted }: { seat: SeatKind; muted?: boolean }) 
       {SEAT_LABEL[seat]}
       {muted ? " · hushed" : ""}
     </span>
-  );
-}
-
-export function HeaderBar() {
-  const { state, leave } = useApp();
-  const { act } = useAct();
-  const you = state.you;
-  return (
-    <header className="topbar">
-      <Brand />
-      {state.world && state.story && (
-        <span className="world-name" title={state.world.tagline}>
-          {state.world.title}
-        </span>
-      )}
-      <span className="spacer" />
-      <span
-        className={`dot dot-${state.connection}`}
-        role="status"
-        title={
-          state.connection === "live"
-            ? "Connected"
-            : state.connection === "lost"
-              ? "Connection lost. Trying again…"
-              : "Connecting…"
-        }
-      >
-        <span className="sr-only">
-          {state.connection === "live" ? "Connected" : "Connection lost, trying again"}
-        </span>
-      </span>
-      {you && (
-        <details className="menu">
-          <summary>
-            {you.nick} <SeatBadge seat={you.seat} muted={you.muted} />
-          </summary>
-          <div className="menu-body">
-            <button
-              type="button"
-              onClick={() =>
-                act(async () => {
-                  await api.leave().catch(() => undefined);
-                  leave();
-                })
-              }
-            >
-              Leave the table
-            </button>
-          </div>
-        </details>
-      )}
-    </header>
   );
 }
 
