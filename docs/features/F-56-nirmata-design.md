@@ -23,11 +23,11 @@ The design canvas "Nirmata" (artboards: Home page, World workspace, Play on a ph
 - [x] The editor shows "Saved", "Unsaved changes" or "Not saved yet", "View raw file", the template's parts, who links to the card, Save and Remove; it is the same form as before, inline instead of in a dialog.
 - [x] On a narrow screen the three panes become one at a time, with a way back.
 - [x] The story window and its controls use the same type and 44 px buttons; "Keep going" is the primary action; Saved has a tick.
-- [x] Labels show in Hindi and give their English on hover, tap or keyboard focus, as in the canvas: the header, front page, workspace, editor (including the names of every template and part), story controls and dialogs. The English stays in the page for screen readers; places that cannot hold markup (menu choices) show "हिंदी · English"; what people write is never translated.
+- [x] Every static text shows in Hindi and gives its English on hover, tap or keyboard focus, as in the canvas: labels, headings, buttons, tabs, hints, paragraphs, tooltips, prompts and statuses, including the descriptions and hints of every card template and sentences with a name or a count in them (a test checks that nothing is missing and that the Hindi keeps every `{mark}`). The English stays in the page for screen readers; places that cannot hold markup (menu choices) show "हिंदी · English"; what people write is never translated.
 - [ ] Used with a screen reader, in dark mode and on a real phone.
 
 ## Not applied
-- Long explanatory sentences (hints, paragraphs, error messages) stay in English; the labels, headings, buttons, tabs and statuses are in Hindi. The Hindi was written for this app and has not been read by a native speaker ([open-questions](../open-questions.md), Q36).
+- What still shows in English: messages the server writes (its error messages, the in-fiction notices and warnings, the story itself), the accessible names read out to screen readers (`aria-label`; the visible text has its English there too), and the short example text in some fields ("fog, mist, haze"). The Hindi was written for this app and has not been read by a native speaker ([open-questions](../open-questions.md), Q36).
 - The "Now" banner and the "entered the scene because you wrote ..." strip of the Play artboard need the storyteller's cards, which players are never shown ([ADR-0016](../decisions/0016-table-server.md)); a host-only version is possible later.
 - The Graph and Lint tabs of the workspace artboard, and Stories and Settings in the header: those features do not exist yet.
 

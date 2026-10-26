@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CARD_TEMPLATES } from "../../../packages/core/src/templates";
-import { bilingual, hindi } from "../src/i18n";
+import { bilingual, entries, fill, hindi } from "../src/i18n";
 
 describe("labels in Hindi", () => {
   it("has Hindi for the words the design shows, and none for what people write", () => {
@@ -28,5 +28,26 @@ describe("labels in Hindi", () => {
       const text = hindi(t.label);
       if (text) expect(text).toMatch(/[ऀ-ॿ]/);
     }
+  });
+
+  it("covers every template's description and every part's hint", () => {
+    const missing: string[] = [];
+    for (const t of CARD_TEMPLATES) {
+      if (!hindi(t.description)) missing.push(t.description);
+      for (const f of t.fields) if (!hindi(f.hint)) missing.push(f.hint);
+    }
+    expect([...new Set(missing)]).toEqual([]);
+  });
+
+  it("keeps every {mark} of the English in the Hindi, and adds none", () => {
+    const marks = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+    const wrong = entries().filter(([en, hi]) => marks(en).join() !== marks(hi).join());
+    expect(wrong.map(([en]) => en)).toEqual([]);
+  });
+
+  it("fills the marks in", () => {
+    expect(fill("{n} turns", { n: 3 })).toBe("3 turns");
+    expect(bilingual("{n} min ago", { n: 5 })).toBe("5 मिनट पहले · 5 min ago");
+    expect(fill("{unknown} stays", {})).toBe("{unknown} stays");
   });
 });

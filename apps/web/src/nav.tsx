@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { api } from "./api";
-import { T } from "./i18n";
+import { bilingual, T } from "./i18n";
 import type { CardKind, WorldSummary } from "./types";
 import { Modal } from "./ui";
 
@@ -168,7 +168,7 @@ export function JumpBox({ onClose }: { onClose: () => void }) {
         type="text"
         aria-controls="jump-list"
         aria-label="Jump to a world or card"
-        placeholder="Jump to a world or card"
+        placeholder={bilingual("Jump to a world or card")}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -177,7 +177,11 @@ export function JumpBox({ onClose }: { onClose: () => void }) {
         onKeyDown={onKey}
       />
       <ul id="jump-list" className="jump-list" aria-label="Matches">
-        {hits.length === 0 && <li className="empty">Nothing matches.</li>}
+        {hits.length === 0 && (
+          <li className="empty">
+            <T>Nothing matches.</T>
+          </li>
+        )}
         {hits.map((h, i) => (
           <li key={h.key}>
             <button
@@ -194,7 +198,11 @@ export function JumpBox({ onClose }: { onClose: () => void }) {
           </li>
         ))}
       </ul>
-      {!nav.world && <p className="hint">Open a world to jump to its cards as well.</p>}
+      {!nav.world && (
+        <p className="hint">
+          <T>Open a world to jump to its cards as well.</T>
+        </p>
+      )}
     </Modal>
   );
 }

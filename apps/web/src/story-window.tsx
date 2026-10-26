@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { bilingual } from "./i18n";
 import {
   type Box,
   clampBox,
@@ -191,7 +192,7 @@ export function StoryWindow({
             type="button"
             className="plain"
             aria-label="Minimize the story"
-            title="Minimize"
+            title={bilingual("Minimize")}
             onClick={() => show("minimized")}
           >
             –
@@ -201,7 +202,7 @@ export function StoryWindow({
               type="button"
               className="plain"
               aria-label={maximized ? "Restore the story window" : "Fill the page"}
-              title={maximized ? "Restore" : "Fill the page"}
+              title={bilingual(maximized ? "Restore" : "Fill the page")}
               onClick={() => show(maximized ? "open" : "maximized")}
             >
               {maximized ? "❐" : "□"}

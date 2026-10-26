@@ -1,4 +1,6 @@
-import { useEffect } from "react";
+import { Fragment, type ReactNode, useEffect } from "react";
+import { HI_TEMPLATES } from "./i18n-templates";
+import { HI_TEXT } from "./i18n-text";
 
 /**
  * Labels that show in Hindi and give their English when you hover them (or tap them, on a touch
@@ -10,7 +12,7 @@ import { useEffect } from "react";
  * The Hindi was written for this app and has not been reviewed by a native reader; correct it
  * here, in one place.
  */
-const HI: Record<string, string> = {
+const WORDS: Record<string, string> = {
   // header and brand
   Nirmata: "निर्माता",
   Worlds: "संसार",
@@ -246,27 +248,59 @@ const HI: Record<string, string> = {
   "Your name": "आपका नाम",
 };
 
-/** "हिंदी · English" for places that cannot hold markup, such as the choices in a menu. */
-export const bilingual = (english: string): string =>
-  HI[english] ? `${HI[english]} · ${english}` : english;
+/** Every label, sentence and hint that has Hindi: the short words above, then the longer text. */
+const HI: Record<string, string> = { ...WORDS, ...HI_TEMPLATES, ...HI_TEXT };
+
+/** Puts values where a text has `{name}` marks. */
+export function fill(text: string, values: Record<string, string | number> = {}): string {
+  return text.replace(/\{(\w+)\}/g, (mark, key: string) =>
+    key in values ? String(values[key]) : mark,
+  );
+}
+
+/** "हिंदी · English" for places that cannot hold markup, such as menu choices and tooltips. */
+export const bilingual = (english: string, values?: Record<string, string | number>): string => {
+  const hi = HI[english];
+  return hi ? `${fill(hi, values)} · ${fill(english, values)}` : fill(english, values);
+};
+
+/** Every English text with its Hindi (for the tests that check them). */
+export const entries = (): Array<[string, string]> => Object.entries(HI);
 
 /** The Hindi for a label, if there is any. */
 export const hindi = (english: string): string | undefined => HI[english];
 
+/** Text with `{name}` marks as nodes: the marks become the given values, in order. */
+function slotted(text: string, slots: Record<string, ReactNode>): ReactNode {
+  return text.split(/(\{\w+\})/).map((part, i) => {
+    const key = /^\{(\w+)\}$/.exec(part)?.[1];
+    // biome-ignore lint/suspicious/noArrayIndexKey: the pieces never reorder
+    return <Fragment key={i}>{key !== undefined && key in slots ? slots[key] : part}</Fragment>;
+  });
+}
+
 /**
  * A label in Hindi that gives its English on hover, tap or focus. With no Hindi for it, plain
- * English. Give it one string; text that people wrote does not go through here.
+ * English. Give it one string; `with` fills the `{name}` marks in both languages (strings,
+ * numbers or elements such as a file name in <code>). Text that people wrote does not go through
+ * here.
  */
-export function T({ children }: { children: string }) {
+export function T({
+  children,
+  with: slots = {},
+}: {
+  children: string;
+  with?: Record<string, ReactNode>;
+}) {
   const hi = HI[children];
-  if (!hi) return <>{children}</>;
+  if (!hi) return <>{slotted(children, slots)}</>;
   return (
     <span className="tr">
       <span className="hi" lang="hi" aria-hidden="true">
-        {hi}
+        {slotted(hi, slots)}
       </span>
       <span className="en" lang="en">
-        {children}
+        {slotted(children, slots)}
       </span>
     </span>
   );

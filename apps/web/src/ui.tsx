@@ -53,7 +53,9 @@ export function Toasts() {
           className={`toast toast-${n.kind}`}
           role={n.kind === "error" ? "alert" : "status"}
         >
-          <span>{n.text}</span>
+          <span>
+            <T>{n.text}</T>
+          </span>
           <button
             type="button"
             className="plain"

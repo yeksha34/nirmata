@@ -18,8 +18,10 @@ export function Waiting() {
             <T>The story is open in the window.</T>
           </p>
           <p className="muted">
-            Drag it by its title bar to put it where you like, or minimize it to a chip in the
-            corner and open it again from there.
+            <T>
+              Drag it by its title bar to put it where you like, or minimize it to a chip in the
+              corner and open it again from there.
+            </T>
           </p>
         </Panel>
       </div>
@@ -29,9 +31,15 @@ export function Waiting() {
     <div className="waiting">
       <Panel title={state.world ? state.world.title : "Waiting for the host"}>
         <p className="lead">
-          {state.world
-            ? `${host} is choosing a story. It will appear here the moment it begins.`
-            : `${host} hasn't chosen a world yet. You're in; this will fill in on its own.`}
+          {state.world ? (
+            <T with={{ host }}>
+              {"{host} is choosing a story. It will appear here the moment it begins."}
+            </T>
+          ) : (
+            <T with={{ host }}>
+              {"{host} hasn't chosen a world yet. You're in; this will fill in on its own."}
+            </T>
+          )}
         </p>
         {state.world?.tagline && <p className="muted">{state.world.tagline}</p>}
       </Panel>
