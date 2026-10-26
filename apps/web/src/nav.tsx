@@ -9,7 +9,8 @@ import {
   useState,
 } from "react";
 import { api } from "./api";
-import { bilingual, T } from "./i18n";
+import { Field } from "./controls";
+import { T } from "./i18n";
 import type { CardKind, WorldSummary } from "./types";
 import { Modal } from "./ui";
 
@@ -162,20 +163,21 @@ export function JumpBox({ onClose }: { onClose: () => void }) {
       <h2 id="jump-title" className="sr-only">
         <T>Jump to a world or card</T>
       </h2>
-      <input
-        // biome-ignore lint/a11y/noAutofocus: the box exists only to be typed in
-        autoFocus
-        type="text"
-        aria-controls="jump-list"
-        aria-label="Jump to a world or card"
-        placeholder={bilingual("Jump to a world or card")}
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setAt(0);
-        }}
-        onKeyDown={onKey}
-      />
+      <Field placeholder="Jump to a world or card" empty={!query}>
+        <input
+          // biome-ignore lint/a11y/noAutofocus: the box exists only to be typed in
+          autoFocus
+          type="text"
+          aria-controls="jump-list"
+          aria-label="Jump to a world or card"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setAt(0);
+          }}
+          onKeyDown={onKey}
+        />
+      </Field>
       <ul id="jump-list" className="jump-list" aria-label="Matches">
         {hits.length === 0 && (
           <li className="empty">
@@ -193,7 +195,9 @@ export function JumpBox({ onClose }: { onClose: () => void }) {
               onClick={h.go}
             >
               <strong>{h.title}</strong>
-              <span className="muted">{h.note}</span>
+              <span className="muted">
+                <T>{h.note}</T>
+              </span>
             </button>
           </li>
         ))}

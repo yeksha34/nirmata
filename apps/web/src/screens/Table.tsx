@@ -1,8 +1,9 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
+import { Field, Tip, useAsk } from "../controls";
 import { MODE_HINT, MODE_LABEL, worldName } from "../format";
-import { bilingual, T } from "../i18n";
+import { T } from "../i18n";
 import { visibleTurns } from "../store";
 import type { Mode, TurnView } from "../types";
 import { BoardPanel, People } from "./Board";
@@ -56,7 +57,9 @@ function StoryPane() {
       {state.warnings.length > 0 && state.you?.host && (
         <ul className="warnings" aria-label="Worth a look">
           {state.warnings.map((w) => (
-            <li key={w}>{w}</li>
+            <li key={w}>
+              <T>{w}</T>
+            </li>
           ))}
         </ul>
       )}
@@ -142,6 +145,7 @@ function PlayerLines({ turns }: { turns: TurnView[] }) {
 function StoryBar() {
   const { state } = useApp();
   const { act, busy } = useAct();
+  const ask = useAsk();
   const [saving, setSaving] = useState(false);
   const story = state.story;
   const me = state.you;
@@ -153,25 +157,24 @@ function StoryBar() {
   return (
     <div className="story-bar">
       <div className="story-bar-left">
-        <span
-          className="saved"
-          title={bilingual("Saved automatically as {id}", { id: story?.id ?? "" })}
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M5 12.5l4.5 4.5L19 7.5" />
-          </svg>{" "}
-          <T>Saved</T>
-        </span>
+        <Tip text="Saved automatically as {id}" values={{ id: story?.id ?? "" }}>
+          <span className="saved">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>{" "}
+            <T>Saved</T>
+          </span>
+        </Tip>
         {chapters.length > 0 && (
           <span className="muted" title={chapters.map((c) => c.title).join(", ")}>
             <T with={{ n: chapters.length }}>
@@ -189,36 +192,35 @@ function StoryBar() {
           )
         ) : (
           <>
-            <button
-              type="button"
-              disabled={!canAct || busy}
-              onClick={() => act(api.retry)}
-              title={bilingual("Write a different reply")}
-            >
-              <T>Try again</T>
-            </button>
-            <button
-              type="button"
-              className="primary"
-              disabled={!canAct || busy}
-              onClick={() => act(api.continueStory)}
-              title={bilingual("Let the story go on")}
-            >
-              <T>Keep going</T>
-            </button>
-            <button
-              type="button"
-              disabled={!canAct || busy}
-              onClick={() =>
-                act(async () => {
-                  const r = await api.undo();
-                  if (!r.undone) throw new Error("There is nothing to undo yet.");
-                })
-              }
-              title={bilingual("Take back the last turn")}
-            >
-              <T>Undo</T>
-            </button>
+            <Tip text="Write a different reply">
+              <button type="button" disabled={!canAct || busy} onClick={() => act(api.retry)}>
+                <T>Try again</T>
+              </button>
+            </Tip>
+            <Tip text="Let the story go on">
+              <button
+                type="button"
+                className="primary"
+                disabled={!canAct || busy}
+                onClick={() => act(api.continueStory)}
+              >
+                <T>Keep going</T>
+              </button>
+            </Tip>
+            <Tip text="Take back the last turn">
+              <button
+                type="button"
+                disabled={!canAct || busy}
+                onClick={() =>
+                  act(async () => {
+                    const r = await api.undo();
+                    if (!r.undone) throw new Error("There is nothing to undo yet.");
+                  })
+                }
+              >
+                <T>Undo</T>
+              </button>
+            </Tip>
           </>
         )}
         {host && (
@@ -233,10 +235,13 @@ function StoryBar() {
               <button
                 type="button"
                 disabled={writing}
-                onClick={() => {
-                  const title = window.prompt(
-                    bilingual("Name the next chapter (or leave blank):"),
+                onClick={async () => {
+                  const title = await ask.prompt(
+                    "Name the next chapter (or leave blank):",
                     "",
+                    {},
+                    "Begin",
+                    false,
                   );
                   if (title !== null)
                     void act(
@@ -481,37 +486,40 @@ function Composer() {
           <T>What kind of turn</T>
         </legend>
         {MODES.map((m) => (
-          <button
-            key={m}
-            type="button"
-            aria-pressed={mode === m}
-            className={mode === m ? "is-on" : ""}
-            title={bilingual(MODE_HINT[m])}
-            onClick={() => pick(m)}
-          >
-            <T>{MODE_LABEL[m]}</T>
-          </button>
+          <Tip key={m} text={MODE_HINT[m]}>
+            <button
+              type="button"
+              aria-pressed={mode === m}
+              className={mode === m ? "is-on" : ""}
+              onClick={() => pick(m)}
+            >
+              <T>{MODE_LABEL[m]}</T>
+            </button>
+          </Tip>
         ))}
         <span className="hint">
           <T>{MODE_HINT[mode]}</T>
         </span>
       </fieldset>
-      <textarea
-        value={text}
-        onChange={(e) => edit(e.target.value)}
-        rows={3}
-        maxLength={2000}
-        placeholder={
-          mode === "say" ? "“…”" : bilingual(mode === "story" ? "The story should…" : "I…")
-        }
-        aria-label="Your turn"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && text.trim() && !isReady) {
-            e.preventDefault();
-            void ready();
-          }
-        }}
-      />
+      <Field
+        placeholder={mode === "say" ? "“…”" : mode === "story" ? "The story should…" : "I…"}
+        empty={!text}
+        multiline
+      >
+        <textarea
+          value={text}
+          onChange={(e) => edit(e.target.value)}
+          rows={3}
+          maxLength={2000}
+          aria-label="Your turn"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && text.trim() && !isReady) {
+              e.preventDefault();
+              void ready();
+            }
+          }}
+        />
+      </Field>
       <div className="composer-actions">
         <span className="hint">
           <T>

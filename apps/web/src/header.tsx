@@ -77,7 +77,8 @@ export function HeaderBar() {
       {you && (
         <details className="menu">
           <summary>
-            {you.nick} <SeatBadge seat={you.seat} muted={you.muted} />
+            <span className="nick-text">{you.nick}</span>{" "}
+            <SeatBadge seat={you.seat} muted={you.muted} />
           </summary>
           <div className="menu-body">
             <button

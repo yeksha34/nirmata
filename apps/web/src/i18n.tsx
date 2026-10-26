@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode, useEffect } from "react";
+import { HI_SERVER } from "./i18n-server";
 import { HI_TEMPLATES } from "./i18n-templates";
 import { HI_TEXT } from "./i18n-text";
 
@@ -249,7 +250,50 @@ const WORDS: Record<string, string> = {
 };
 
 /** Every label, sentence and hint that has Hindi: the short words above, then the longer text. */
-const HI: Record<string, string> = { ...WORDS, ...HI_TEMPLATES, ...HI_TEXT };
+const HI: Record<string, string> = { ...WORDS, ...HI_TEMPLATES, ...HI_TEXT, ...HI_SERVER };
+
+/**
+ * The texts that have marks in them as patterns, so a finished sentence from the server ("There is
+ * no world "ashfall".") is found by the sentence it came from ("There is no world "{name}".").
+ */
+const PATTERNS = Object.entries(HI)
+  .filter(([english]) => /\{\w+\}/.test(english))
+  .map(([english, hi]) => {
+    const names: string[] = [];
+    const source = english
+      .split(/(\{\w+\})/)
+      .map((part) => {
+        const mark = /^\{(\w+)\}$/.exec(part)?.[1];
+        if (mark === undefined) return part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        names.push(mark);
+        return "(.+?)";
+      })
+      .join("");
+    return { pattern: new RegExp(`^${source}$`, "s"), names, hi };
+  });
+
+/**
+ * The Hindi for an English text. An exact text comes back with its marks still in it (the screen
+ * fills them); a finished sentence that matches a pattern comes back filled in, with the parts that
+ * changed translated too when they are known texts themselves.
+ */
+function lookup(english: string, depth = 0): { hi: string; filled: boolean } | undefined {
+  const exact = HI[english];
+  if (exact !== undefined) return { hi: exact, filled: false };
+  if (depth > 1) return undefined;
+  for (const { pattern, names, hi } of PATTERNS) {
+    const m = pattern.exec(english);
+    if (!m) continue;
+    const values: Record<string, string> = {};
+    names.forEach((name, i) => {
+      const value = m[i + 1] ?? "";
+      const inner = lookup(value, depth + 1);
+      values[name] = inner ? fill(inner.hi, {}) : value;
+    });
+    return { hi: fill(hi, values), filled: true };
+  }
+  return undefined;
+}
 
 /** Puts values where a text has `{name}` marks. */
 export function fill(text: string, values: Record<string, string | number> = {}): string {
@@ -258,10 +302,11 @@ export function fill(text: string, values: Record<string, string | number> = {})
   );
 }
 
-/** "हिंदी · English" for places that cannot hold markup, such as menu choices and tooltips. */
+/** "हिंदी · English" for places that cannot hold markup, such as the choices in a menu. */
 export const bilingual = (english: string, values?: Record<string, string | number>): string => {
-  const hi = HI[english];
-  return hi ? `${fill(hi, values)} · ${fill(english, values)}` : fill(english, values);
+  const found = lookup(english);
+  if (!found) return fill(english, values);
+  return `${found.filled ? found.hi : fill(found.hi, values)} · ${fill(english, values)}`;
 };
 
 /** Every English text with its Hindi (for the tests that check them). */
@@ -292,12 +337,12 @@ export function T({
   children: string;
   with?: Record<string, ReactNode>;
 }) {
-  const hi = HI[children];
-  if (!hi) return <>{slotted(children, slots)}</>;
+  const found = lookup(children);
+  if (!found) return <>{slotted(children, slots)}</>;
   return (
     <span className="tr">
       <span className="hi" lang="hi" aria-hidden="true">
-        {slotted(hi, slots)}
+        {found.filled ? found.hi : slotted(found.hi, slots)}
       </span>
       <span className="en" lang="en">
         {slotted(children, slots)}

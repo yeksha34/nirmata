@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
-import { bilingual, T } from "../i18n";
+import { Tip } from "../controls";
+import { T } from "../i18n";
 import { useNav } from "../nav";
 import type { CardKind, WorldDetail, WorldSummary } from "../types";
 import { Empty, Panel } from "../ui";
@@ -154,27 +155,28 @@ export function Workspace({ name }: { name: string }) {
               <p className="muted">{world.tagline || <T>No tagline yet.</T>}</p>
             </div>
             {!world.problem && (
-              <button
-                type="button"
-                className="primary"
-                disabled={busy || locked}
-                onClick={play}
-                title={bilingual(
+              <Tip
+                below
+                text={
                   locked
                     ? "A story is open. Put it away first."
                     : latest
                       ? "Carry on with the latest story"
-                      : "Start a story",
-                )}
+                      : "Start a story"
+                }
               >
-                <T>{latest ? "Continue" : "Play"}</T>
-              </button>
+                <button type="button" className="primary" disabled={busy || locked} onClick={play}>
+                  <T>{latest ? "Continue" : "Play"}</T>
+                </button>
+              </Tip>
             )}
           </header>
 
           {world.problem ? (
             <Panel title="This world can't be read">
-              <p className="error">{world.problem}</p>
+              <p className="error">
+                <T>{world.problem}</T>
+              </p>
               <p className="hint">
                 <T with={{ file: <code>{name}/world.json</code> }}>
                   {"Fix {file} in your worlds folder and reload, or put the world away."}
