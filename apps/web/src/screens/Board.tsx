@@ -1,8 +1,8 @@
 import { type FormEvent, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
-import { list, MODE_LABEL } from "../format";
-import { T } from "../i18n";
+import { MODE_LABEL } from "../format";
+import { bilingual, T } from "../i18n";
 import { waitingFor } from "../store";
 import type { Draft, Participant, Remark } from "../types";
 import { Empty, Panel, SeatBadge } from "../ui";
@@ -17,11 +17,17 @@ export function People() {
   const online = new Set(board.online.map((n) => n.toLowerCase()));
 
   const mod = (p: Participant, action: "kick" | "mute" | "unmute") => {
-    if (action === "kick" && !window.confirm(`Send ${p.nick} away from the table?`)) return;
+    if (
+      action === "kick" &&
+      !window.confirm(bilingual("Send {nick} away from the table?", { nick: p.nick }))
+    )
+      return;
     void act(() => api.moderate({ action, nick: p.nick }));
   };
   const rename = (p: Participant) => {
-    const next = window.prompt(`A new name for ${p.nick}:`, p.nick)?.trim();
+    const next = window
+      .prompt(bilingual("A new name for {nick}:", { nick: p.nick }), p.nick)
+      ?.trim();
     if (next && next !== p.nick)
       void act(() => api.moderate({ action: "rename", nick: p.nick, newNick: next }));
   };
@@ -33,7 +39,7 @@ export function People() {
           <li key={p.nick}>
             <span
               className={`dot dot-${online.has(p.nick.toLowerCase()) ? "live" : "lost"}`}
-              title={online.has(p.nick.toLowerCase()) ? "Here" : "Not connected"}
+              title={bilingual(online.has(p.nick.toLowerCase()) ? "Here" : "Not connected")}
             />
             <span className="nick">{p.nick}</span>
             <SeatBadge seat={p.seat} muted={p.muted} />
@@ -42,7 +48,7 @@ export function People() {
                 <summary aria-label={`Actions for ${p.nick}`}>…</summary>
                 <div className="menu-body">
                   <button type="button" onClick={() => mod(p, p.muted ? "unmute" : "mute")}>
-                    {p.muted ? "Let them speak" : "Hush"}
+                    <T>{p.muted ? "Let them speak" : "Hush"}</T>
                   </button>
                   <button type="button" onClick={() => rename(p)}>
                     <T>Rename</T>
@@ -89,18 +95,20 @@ export function BoardPanel() {
       }
     >
       <p className="round-status" aria-live="polite">
-        {board.busy
-          ? "The story is writing…"
-          : board.drafts.length === 0
-            ? "Nobody has written yet. Everyone's turn goes in together."
-            : waiting.length === 0
-              ? "Everyone's ready."
-              : `Waiting for ${list(waiting)}.`}
+        {board.busy ? (
+          <T>The story is writing…</T>
+        ) : board.drafts.length === 0 ? (
+          <T>Nobody has written yet. Everyone's turn goes in together.</T>
+        ) : waiting.length === 0 ? (
+          <T>Everyone's ready.</T>
+        ) : (
+          <T with={{ names: waiting.join(", ") }}>{"Waiting for {names}."}</T>
+        )}
       </p>
 
       {board.drafts.length === 0 ? (
         <Empty>
-          Turns appear here as people write them, so you can talk before anything is sent.
+          <T>Turns appear here as people write them, so you can talk before anything is sent.</T>
         </Empty>
       ) : (
         <ul className="drafts">
@@ -149,21 +157,27 @@ function DraftCard({
   return (
     <li className={`draft${draft.ready ? " is-ready" : ""}`}>
       <div className="draft-head">
-        <strong>{isMine ? "You" : draft.nick}</strong>
+        <strong>{isMine ? <T>You</T> : draft.nick}</strong>
         <span className="chip">
           <T>{MODE_LABEL[draft.mode]}</T>
         </span>
-        {draft.ready && <span className="ready">✓ Ready</span>}
+        {draft.ready && (
+          <span className="ready">
+            ✓ <T>Ready</T>
+          </span>
+        )}
         {draft.objections > 0 && (
-          <span className="objection-count" title="Objections still standing">
-            {draft.objections} {draft.objections === 1 ? "objection" : "objections"}
+          <span className="objection-count" title={bilingual("Objections still standing")}>
+            <T with={{ n: draft.objections }}>
+              {draft.objections === 1 ? "{n} objection" : "{n} objections"}
+            </T>
           </span>
         )}
       </div>
       <p>{draft.text}</p>
       {!isMine && canSpeak && !objecting && (
         <button type="button" className="plain" onClick={() => setObjecting(true)}>
-          Object…
+          <T>Object…</T>
         </button>
       )}
       {objecting && (
@@ -171,7 +185,7 @@ function DraftCard({
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Why not, ${draft.nick}?`}
+            placeholder={bilingual("Why not, {nick}?", { nick: draft.nick })}
             aria-label={`Your objection to ${draft.nick}'s turn`}
             maxLength={500}
             // biome-ignore lint/a11y/noAutofocus: the person just asked to type here
@@ -221,7 +235,7 @@ function Remarks() {
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Say something to the table"
+            placeholder={bilingual("Say something to the table")}
             aria-label="Say something to the table"
             maxLength={500}
           />
@@ -231,9 +245,11 @@ function Remarks() {
         </form>
       ) : (
         <p className="hint">
-          {me?.muted
-            ? "You're hushed for now: you can read, but not write."
-            : "Join in to talk with the table."}
+          <T>
+            {me?.muted
+              ? "You're hushed for now: you can read, but not write."
+              : "Join in to talk with the table."}
+          </T>
         </p>
       )}
     </div>
@@ -245,17 +261,22 @@ function RemarkLine({ remark, mine }: { remark: Remark; mine: boolean }) {
   return (
     <li className={`remark remark-${remark.kind}${remark.answered ? " is-answered" : ""}`}>
       <span className="remark-by">
-        {mine ? "You" : remark.by}
+        {mine ? <T>You</T> : remark.by}
         {remark.kind === "objection" && remark.about ? ` → ${remark.about}` : ""}
       </span>
       <span>{remark.text}</span>
-      {remark.answered && <em> (answered)</em>}
+      {remark.answered && (
+        <em>
+          {" "}
+          <T>(answered)</T>
+        </em>
+      )}
       {mine && (
         <button
           type="button"
           className="plain"
           aria-label="Take back"
-          title="Take back"
+          title={bilingual("Take back")}
           onClick={() => act(() => api.withdraw(remark.id))}
         >
           ×

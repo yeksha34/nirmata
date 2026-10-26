@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
-import { T } from "../i18n";
+import { bilingual, T } from "../i18n";
 import { useNav } from "../nav";
 import type { CardKind, WorldDetail, WorldSummary } from "../types";
 import { Empty, Panel } from "../ui";
@@ -97,7 +97,9 @@ export function Workspace({ name }: { name: string }) {
         <button type="button" className="plain" onClick={nav.home}>
           <T>← All worlds</T>
         </button>
-        <Empty>This world could not be opened. The reason is shown above.</Empty>
+        <Empty>
+          <T>This world could not be opened. The reason is shown above.</T>
+        </Empty>
       </div>
     );
 
@@ -149,7 +151,7 @@ export function Workspace({ name }: { name: string }) {
           <header className="ws-title">
             <div>
               <h1>{world.title}</h1>
-              <p className="muted">{world.tagline || "No tagline yet."}</p>
+              <p className="muted">{world.tagline || <T>No tagline yet.</T>}</p>
             </div>
             {!world.problem && (
               <button
@@ -157,13 +159,13 @@ export function Workspace({ name }: { name: string }) {
                 className="primary"
                 disabled={busy || locked}
                 onClick={play}
-                title={
+                title={bilingual(
                   locked
                     ? "A story is open. Put it away first."
                     : latest
                       ? "Carry on with the latest story"
-                      : "Start a story"
-                }
+                      : "Start a story",
+                )}
               >
                 <T>{latest ? "Continue" : "Play"}</T>
               </button>
@@ -174,8 +176,9 @@ export function Workspace({ name }: { name: string }) {
             <Panel title="This world can't be read">
               <p className="error">{world.problem}</p>
               <p className="hint">
-                Fix <code>{name}/world.json</code> in your worlds folder and reload, or put the
-                world away.
+                <T with={{ file: <code>{name}/world.json</code> }}>
+                  {"Fix {file} in your worlds folder and reload, or put the world away."}
+                </T>
               </p>
               <button type="button" className="danger" onClick={() => setPutting(true)}>
                 <T>Put away</T>
@@ -220,7 +223,11 @@ export function Workspace({ name }: { name: string }) {
                   <StartStory name={name} arcs={arcs} locked={locked} />
                   <Panel title="Saved stories">
                     {stories.length === 0 ? (
-                      <Empty>No stories in {world.title} yet. Start one above.</Empty>
+                      <Empty>
+                        <T with={{ title: world.title }}>
+                          {"No stories in {title} yet. Start one above."}
+                        </T>
+                      </Empty>
                     ) : (
                       <ul className="stories">
                         {stories.map((s) => (
@@ -247,8 +254,10 @@ export function Workspace({ name }: { name: string }) {
                       <T>Put away</T>
                     </button>
                     <p className="hint">
-                      Nothing is deleted: the folder is renamed, and renaming it back brings it
-                      back.
+                      <T>
+                        Nothing is deleted: the folder is renamed, and renaming it back brings it
+                        back.
+                      </T>
                     </p>
                   </div>
                 </>
@@ -293,13 +302,17 @@ export function Workspace({ name }: { name: string }) {
                 <T>Cards</T>
               </p>
               <p>
-                {cards.length === 0
-                  ? "This world has no cards yet. Make a character, a place or a rule and the storyteller will use it."
-                  : "Choose a card to read or change it, or make a new one."}
+                <T>
+                  {cards.length === 0
+                    ? "This world has no cards yet. Make a character, a place or a rule and the storyteller will use it."
+                    : "Choose a card to read or change it, or make a new one."}
+                </T>
               </p>
               <p className="hint">
-                Stories already begun keep their own copy of the cards, so changes here show up in
-                stories you start afterwards.
+                <T>
+                  Stories already begun keep their own copy of the cards, so changes here show up in
+                  stories you start afterwards.
+                </T>
               </p>
               {tab !== "cards" && (
                 <button type="button" onClick={() => setTab("cards")}>

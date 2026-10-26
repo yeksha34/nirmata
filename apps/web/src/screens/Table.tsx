@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
 import { MODE_HINT, MODE_LABEL, worldName } from "../format";
-import { T } from "../i18n";
+import { bilingual, T } from "../i18n";
 import { visibleTurns } from "../store";
 import type { Mode, TurnView } from "../types";
 import { BoardPanel, People } from "./Board";
@@ -153,7 +153,10 @@ function StoryBar() {
   return (
     <div className="story-bar">
       <div className="story-bar-left">
-        <span className="saved" title={`Saved automatically as ${story?.id ?? ""}`}>
+        <span
+          className="saved"
+          title={bilingual("Saved automatically as {id}", { id: story?.id ?? "" })}
+        >
           <svg
             width="13"
             height="13"
@@ -171,7 +174,9 @@ function StoryBar() {
         </span>
         {chapters.length > 0 && (
           <span className="muted" title={chapters.map((c) => c.title).join(", ")}>
-            {chapters.length} {chapters.length === 1 ? "chapter" : "chapters"} written
+            <T with={{ n: chapters.length }}>
+              {chapters.length === 1 ? "{n} chapter written" : "{n} chapters written"}
+            </T>
           </span>
         )}
       </div>
@@ -188,7 +193,7 @@ function StoryBar() {
               type="button"
               disabled={!canAct || busy}
               onClick={() => act(api.retry)}
-              title="Write a different reply"
+              title={bilingual("Write a different reply")}
             >
               <T>Try again</T>
             </button>
@@ -197,7 +202,7 @@ function StoryBar() {
               className="primary"
               disabled={!canAct || busy}
               onClick={() => act(api.continueStory)}
-              title="Let the story go on"
+              title={bilingual("Let the story go on")}
             >
               <T>Keep going</T>
             </button>
@@ -210,7 +215,7 @@ function StoryBar() {
                   if (!r.undone) throw new Error("There is nothing to undo yet.");
                 })
               }
-              title="Take back the last turn"
+              title={bilingual("Take back the last turn")}
             >
               <T>Undo</T>
             </button>
@@ -223,13 +228,16 @@ function StoryBar() {
             </summary>
             <div className="menu-body">
               <button type="button" onClick={() => setSaving(true)}>
-                Save as a new world…
+                <T>Save as a new world…</T>
               </button>
               <button
                 type="button"
                 disabled={writing}
                 onClick={() => {
-                  const title = window.prompt("Name the next chapter (or leave blank):", "");
+                  const title = window.prompt(
+                    bilingual("Name the next chapter (or leave blank):"),
+                    "",
+                  );
                   if (title !== null)
                     void act(
                       () => api.breakChapter(title.trim() || undefined),
@@ -237,7 +245,7 @@ function StoryBar() {
                     );
                 }}
               >
-                Start a new chapter…
+                <T>Start a new chapter…</T>
               </button>
               <button
                 type="button"
@@ -296,12 +304,17 @@ function SaveWorld({ onClose }: { onClose: () => void }) {
             <T>Saved</T>
           </h2>
           <p>
-            “{title.trim()}” is in your library, with {saved.cards} cards
-            {saved.chapters > 0
-              ? ` and ${saved.chapters} ${saved.chapters === 1 ? "chapter" : "chapters"}`
-              : ""}
-            . Everything that happened in this story is now part of that world. The original is
-            untouched.
+            <T with={{ title: title.trim(), cards: saved.cards, chapters: saved.chapters }}>
+              {saved.chapters === 0
+                ? "“{title}” is in your library, with {cards} cards."
+                : saved.chapters === 1
+                  ? "“{title}” is in your library, with {cards} cards and {chapters} chapter."
+                  : "“{title}” is in your library, with {cards} cards and {chapters} chapters."}
+            </T>{" "}
+            <T>
+              Everything that happened in this story is now part of that world. The original is
+              untouched.
+            </T>
           </p>
           <div className="dialog-actions">
             <button type="button" onClick={onClose}>
@@ -318,8 +331,10 @@ function SaveWorld({ onClose }: { onClose: () => void }) {
             <T>Save as a new world</T>
           </h2>
           <p className="muted">
-            Keeps this story's cards, with everything that has happened written into them, and its
-            chapters. New stories you start there begin from here.
+            <T>
+              Keeps this story's cards, with everything that has happened written into them, and its
+              chapters. New stories you start there begin from here.
+            </T>
           </p>
           <label htmlFor="world-title">
             <T>Title</T>
@@ -348,13 +363,15 @@ function SaveWorld({ onClose }: { onClose: () => void }) {
             }}
             required
           />
-          <p className="hint">Lowercase letters, digits and hyphens.</p>
+          <p className="hint">
+            <T>Lowercase letters, digits and hyphens.</T>
+          </p>
           <div className="dialog-actions">
             <button type="button" onClick={onClose}>
               <T>Cancel</T>
             </button>
             <button type="submit" className="primary" disabled={busy || !title.trim() || !name}>
-              {busy ? "Saving…" : "Save"}
+              <T>{busy ? "Saving…" : "Save"}</T>
             </button>
           </div>
         </form>
@@ -397,7 +414,9 @@ function Composer() {
   if (me.seat === "spectator") {
     return (
       <div className="composer watching">
-        <p>You're watching. Join in whenever you like.</p>
+        <p>
+          <T>You're watching. Join in whenever you like.</T>
+        </p>
         <button
           type="button"
           className="primary"
@@ -416,7 +435,9 @@ function Composer() {
   if (me.muted) {
     return (
       <div className="composer watching">
-        <p>You're hushed for now: you can read, but not write.</p>
+        <p>
+          <T>You're hushed for now: you can read, but not write.</T>
+        </p>
       </div>
     );
   }
@@ -465,20 +486,24 @@ function Composer() {
             type="button"
             aria-pressed={mode === m}
             className={mode === m ? "is-on" : ""}
-            title={MODE_HINT[m]}
+            title={bilingual(MODE_HINT[m])}
             onClick={() => pick(m)}
           >
             <T>{MODE_LABEL[m]}</T>
           </button>
         ))}
-        <span className="hint">{MODE_HINT[mode]}</span>
+        <span className="hint">
+          <T>{MODE_HINT[mode]}</T>
+        </span>
       </fieldset>
       <textarea
         value={text}
         onChange={(e) => edit(e.target.value)}
         rows={3}
         maxLength={2000}
-        placeholder={mode === "say" ? "“…”" : mode === "story" ? "The story should…" : "I…"}
+        placeholder={
+          mode === "say" ? "“…”" : bilingual(mode === "story" ? "The story should…" : "I…")
+        }
         aria-label="Your turn"
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && text.trim() && !isReady) {
@@ -489,18 +514,20 @@ function Composer() {
       />
       <div className="composer-actions">
         <span className="hint">
-          {writing
-            ? "You can write ahead while the story is writing."
-            : isReady
-              ? "Ready. Waiting for the others, or change your turn."
-              : "Others see this as you write. Ready sends it when everyone is ready."}
+          <T>
+            {writing
+              ? "You can write ahead while the story is writing."
+              : isReady
+                ? "Ready. Waiting for the others, or change your turn."
+                : "Others see this as you write. Ready sends it when everyone is ready."}
+          </T>
         </span>
         <button
           type="submit"
           className={isReady ? "" : "primary"}
           disabled={!isReady && !text.trim()}
         >
-          {isReady ? "Not ready" : "Ready"}
+          <T>{isReady ? "Not ready" : "Ready"}</T>
         </button>
       </div>
     </form>

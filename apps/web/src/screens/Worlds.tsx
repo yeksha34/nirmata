@@ -62,8 +62,10 @@ function Home() {
           </Empty>
         ) : recent.length === 0 ? (
           <Empty>
-            Nothing has been played yet. Choose a world below and start a story; it saves itself as
-            you play.
+            <T>
+              Nothing has been played yet. Choose a world below and start a story; it saves itself
+              as you play.
+            </T>
           </Empty>
         ) : (
           <ul className="stories">
@@ -94,8 +96,11 @@ function Home() {
           </Empty>
         ) : worlds.length === 0 ? (
           <Empty>
-            There are no worlds yet. Make one with “New world”, or put a world folder (one with a{" "}
-            <code>world.json</code>) in your worlds folder and reload.
+            <T with={{ file: <code>world.json</code> }}>
+              {
+                "There are no worlds yet. Make one with “New world”, or put a world folder (one with a {file}) in your worlds folder and reload."
+              }
+            </T>
           </Empty>
         ) : (
           <ul className="cards">
@@ -104,12 +109,20 @@ function Home() {
                 <button type="button" className="world-card" onClick={() => onOpen(w.name)}>
                   <strong>{w.title}</strong>
                   <span className="muted">
-                    {w.problem ? `Can't be read: ${w.problem}` : w.tagline || "No tagline yet"}
+                    {w.problem ? (
+                      <T with={{ problem: w.problem }}>{"Can't be read: {problem}"}</T>
+                    ) : (
+                      w.tagline || <T>No tagline yet</T>
+                    )}
                   </span>
                   <span className="meta">
-                    {w.stories === 0
-                      ? "No stories yet"
-                      : `${w.stories} saved ${w.stories === 1 ? "story" : "stories"}`}
+                    <T with={{ n: w.stories }}>
+                      {w.stories === 0
+                        ? "No stories yet"
+                        : w.stories === 1
+                          ? "{n} saved story"
+                          : "{n} saved stories"}
+                    </T>
                   </span>
                 </button>
               </li>

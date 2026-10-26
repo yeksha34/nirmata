@@ -97,12 +97,12 @@ export function CardList({
       {broken.length > 0 && (
         <div className="broken">
           <strong>
-            {broken.length === 1
-              ? "One card can't be read"
-              : `${broken.length} cards can't be read`}
+            <T with={{ n: broken.length }}>
+              {broken.length === 1 ? "One card can't be read" : "{n} cards can't be read"}
+            </T>
           </strong>
           <p className="hint">
-            Stories can't start until they are fixed or removed. Nothing else is affected.
+            <T>Stories can't start until they are fixed or removed. Nothing else is affected.</T>
           </p>
           <ul>
             {broken.map((b) => (
@@ -134,7 +134,9 @@ export function CardList({
       )}
 
       {cards.length === 0 && broken.length === 0 && (
-        <p className="empty">No cards yet. Make the first one below.</p>
+        <p className="empty">
+          <T>No cards yet. Make the first one below.</T>
+        </p>
       )}
       {present.map((k) => (
         <section key={k.id} className="card-group" aria-label={k.group}>
@@ -236,7 +238,9 @@ export function WorldFacts({ manifest, onEdit }: { manifest: Manifest; onEdit: (
         <dt>
           <T>Told in</T>
         </dt>
-        <dd>{PERSPECTIVE[manifest.perspective]}</dd>
+        <dd>
+          <T>{PERSPECTIVE[manifest.perspective]}</T>
+        </dd>
       </dl>
       <button type="button" onClick={onEdit}>
         <T>Edit the world</T>
@@ -431,7 +435,9 @@ export function CardEditor({
 
       {options.length > 1 && (
         <div>
-          <label htmlFor="cf-template">{card ? "Parts from" : "Start from"}</label>
+          <label htmlFor="cf-template">
+            <T>{card ? "Parts from" : "Start from"}</T>
+          </label>
           <select
             id="cf-template"
             value={templateId}
@@ -444,7 +450,8 @@ export function CardEditor({
             ))}
           </select>
           <p className="hint">
-            {template?.description} {card && "Parts you have filled in are kept."}
+            {template && <T>{template.description}</T>}{" "}
+            {card && <T>Parts you have filled in are kept.</T>}
           </p>
         </div>
       )}
@@ -464,7 +471,10 @@ export function CardEditor({
         </div>
         <div>
           <label htmlFor="cf-keywords">
-            Keywords <span className="faint">· what brings this card into a scene</span>
+            <T>Keywords</T>{" "}
+            <span className="faint">
+              <T>· what brings this card into a scene</T>
+            </span>
           </label>
           <input
             id="cf-keywords"
@@ -484,7 +494,9 @@ export function CardEditor({
         maxLength={300}
         onChange={(e) => setSummary(e.target.value)}
       />
-      <p className="hint">Shown to the storyteller even when the whole card is not brought up.</p>
+      <p className="hint">
+        <T>Shown to the storyteller even when the whole card is not brought up.</T>
+      </p>
 
       {kind === "character" && (
         <>
@@ -546,7 +558,10 @@ export function CardEditor({
         <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} />
         <span>
           <T>Always in the storyteller's view</T>
-          <span className="faint"> · use sparingly: it costs space in every turn</span>
+          <span className="faint">
+            {" "}
+            <T>· use sparingly: it costs space in every turn</T>
+          </span>
         </span>
       </label>
 
@@ -573,7 +588,10 @@ export function CardEditor({
       )}
 
       <label htmlFor="cf-body">
-        {parts.length > 0 ? "More notes" : "Body"} <span className="faint">· markdown</span>
+        <T>{parts.length > 0 ? "More notes" : "Body"}</T>{" "}
+        <span className="faint">
+          <T>· markdown</T>
+        </span>
       </label>
       <textarea
         id="cf-body"
@@ -582,24 +600,31 @@ export function CardEditor({
         onChange={(e) => setBody(e.target.value)}
       />
       <p className="hint">
-        Link to other cards with relative paths, as in <code>[The Fog](../lore/the_fog.md)</code>.
+        <T with={{ example: <code>[The Fog](../lore/the_fog.md)</code> }}>
+          {"Link to other cards with relative paths, as in {example}"}
+        </T>
+        .
       </p>
 
       {card && (
         <p className="linked">
           {links.length > 0 ? (
             <>
-              Linked from{" "}
-              {links.map((c, i) => (
-                <span key={c.path}>
-                  {i > 0 && (i === links.length - 1 ? " and " : ", ")}
-                  <strong>{c.fm.name}</strong>
-                </span>
-              ))}
-              .
+              <T
+                with={{
+                  names: links.map((c, i) => (
+                    <span key={c.path}>
+                      {i > 0 && ", "}
+                      <strong>{c.fm.name}</strong>
+                    </span>
+                  )),
+                }}
+              >
+                {"Linked from {names}."}
+              </T>
             </>
           ) : (
-            "No other card links to this one yet."
+            <T>No other card links to this one yet.</T>
           )}
         </p>
       )}
@@ -676,10 +701,19 @@ export function CardTextDialog({
           </summary>
           <pre className="syntax">{SYNTAX}</pre>
           <p className="hint">
-            The fields are attributes of <code>&lt;card&gt;</code>; <code>&lt;keywords&gt;</code>,{" "}
-            <code>&lt;summary&gt;</code> and any named part such as <code>&lt;appearance&gt;</code>{" "}
-            come first; everything after them is markdown, left as written. Cards written the older
-            way, with a <code>---</code> block, are read too.
+            <T
+              with={{
+                card: <code>&lt;card&gt;</code>,
+                keywords: <code>&lt;keywords&gt;</code>,
+                summary: <code>&lt;summary&gt;</code>,
+                appearance: <code>&lt;appearance&gt;</code>,
+                dashes: <code>---</code>,
+              }}
+            >
+              {
+                "The fields are attributes of {card}; {keywords}, {summary} and any named part such as {appearance} come first; everything after them is markdown, left as written. Cards written the older way, with a {dashes} block, are read too."
+              }
+            </T>
           </p>
         </details>
         {problem && (
@@ -716,10 +750,15 @@ export function RemoveCard({
   const { problem, busy, run } = useSave();
   return (
     <Modal titleId="remove-card-title" onClose={onClose}>
-      <h2 id="remove-card-title">Remove {name}?</h2>
+      <h2 id="remove-card-title">
+        <T with={{ name }}>{"Remove {name}?"}</T>
+      </h2>
       <p>
-        This deletes the card's file, <code>{path}</code>, from the world's folder. Stories already
-        begun keep their own copy. If the world is in git, the file can be brought back.
+        <T with={{ path: <code>{path}</code> }}>
+          {
+            "This deletes the card's file, {path}, from the world's folder. Stories already begun keep their own copy. If the world is in git, the file can be brought back."
+          }
+        </T>
       </p>
       {problem && (
         <p className="error" role="alert">

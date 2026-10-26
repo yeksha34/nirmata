@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp, useSave } from "../app-context";
-import { ago, list, words } from "../format";
+import { agoParts, words } from "../format";
 import { bilingual, T } from "../i18n";
 import type { Card, Manifest, Perspective, StorySummary, WorldSummary } from "../types";
 import { Modal, Panel } from "../ui";
@@ -9,6 +9,14 @@ import { Modal, Panel } from "../ui";
 // Pieces of the worlds pages that more than one of them uses.
 
 /** Shown while a story is open in the window: why starting another waits, and how to free it. */
+/** How long ago a story was last played, in words. */
+function Ago({ iso }: { iso: string }) {
+  const when = agoParts(iso);
+  if (!when) return null;
+  if ("date" in when) return <>{when.date}</>;
+  return <T with={{ n: when.n }}>{when.text}</T>;
+}
+
 export function OpenStoryNotice() {
   const { state } = useApp();
   const { act, busy } = useAct();
@@ -17,10 +25,12 @@ export function OpenStoryNotice() {
   return (
     <Panel title="A story is open">
       <p>
-        {state.world
-          ? `A story in ${state.world.title} is open in the window.`
-          : "A story is open."}{" "}
-        Put it away (it stays saved) to start or continue a different one.
+        {state.world ? (
+          <T with={{ title: state.world.title }}>{"A story in {title} is open in the window."}</T>
+        ) : (
+          <T>A story is open.</T>
+        )}{" "}
+        <T>Put it away (it stays saved) to start or continue a different one.</T>
       </p>
       <button type="button" disabled={busy || writing} onClick={() => act(api.closeStory)}>
         <T>Put the story away</T>
@@ -46,18 +56,27 @@ export function StoryRow({
       <div className="story-row-text">
         {world && <span className="chip">{world}</span>}
         <p className="preview">
-          {story.damaged ? "This story's file can't be read." : story.preview || "Just begun"}
+          {story.damaged ? (
+            <T>This story's file can't be read.</T>
+          ) : (
+            story.preview || <T>Just begun</T>
+          )}
         </p>
         <p className="meta">
-          {story.damaged
-            ? "Needs repair before it can be continued"
-            : [
-                ago(story.updatedAt),
-                `${story.turns} ${story.turns === 1 ? "turn" : "turns"}`,
-                story.players.length ? `with ${list(story.players)}` : "",
-              ]
-                .filter(Boolean)
-                .join(" · ")}
+          {story.damaged ? (
+            <T>Needs repair before it can be continued</T>
+          ) : (
+            <>
+              <Ago iso={story.updatedAt} /> ·{" "}
+              <T with={{ n: story.turns }}>{story.turns === 1 ? "{n} turn" : "{n} turns"}</T>
+              {story.players.length > 0 && (
+                <>
+                  {" "}
+                  · <T with={{ names: story.players.join(", ") }}>{"with {names}"}</T>
+                </>
+              )}
+            </>
+          )}
         </p>
       </div>
       <button
@@ -128,8 +147,10 @@ export function CreateWorld({
           onChange={(e) => setPremise(e.target.value)}
         />
         <p className="hint">
-          The storyteller always keeps this in mind. You can add places, people and rules as cards
-          in the world's folder later.
+          <T>
+            The storyteller always keeps this in mind. You can add places, people and rules as cards
+            in the world's folder later.
+          </T>
         </p>
         <div className="dialog-actions">
           <button type="button" onClick={onClose}>
@@ -183,8 +204,10 @@ export function StartStory({
           <T>Start a new story</T>
         </button>
         <p className="hint">
-          The story takes its own copy of the world's cards, so changing the world later never
-          changes a story you've started.
+          <T>
+            The story takes its own copy of the world's cards, so changing the world later never
+            changes a story you've started.
+          </T>
         </p>
       </div>
     </Panel>
@@ -284,8 +307,11 @@ export function EditWorld({
           <option value="third-person">{bilingual("Third person (they)")}</option>
         </select>
         <p className="hint">
-          The folder keeps its name, <code>{world.name}</code>. Stories already started keep the
-          title they began with.
+          <T with={{ name: <code>{world.name}</code> }}>
+            {
+              "The folder keeps its name, {name}. Stories already started keep the title they began with."
+            }
+          </T>
         </p>
         {problem && (
           <p className="error" role="alert">
@@ -319,15 +345,21 @@ export function PutAway({
   const inUse = state.story !== null && state.world?.name === world.name;
   return (
     <Modal titleId="put-away-title" onClose={onClose}>
-      <h2 id="put-away-title">Put “{world.title}” away?</h2>
+      <h2 id="put-away-title">
+        <T with={{ title: world.title }}>{"Put “{title}” away?"}</T>
+      </h2>
       <p>
-        It disappears from your worlds, along with its {world.stories}{" "}
-        {world.stories === 1 ? "story" : "stories"}. Nothing is deleted: its folder is renamed to
-        start with <code>_archived-</code>, and renaming it back brings it back.
+        <T with={{ n: world.stories, prefix: <code>_archived-</code> }}>
+          {world.stories === 1
+            ? "It disappears from your worlds, along with its {n} story. Nothing is deleted: its folder is renamed to start with {prefix}, and renaming it back brings it back."
+            : "It disappears from your worlds, along with its {n} stories. Nothing is deleted: its folder is renamed to start with {prefix}, and renaming it back brings it back."}
+        </T>
       </p>
       {inUse && (
         <p className="error">
-          A story in this world is open at the table. It closes for everyone, and stays saved.
+          <T>
+            A story in this world is open at the table. It closes for everyone, and stays saved.
+          </T>
         </p>
       )}
       <div className="dialog-actions">

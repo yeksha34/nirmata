@@ -38,12 +38,18 @@ export function Join({
     <div className="join">
       <form className="join-card" onSubmit={submit}>
         <Brand />
-        <h1>{info?.world ? info.world.title : "Join the table"}</h1>
+        <h1>{info?.world ? info.world.title : <T>Join the table</T>}</h1>
         {info?.world?.tagline && <p className="tagline">{info.world.tagline}</p>}
         <p className="muted">
-          {info?.host
-            ? `${info.host} is hosting. Pick a name to come in; you can watch first and join in whenever you like.`
-            : "Pick a name to come in."}
+          {info?.host ? (
+            <T with={{ host: info.host }}>
+              {
+                "{host} is hosting. Pick a name to come in; you can watch first and join in whenever you like."
+              }
+            </T>
+          ) : (
+            <T>Pick a name to come in.</T>
+          )}
         </p>
 
         <label htmlFor="nick">
@@ -60,12 +66,16 @@ export function Join({
           autoFocus
           required
         />
-        <p className="hint">Up to 24 letters or digits, no spaces.</p>
+        <p className="hint">
+          <T>Up to 24 letters or digits, no spaces.</T>
+        </p>
 
         {needsAdult && (
           <label className="check">
             <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
-            <span>I am an adult (18 or older). This story is for adult readers.</span>
+            <span>
+              <T>I am an adult (18 or older). This story is for adult readers.</T>
+            </span>
           </label>
         )}
 
@@ -79,10 +89,12 @@ export function Join({
           className="primary"
           disabled={busy || !nick.trim() || (needsAdult && !adult)}
         >
-          {busy ? "Coming in…" : "Come in"}
+          <T>{busy ? "Coming in…" : "Come in"}</T>
         </button>
         <p className="hint">
-          Running the server? Open the link it printed in your terminal to take the host's seat.
+          <T>
+            Running the server? Open the link it printed in your terminal to take the host's seat.
+          </T>
         </p>
       </form>
     </div>

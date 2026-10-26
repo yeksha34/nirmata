@@ -17,6 +17,33 @@ export function ago(iso: string, now = Date.now()): string {
   });
 }
 
+/**
+ * How long ago, as a text with a `{n}` to fill (so the screen can show it in Hindi too), or a date
+ * when it was a long time ago.
+ */
+export function agoParts(
+  iso: string,
+  now = Date.now(),
+): { text: string; n: number } | { date: string } | undefined {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return undefined;
+  const minutes = Math.max(0, Math.round((now - then) / 60_000));
+  if (minutes < 1) return { text: "just now", n: 0 };
+  if (minutes < 60) return { text: "{n} min ago", n: minutes };
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return { text: "{n} h ago", n: hours };
+  const days = Math.round(hours / 24);
+  if (days === 1) return { text: "yesterday", n: 1 };
+  if (days < 14) return { text: "{n} days ago", n: days };
+  return {
+    date: new Date(then).toLocaleDateString(undefined, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }),
+  };
+}
+
 /** A folder name for a world from its title: lowercase letters, digits and hyphens. */
 export function worldName(title: string): string {
   const slug = title
