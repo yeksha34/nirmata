@@ -1,4 +1,5 @@
 import { useApp } from "../app-context";
+import { T } from "../i18n";
 import { Panel } from "../ui";
 import { People } from "./Board";
 
@@ -13,7 +14,9 @@ export function Waiting() {
     return (
       <div className="waiting">
         <Panel title={state.world?.title ?? "The story"}>
-          <p className="lead">The story is open in the window.</p>
+          <p className="lead">
+            <T>The story is open in the window.</T>
+          </p>
           <p className="muted">
             Drag it by its title bar to put it where you like, or minimize it to a chip in the
             corner and open it again from there.

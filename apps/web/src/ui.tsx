@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef } from "react";
 import { useApp } from "./app-context";
+import { T } from "./i18n";
 import type { SeatKind } from "./types";
 
 export function Brand() {
@@ -19,7 +20,9 @@ export function Brand() {
         <path d="M12 2v2M9 4h6M8 7h8l1 10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z" />
         <path d="M12 10c1.6 1.6 1.6 3.2 0 4.8-1.6-1.6-1.6-3.2 0-4.8z" />
       </svg>
-      <span>Nirmata</span>
+      <span>
+        <T>Nirmata</T>
+      </span>
     </span>
   );
 }
@@ -33,7 +36,7 @@ const SEAT_LABEL: Record<SeatKind, string> = {
 export function SeatBadge({ seat, muted }: { seat: SeatKind; muted?: boolean }) {
   return (
     <span className={`badge badge-${seat}`}>
-      {SEAT_LABEL[seat]}
+      <T>{SEAT_LABEL[seat]}</T>
       {muted ? " · hushed" : ""}
     </span>
   );
@@ -77,7 +80,9 @@ export function Panel({
   return (
     <section className="panel">
       <div className="panel-head">
-        <h2>{title}</h2>
+        <h2>
+          <T>{title}</T>
+        </h2>
         {aside}
       </div>
       {children}

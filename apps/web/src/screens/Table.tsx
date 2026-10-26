@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
 import { MODE_HINT, MODE_LABEL, worldName } from "../format";
+import { T } from "../i18n";
 import { visibleTurns } from "../store";
 import type { Mode, TurnView } from "../types";
 import { BoardPanel, People } from "./Board";
@@ -60,7 +61,9 @@ function StoryPane() {
         </ul>
       )}
       {groups.length === 0 && state.streaming === null && (
-        <p className="empty">The story is about to begin…</p>
+        <p className="empty">
+          <T>The story is about to begin…</T>
+        </p>
       )}
       {groups.map((g) =>
         g.kind === "host" ? (
@@ -74,7 +77,9 @@ function StoryPane() {
           {state.streaming ? (
             <Prose text={state.streaming} />
           ) : (
-            <p className="muted">The story is writing…</p>
+            <p className="muted">
+              <T>The story is writing…</T>
+            </p>
           )}
           <span className="caret" aria-hidden="true" />
         </div>
@@ -162,7 +167,7 @@ function StoryBar() {
           >
             <path d="M5 12.5l4.5 4.5L19 7.5" />
           </svg>{" "}
-          Saved
+          <T>Saved</T>
         </span>
         {chapters.length > 0 && (
           <span className="muted" title={chapters.map((c) => c.title).join(", ")}>
@@ -174,7 +179,7 @@ function StoryBar() {
         {writing ? (
           canAct && (
             <button type="button" onClick={() => act(api.stop)}>
-              Stop
+              <T>Stop</T>
             </button>
           )
         ) : (
@@ -185,7 +190,7 @@ function StoryBar() {
               onClick={() => act(api.retry)}
               title="Write a different reply"
             >
-              Try again
+              <T>Try again</T>
             </button>
             <button
               type="button"
@@ -194,7 +199,7 @@ function StoryBar() {
               onClick={() => act(api.continueStory)}
               title="Let the story go on"
             >
-              Keep going
+              <T>Keep going</T>
             </button>
             <button
               type="button"
@@ -207,13 +212,15 @@ function StoryBar() {
               }
               title="Take back the last turn"
             >
-              Undo
+              <T>Undo</T>
             </button>
           </>
         )}
         {host && (
           <details className="menu menu-right">
-            <summary>More</summary>
+            <summary>
+              <T>More</T>
+            </summary>
             <div className="menu-body">
               <button type="button" onClick={() => setSaving(true)}>
                 Save as a new world…
@@ -237,10 +244,10 @@ function StoryBar() {
                 disabled={writing}
                 onClick={() => act(api.extractPlot, "Looking for plot points…")}
               >
-                Update plot points
+                <T>Update plot points</T>
               </button>
               <button type="button" disabled={writing} onClick={() => act(api.closeStory)}>
-                Put the story away
+                <T>Put the story away</T>
               </button>
             </div>
           </details>
@@ -285,7 +292,9 @@ function SaveWorld({ onClose }: { onClose: () => void }) {
     <dialog ref={ref} className="dialog" onClose={onClose} aria-labelledby="save-title">
       {saved ? (
         <div>
-          <h2 id="save-title">Saved</h2>
+          <h2 id="save-title">
+            <T>Saved</T>
+          </h2>
           <p>
             “{title.trim()}” is in your library, with {saved.cards} cards
             {saved.chapters > 0
@@ -296,21 +305,25 @@ function SaveWorld({ onClose }: { onClose: () => void }) {
           </p>
           <div className="dialog-actions">
             <button type="button" onClick={onClose}>
-              Keep playing here
+              <T>Keep playing here</T>
             </button>
             <button type="button" className="primary" disabled={busy} onClick={openIt}>
-              Open it now
+              <T>Open it now</T>
             </button>
           </div>
         </div>
       ) : (
         <form onSubmit={submit}>
-          <h2 id="save-title">Save as a new world</h2>
+          <h2 id="save-title">
+            <T>Save as a new world</T>
+          </h2>
           <p className="muted">
             Keeps this story's cards, with everything that has happened written into them, and its
             chapters. New stories you start there begin from here.
           </p>
-          <label htmlFor="world-title">Title</label>
+          <label htmlFor="world-title">
+            <T>Title</T>
+          </label>
           <input
             id="world-title"
             value={title}
@@ -321,7 +334,9 @@ function SaveWorld({ onClose }: { onClose: () => void }) {
             }}
             required
           />
-          <label htmlFor="world-name">Folder name</label>
+          <label htmlFor="world-name">
+            <T>Folder name</T>
+          </label>
           <input
             id="world-name"
             value={name}
@@ -336,7 +351,7 @@ function SaveWorld({ onClose }: { onClose: () => void }) {
           <p className="hint">Lowercase letters, digits and hyphens.</p>
           <div className="dialog-actions">
             <button type="button" onClick={onClose}>
-              Cancel
+              <T>Cancel</T>
             </button>
             <button type="submit" className="primary" disabled={busy || !title.trim() || !name}>
               {busy ? "Saving…" : "Save"}
@@ -393,7 +408,7 @@ function Composer() {
             })
           }
         >
-          Join in
+          <T>Join in</T>
         </button>
       </div>
     );
@@ -441,7 +456,9 @@ function Composer() {
       }}
     >
       <fieldset className="modes">
-        <legend className="sr-only">What kind of turn</legend>
+        <legend className="sr-only">
+          <T>What kind of turn</T>
+        </legend>
         {MODES.map((m) => (
           <button
             key={m}
@@ -451,7 +468,7 @@ function Composer() {
             title={MODE_HINT[m]}
             onClick={() => pick(m)}
           >
-            {MODE_LABEL[m]}
+            <T>{MODE_LABEL[m]}</T>
           </button>
         ))}
         <span className="hint">{MODE_HINT[mode]}</span>

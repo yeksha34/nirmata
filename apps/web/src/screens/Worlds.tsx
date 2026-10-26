@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
+import { T } from "../i18n";
 import { useNav } from "../nav";
 import type { RecentStory, WorldSummary } from "../types";
 import { Empty, Panel } from "../ui";
@@ -39,18 +40,26 @@ function Home() {
   return (
     <div className="worlds">
       <header className="hero">
-        <p className="eyebrow">For storytellers, alone or at a table</p>
-        <h1>Build worlds. Host stories in them.</h1>
+        <p className="eyebrow">
+          <T>For storytellers, alone or at a table</T>
+        </p>
+        <h1>
+          <T>Build worlds. Host stories in them.</T>
+        </h1>
         <p className="lede">
-          A world is a folder of cards you write once: people, places, plots, rules. A story is one
-          run inside it, with its own copy, so the world stays yours while the story goes wherever
-          it goes.
+          <T>
+            {
+              "A world is a folder of cards you write once: people, places, plots, rules. A story is one run inside it, with its own copy, so the world stays yours while the story goes wherever it goes."
+            }
+          </T>
         </p>
       </header>
       <OpenStoryNotice />
       <Panel title="Pick up where you left off">
         {!recent ? (
-          <Empty>Looking for your stories…</Empty>
+          <Empty>
+            <T>Looking for your stories…</T>
+          </Empty>
         ) : recent.length === 0 ? (
           <Empty>
             Nothing has been played yet. Choose a world below and start a story; it saves itself as
@@ -75,12 +84,14 @@ function Home() {
         title="Your worlds"
         aside={
           <button type="button" className="primary" onClick={() => setCreating(true)}>
-            New world
+            <T>New world</T>
           </button>
         }
       >
         {!worlds ? (
-          <Empty>Looking for your worlds…</Empty>
+          <Empty>
+            <T>Looking for your worlds…</T>
+          </Empty>
         ) : worlds.length === 0 ? (
           <Empty>
             There are no worlds yet. Make one with “New world”, or put a world folder (one with a{" "}

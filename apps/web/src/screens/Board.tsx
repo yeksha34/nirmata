@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
 import { list, MODE_LABEL } from "../format";
+import { T } from "../i18n";
 import { waitingFor } from "../store";
 import type { Draft, Participant, Remark } from "../types";
 import { Empty, Panel, SeatBadge } from "../ui";
@@ -44,10 +45,10 @@ export function People() {
                     {p.muted ? "Let them speak" : "Hush"}
                   </button>
                   <button type="button" onClick={() => rename(p)}>
-                    Rename
+                    <T>Rename</T>
                   </button>
                   <button type="button" className="danger" onClick={() => mod(p, "kick")}>
-                    Send away
+                    <T>Send away</T>
                   </button>
                 </div>
               </details>
@@ -82,7 +83,7 @@ export function BoardPanel() {
       aside={
         me?.host && board.drafts.length > 0 && !board.busy ? (
           <button type="button" onClick={() => act(api.closeRound)}>
-            Send it now
+            <T>Send it now</T>
           </button>
         ) : undefined
       }
@@ -149,7 +150,9 @@ function DraftCard({
     <li className={`draft${draft.ready ? " is-ready" : ""}`}>
       <div className="draft-head">
         <strong>{isMine ? "You" : draft.nick}</strong>
-        <span className="chip">{MODE_LABEL[draft.mode]}</span>
+        <span className="chip">
+          <T>{MODE_LABEL[draft.mode]}</T>
+        </span>
         {draft.ready && <span className="ready">✓ Ready</span>}
         {draft.objections > 0 && (
           <span className="objection-count" title="Objections still standing">
@@ -175,10 +178,10 @@ function DraftCard({
             autoFocus
           />
           <button type="submit" disabled={!text.trim()}>
-            Object
+            <T>Object</T>
           </button>
           <button type="button" className="plain" onClick={() => setObjecting(false)}>
-            Cancel
+            <T>Cancel</T>
           </button>
         </form>
       )}
@@ -223,7 +226,7 @@ function Remarks() {
             maxLength={500}
           />
           <button type="submit" disabled={!text.trim()}>
-            Say
+            <T>Say</T>
           </button>
         </form>
       ) : (

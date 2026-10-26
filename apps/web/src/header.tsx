@@ -1,5 +1,6 @@
 import { api } from "./api";
 import { useAct, useApp } from "./app-context";
+import { T } from "./i18n";
 import { JumpBox, SHORTCUT, useJump, useNav } from "./nav";
 import { Brand, SeatBadge } from "./ui";
 
@@ -21,7 +22,7 @@ export function HeaderBar() {
             aria-current={nav.world === undefined ? "page" : undefined}
             onClick={nav.home}
           >
-            Worlds
+            <T>Worlds</T>
           </button>
         </nav>
       )}
@@ -51,7 +52,9 @@ export function HeaderBar() {
             <circle cx="11" cy="11" r="7" />
             <path d="M20 20l-4-4" />
           </svg>
-          <span className="jump-text">Jump to a world or card</span>
+          <span className="jump-text">
+            <T>Jump to a world or card</T>
+          </span>
           <kbd>{SHORTCUT}</kbd>
         </button>
       )}
@@ -86,7 +89,7 @@ export function HeaderBar() {
                 })
               }
             >
-              Leave the table
+              <T>Leave the table</T>
             </button>
           </div>
         </details>
