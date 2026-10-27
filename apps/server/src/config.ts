@@ -51,7 +51,9 @@ const DEMO_LINES = [
  */
 export function loadConfig(
   env: Readonly<Record<string, string | undefined>> = process.env,
-  cwd = process.cwd(),
+  // `pnpm --filter` runs the server from apps/server; INIT_CWD is where pnpm was started, which
+  // is where the worlds folder is
+  cwd = env.INIT_CWD ?? process.cwd(),
 ): ServerConfig {
   const libraryDir = resolve(cwd, env.NIRMATA_WORLDS ?? "worlds");
   const kind = env.NIRMATA_PROVIDER ?? (env.NIRMATA_BASE_URL ? "openai" : undefined);
