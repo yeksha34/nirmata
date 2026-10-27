@@ -15,6 +15,7 @@ expert can still reach every dial. Each principle ends in something testable.
 10. **Cards look like cards.** Portrait, title, tagline, tags (Janitor-style browsing) in the library; consistent card chrome everywhere.
 11. **Adults, said plainly.** Nirmata is for adult audiences ([ADR-0010](decisions/0010-adults-only.md)); the first run says so, and there are no rating levels to configure. Players are never silently blocked or edited: what they type is treated as what the character says or tries, not as fact ([ADR-0012](decisions/0012-player-input-is-not-fact.md)).
 12. **Phone-capable.** Play view is single column, thumb-reachable controls, 44px targets.
+13. **Markup says what it holds.** A row of commands is a `<menu>`, a status is an `<output>`, a count or a seat is a `<data>`, a person's name is a `<bdi>`, a screen's top is a `<header>`, the foot of a dialog is a `<footer>`; `<div>` and `<span>` are for layout and text hooks that no element names. Test: [dom.test.ts](../apps/web/test/dom.test.ts) lists every `<div>`/`<span>` left (twelve), each with its reason, and fails on a new one.
 
 ## Core screens (v0.3 target)
 
