@@ -20,6 +20,8 @@ const NOT_SHOWN: string[] = [
   "{host}",
   "{target}",
   "{newName}",
+  // the story importer, run from the command line
+  "x already holds a world; choose a new folder",
 ];
 
 describe("what the server says to people", () => {
