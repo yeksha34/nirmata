@@ -23,7 +23,7 @@ On start it opens your browser on the **host link** (it contains the host key, i
 | `NIRMATA_PROVIDER` | `openai`, `anthropic` or `demo` | `openai` if `NIRMATA_BASE_URL` is set |
 | `NIRMATA_MODEL`, `NIRMATA_BASE_URL`, `NIRMATA_API_KEY` / `ANTHROPIC_API_KEY` | the model | |
 | `NIRMATA_CONTEXT_TOKENS` | the model's context size, for the prompt budget | 4096 |
-| `NIRMATA_WORLDS` | the folder that holds your worlds (which one to play is chosen on screen) | `worlds` |
+| `NIRMATA_WORLDS` | the folder that holds your worlds (which one to play is chosen on screen) | `worlds`, in the folder you started from |
 | `NIRMATA_HOST_NICK` | the host's nickname | `Host` |
 | `NIRMATA_HOST_KEY` | proves you are the host | new each run |
 | `NIRMATA_OPEN` | set to `0` to stop it opening your browser | opens |
