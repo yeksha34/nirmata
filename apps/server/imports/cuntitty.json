@@ -1,0 +1,151 @@
+{
+  "world": {
+    "name": "cuntitty",
+    "title": "Cuntitty",
+    "tagline": "",
+    "genre": ["dark fantasy", "erotica"],
+    "tone": ["crude", "cruel"],
+    "perspective": "third-person"
+  },
+  "notes": [
+    "plot/playground_fetish_checklist.md",
+    "plot/dark_narrative_devices.md",
+    "plot/style_sheet_siltcoil_playgrounds.md"
+  ],
+  "progress": { "arcs": "plot/arcs/character_arcs.md", "state": "plot/story_state.md" },
+  "avoid": ["areola", "labia", "mons", "peach", "unnamed", "district", "canon", "late lord of cuntswell"],
+  "overrides": {
+    ".agents/rules/world_02_culture.md": {
+      "check": "Does the passage show cruelty as an aesthetic and cultural thing that lives alongside real affection, rather than as plain villainy or good against evil?"
+    },
+    ".agents/rules/world_04_restraint.md": {
+      "check": "Do the deities in the passage hold back from giving in to every urge, turning the irritation of it on their monsters, while the monsters show no such restraint?"
+    },
+    ".agents/rules/world_05_monster_behavior_and_speech.md": {
+      "check": "Do the monsters in the passage speak filthily, call themselves by derogatory words, and never complain of pain done to them by a deity?"
+    },
+    ".agents/rules/world_06_indecent_and_done_anyway.md": {
+      "check": "Does the passage size every casting's effect on its caster and on onlookers to the size of the magic, and treat waste service as a duty that is never written with sexual tension?"
+    },
+    ".agents/rules/world_07_nature_of_magic.md": {
+      "check": "Does magic in the passage cost nothing and take nothing, and does every deity cast only the forms of the family that bore her (casual magic aside)?"
+    },
+    ".agents/rules/world_08_monsters_as_tools.md": {
+      "check": "Where a vermin would reach for an object, does the passage put a monster in the magizen's hand, except where an ordinary tool is simply more convenient?"
+    },
+    ".agents/rules/world_11_no_children_depicted_sexually.md": {
+      "severity": "must",
+      "check": "Is every character in any sexual or erotic content unmistakably an adult, with no child or teenager touched sexually, performed for, made to watch, described in sexual terms, or used in an erotic casting?"
+    },
+    ".agents/rules/world_12_adulthood.md": {
+      "severity": "must",
+      "check": "Is every character who takes part in sex or erotic casting in the passage fully mature in body and mind, by the timeline of their own kind?"
+    },
+    ".agents/rules/world_13_bearing_is_not_parenthood.md": {
+      "check": "Does the passage avoid treating someone who bore another as that one's mother, with no bond, duty or feeling flowing from the bearing?"
+    },
+    ".agents/rules/world_14_kind_words_and_use_names.md": {
+      "check": "Does the passage describe each body by its own anatomy and gait, never measured against a vermin shape, and avoid calling the same monster by the same kind-word again and again?"
+    },
+    ".agents/rules/world_15_no_privacy.md": {
+      "check": "Does the passage show sex, nakedness and erotic casting as never hidden, screened or kept for closed rooms, with nobody ashamed of being seen or scandalised by seeing?"
+    },
+
+    "characters/skin_evelyn_hart.md": {
+      "summary": "Evelyn Hart's own hide, flayed whole: a wearable skin that Tittiana or Evelyn herself can put on."
+    },
+    "characters/skin_tina_marsh.md": {
+      "summary": "The bait-skin Tittiana wears on the eleventh floor of Harwick & Dunne."
+    },
+    "characters/human_alistair_crane.md": {
+      "addKeywords": ["Alistair Crane", "Alistair", "Judge Crane"]
+    },
+    "characters/human_hugh_penhallow.md": {
+      "addKeywords": ["Hugh Penhallow", "Hugh", "Canon Penhallow"]
+    },
+    "characters/deity_labia_cuntswell.md": { "addKeywords": ["Lady Labia"] },
+    "characters/deity_mons_cuntswell.md": { "addKeywords": ["Lady Mons"] },
+    "characters/deity_areola_cuntswell.md": { "addKeywords": ["Lady Areola"] },
+    "characters/deity_the_late_lord.md": { "addKeywords": ["the late lord", "the lord of Cuntswell"] },
+    "characters/monster_unnamed_baits.md": { "addKeywords": ["unnamed baits"] },
+    "characters/monster_the_peach.md": { "addKeywords": ["the peach"] },
+    "plot/story_state.md#Areola": { "keywords": ["Lady Areola"] },
+    "plot/story_state.md#Frenula and Fourchette": { "keywords": ["Frenula and Fourchette", "Fourchette"] },
+    "plot/story_state.md#The peach": { "keywords": ["the peach"] },
+    "plot/arcs/character_arcs.md#The Late Lord of Cuntswell": {
+      "keywords": ["the late lord", "the late lord of Cuntswell", "the lord of Cuntswell"]
+    },
+
+    "setting/cuntswell_family.md": {
+      "kind": "lore",
+      "keywords": ["Cuntswell family", "the Undercroft", "the regency", "the gathering spread"]
+    },
+    "setting/playgrounds/playground_eleventh_floor.md": {
+      "addKeywords": ["Harwick & Dunne", "Harwick and Dunne"]
+    },
+    "setting/playgrounds/playground_ashworthy_minster.md": { "addKeywords": ["the Minster"] },
+    "setting/playgrounds/playground_grand_marine_spa.md": { "addKeywords": ["the spa"] },
+    "setting/playgrounds/playground_lathebeck_reservoir.md": { "addKeywords": ["the reservoir"] },
+
+    "lore/classifications/hierarchy_of_beings.md": {
+      "keywords": ["hierarchy of beings", "Lok", "Loks"]
+    },
+    "lore/classifications/kind_words_and_use_names.md": {
+      "keywords": ["kind-word", "kind-words", "use-name", "use-names"]
+    },
+    "lore/classifications/kinship_terms.md": {
+      "keywords": ["kinship terms", "crib-sister", "kin-sister", "given-sister", "bed-sister"]
+    },
+    "lore/classifications/kinship_to_the_family_god.md": {
+      "keywords": ["family god", "kindling", "hearth-wife", "ember-wife", "brought-wife", "old-bed wife", "chair-keeper", "god-bearer", "cold family"]
+    },
+    "lore/classifications/names.md": { "keywords": ["naming", "given name", "family name"] },
+    "lore/classifications/reckoning_time.md": {
+      "keywords": ["reckoning time", "ice-spread", "Kalpa", "the Vedic", "Kaliyug"]
+    },
+    "lore/classifications/sexual_anatomy_of_deities.md": {
+      "keywords": ["sexual anatomy", "anatomy of deities", "yexoid"]
+    },
+    "lore/classifications/the_naag.md": {
+      "keywords": ["Naag", "Naagin", "Naag Lok", "dragon", "draconic", "Garud"]
+    },
+    "lore/classifications/the_vruksh.md": { "keywords": ["Vruksh", "vruksh-woman", "vruksh-man"] },
+    "lore/classifications/the_yex.md": { "keywords": ["Yex", "yexish", "yexoid"] },
+    "lore/world/aura.md": { "keywords": ["aura"] },
+    "lore/world/baits.md": { "keywords": ["bait", "baits"] },
+    "lore/world/casting_gestures.md": { "keywords": ["casting gesture", "casting gestures"] },
+    "lore/world/culture.md": { "keywords": ["culture", "clothes", "not-skins"] },
+    "lore/world/cycles_of_the_ages.md": {
+      "keywords": ["cycles of the ages", "the ages", "Kalpa", "the Vedic", "Kaliyug"]
+    },
+    "lore/world/families.md": { "keywords": ["families", "hoard"] },
+    "lore/world/gender.md": { "keywords": ["gender", "male deities"] },
+    "lore/world/lifespans.md": { "keywords": ["lifespan", "lifespans"] },
+    "lore/world/magizen_conduct_and_casual_magic.md": {
+      "keywords": ["casual magic", "magizen conduct", "putting away", "embodiment"]
+    },
+    "lore/world/monsters.md": {
+      "keywords": ["monster behavior", "monster behaviour", "muddle", "muddles", "kit", "kits", "litter", "litters"]
+    },
+    "lore/world/old_gods_and_religion.md": {
+      "keywords": ["old gods", "religion", "devotion", "altars", "Age of Devotion"]
+    },
+    "lore/world/parentage_and_rearing.md": {
+      "keywords": ["parentage", "rearing", "blood-relation"]
+    },
+    "lore/world/playgrounds.md": { "keywords": ["playground", "playgrounds"] },
+    "lore/world/sabha.md": { "keywords": ["Sabha"] },
+    "lore/world/showing_heat_and_reaction.md": {
+      "keywords": ["showing heat", "spending heat", "heat and reaction"]
+    },
+    "lore/world/skins.md": {
+      "keywords": ["wearable skin", "wearable skins", "bait-skin", "bait skin"]
+    },
+    "lore/world/the_devotees_war.md": { "keywords": ["Devotees' War", "devotees war"] },
+    "lore/world/touch_and_personal_space.md": { "keywords": ["personal space", "idle hands"] },
+    "lore/world/vermin_concepts_foreign_to_magizens.md": {
+      "keywords": ["vermin concepts", "foreign to magizens"]
+    },
+    "lore/world/witches.md": { "keywords": ["witch", "witches", "wizard", "warlock", "sorcerer"] }
+  }
+}

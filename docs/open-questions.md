@@ -32,6 +32,7 @@ Things not yet decided or not yet proven. When one is settled, move it to the de
 | Q34 | The worlds page can make, rename, edit and put a world away, and manage its cards (F-55), but "put away" only renames the folder (restore by renaming it back). Add a restore list, or a real delete (with a typed confirmation)? | Rename only |
 | Q35 | **Cards in two syntaxes** ([ADR-0017](decisions/0017-xml-markdown-cards.md)). Saving an older card on screen rewrites it as XML+MD, a whole-file change in git. Convert every world once instead, and drop the YAML form later? Also: should secrets become their own tag (`<secret>`) so one section can be hidden from players? | Read both, write XML+MD; one card = one block |
 | Q36 | **The Hindi labels** (F-56) were written for this app and have not been read by a native speaker; they are all in `apps/web/src/i18n.tsx`. Please correct them. Also: server messages are matched by their English text, so rewording one in the server drops its Hindi until `i18n-server.ts` is updated; give the server a message code beside its text? | Match by text |
+| Q37 | **The imported `cuntitty` world** (F-57) sits in `worlds/cuntitty/` and is not committed: it holds about 4 MB of drafts and chapters beside the cards, and a commit is hard to take back once pushed. Commit it, keep it local (it is also in your stories repo), or keep only the cards? And please read what the import wrote for you: the rules' check questions, the world's genre and tone, and the summaries. | Not committed |
 
 ## Unproven (works in tests only)
 | # | Question | Needs |
