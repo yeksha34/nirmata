@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
 import { Field, Tip, useAsk } from "../controls";
@@ -11,24 +11,24 @@ import { BoardPanel, People } from "./Board";
 /** The story itself, the shared board beside it, and the way to write your own turn. */
 export function TableScreen() {
   return (
-    <div className="table">
-      <div className="story-col">
-        <StoryPane />
+    <article className="table">
+      <StoryPane>
         <Composer />
-      </div>
+      </StoryPane>
       <aside className="side-col">
         <BoardPanel />
         <People />
       </aside>
-    </div>
+    </article>
   );
 }
 
-function StoryPane() {
+/** The story as written so far; its children (the composer) stay at its foot. */
+function StoryPane({ children }: { children: ReactNode }) {
   const { state } = useApp();
   const turns = visibleTurns(state);
   const story = state.story;
-  const endRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLElement>(null);
   const stuck = useRef(true);
 
   // follow the story as it is written, unless the reader has scrolled up to re-read; what
@@ -52,7 +52,7 @@ function StoryPane() {
   const groups = groupTurns(turns);
 
   return (
-    <section className="story" aria-label="The story">
+    <section ref={endRef} className="story" aria-label="The story">
       <StoryBar />
       {state.warnings.length > 0 && state.you?.host && (
         <ul className="warnings" aria-label="Worth a look">
@@ -76,7 +76,7 @@ function StoryPane() {
         ),
       )}
       {state.streaming !== null && (
-        <div className="host-text streaming" aria-live="polite" aria-busy="true">
+        <article className="host-text streaming" aria-live="polite" aria-busy="true">
           {state.streaming ? (
             <Prose text={state.streaming} />
           ) : (
@@ -84,10 +84,9 @@ function StoryPane() {
               <T>The story is writing…</T>
             </p>
           )}
-          <span className="caret" aria-hidden="true" />
-        </div>
+        </article>
       )}
-      <div ref={endRef} />
+      {children}
     </section>
   );
 }
@@ -125,9 +124,9 @@ function Prose({ text }: { text: string }) {
 
 function HostText({ text }: { text: string }) {
   return (
-    <div className="host-text">
+    <article className="host-text">
       <Prose text={text} />
-    </div>
+    </article>
   );
 }
 
@@ -137,9 +136,9 @@ function PlayerLines({ turns }: { turns: TurnView[] }) {
       {turns.map((t) => (
         <p key={t.id}>
           {t.by && <strong>{t.by} </strong>}
-          <span className="chip">
+          <data value={t.mode ?? "do"} className="chip">
             <T>{MODE_LABEL[t.mode ?? "do"]}</T>
-          </span>{" "}
+          </data>{" "}
           {t.text}
         </p>
       ))}
@@ -160,10 +159,10 @@ function StoryBar() {
   const chapters = story?.chapters ?? [];
 
   return (
-    <div className="story-bar">
-      <div className="story-bar-left">
+    <header className="story-bar">
+      <p className="story-bar-left">
         <Tip text="Saved automatically as {id}" values={{ id: story?.id ?? "" }}>
-          <span className="saved">
+          <output className="saved">
             <svg
               width="13"
               height="13"
@@ -178,111 +177,129 @@ function StoryBar() {
               <path d="M5 12.5l4.5 4.5L19 7.5" />
             </svg>{" "}
             <T>Saved</T>
-          </span>
+          </output>
         </Tip>
         {chapters.length > 0 && (
           <Tip
             text="Chapters"
             content={chapters.map((c, i) => (
-              <span key={c.title}>
+              <Fragment key={c.title}>
                 {i > 0 && ", "}
                 <T>{c.title}</T>
-              </span>
+              </Fragment>
             ))}
           >
-            <span className="muted">
+            <small className="muted">
               <T with={{ n: chapters.length }}>
                 {chapters.length === 1 ? "{n} chapter written" : "{n} chapters written"}
               </T>
-            </span>
+            </small>
           </Tip>
         )}
-      </div>
-      <div className="story-bar-actions">
+      </p>
+      <menu className="story-bar-actions">
         {writing ? (
           canAct && (
-            <button type="button" onClick={() => act(api.stop)}>
-              <T>Stop</T>
-            </button>
+            <li>
+              <button type="button" onClick={() => act(api.stop)}>
+                <T>Stop</T>
+              </button>
+            </li>
           )
         ) : (
           <>
-            <Tip text="Write a different reply">
-              <button type="button" disabled={!canAct || busy} onClick={() => act(api.retry)}>
-                <T>Try again</T>
-              </button>
-            </Tip>
-            <Tip text="Let the story go on">
-              <button
-                type="button"
-                className="primary"
-                disabled={!canAct || busy}
-                onClick={() => act(api.continueStory)}
-              >
-                <T>Keep going</T>
-              </button>
-            </Tip>
-            <Tip text="Take back the last turn">
-              <button
-                type="button"
-                disabled={!canAct || busy}
-                onClick={() =>
-                  act(async () => {
-                    const r = await api.undo();
-                    if (!r.undone) throw new Error("There is nothing to undo yet.");
-                  })
-                }
-              >
-                <T>Undo</T>
-              </button>
-            </Tip>
+            <li>
+              <Tip text="Write a different reply">
+                <button type="button" disabled={!canAct || busy} onClick={() => act(api.retry)}>
+                  <T>Try again</T>
+                </button>
+              </Tip>
+            </li>
+            <li>
+              <Tip text="Let the story go on">
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={!canAct || busy}
+                  onClick={() => act(api.continueStory)}
+                >
+                  <T>Keep going</T>
+                </button>
+              </Tip>
+            </li>
+            <li>
+              <Tip text="Take back the last turn">
+                <button
+                  type="button"
+                  disabled={!canAct || busy}
+                  onClick={() =>
+                    act(async () => {
+                      const r = await api.undo();
+                      if (!r.undone) throw new Error("There is nothing to undo yet.");
+                    })
+                  }
+                >
+                  <T>Undo</T>
+                </button>
+              </Tip>
+            </li>
           </>
         )}
         {host && (
-          <details className="menu menu-right">
-            <summary>
-              <T>More</T>
-            </summary>
-            <div className="menu-body">
-              <button type="button" onClick={() => setSaving(true)}>
-                <T>Save as a new world…</T>
-              </button>
-              <button
-                type="button"
-                disabled={writing}
-                onClick={async () => {
-                  const title = await ask.prompt(
-                    "Name the next chapter (or leave blank):",
-                    "",
-                    {},
-                    "Begin",
-                    false,
-                  );
-                  if (title !== null)
-                    void act(
-                      () => api.breakChapter(title.trim() || undefined),
-                      "A new chapter begins.",
-                    );
-                }}
-              >
-                <T>Start a new chapter…</T>
-              </button>
-              <button
-                type="button"
-                disabled={writing}
-                onClick={() => act(api.extractPlot, "Looking for plot points…")}
-              >
-                <T>Update plot points</T>
-              </button>
-              <button type="button" disabled={writing} onClick={() => act(api.closeStory)}>
-                <T>Put the story away</T>
-              </button>
-            </div>
-          </details>
+          <li>
+            <details className="menu menu-right">
+              <summary>
+                <T>More</T>
+              </summary>
+              <menu className="menu-body">
+                <li>
+                  <button type="button" onClick={() => setSaving(true)}>
+                    <T>Save as a new world…</T>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    disabled={writing}
+                    onClick={async () => {
+                      const title = await ask.prompt(
+                        "Name the next chapter (or leave blank):",
+                        "",
+                        {},
+                        "Begin",
+                        false,
+                      );
+                      if (title !== null)
+                        void act(
+                          () => api.breakChapter(title.trim() || undefined),
+                          "A new chapter begins.",
+                        );
+                    }}
+                  >
+                    <T>Start a new chapter…</T>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    disabled={writing}
+                    onClick={() => act(api.extractPlot, "Looking for plot points…")}
+                  >
+                    <T>Update plot points</T>
+                  </button>
+                </li>
+                <li>
+                  <button type="button" disabled={writing} onClick={() => act(api.closeStory)}>
+                    <T>Put the story away</T>
+                  </button>
+                </li>
+              </menu>
+            </details>
+          </li>
         )}
-      </div>
+      </menu>
       {saving && <SaveWorld onClose={() => setSaving(false)} />}
-    </div>
+    </header>
   );
 }
 
@@ -319,7 +336,7 @@ function SaveWorld({ onClose }: { onClose: () => void }) {
   return (
     <dialog ref={ref} className="dialog" onClose={onClose} aria-labelledby="save-title">
       {saved ? (
-        <div>
+        <>
           <h2 id="save-title">
             <T>Saved</T>
           </h2>
@@ -336,15 +353,15 @@ function SaveWorld({ onClose }: { onClose: () => void }) {
               untouched.
             </T>
           </p>
-          <div className="dialog-actions">
+          <footer className="dialog-actions">
             <button type="button" onClick={onClose}>
               <T>Keep playing here</T>
             </button>
             <button type="button" className="primary" disabled={busy} onClick={openIt}>
               <T>Open it now</T>
             </button>
-          </div>
-        </div>
+          </footer>
+        </>
       ) : (
         <form onSubmit={submit}>
           <h2 id="save-title">
@@ -386,14 +403,14 @@ function SaveWorld({ onClose }: { onClose: () => void }) {
           <p className="hint">
             <T>Lowercase letters, digits and hyphens.</T>
           </p>
-          <div className="dialog-actions">
+          <footer className="dialog-actions">
             <button type="button" onClick={onClose}>
               <T>Cancel</T>
             </button>
             <button type="submit" className="primary" disabled={busy || !title.trim() || !name}>
               <T>{busy ? "Saving…" : "Save"}</T>
             </button>
-          </div>
+          </footer>
         </form>
       )}
     </dialog>
@@ -433,7 +450,7 @@ function Composer() {
   if (!me) return null;
   if (me.seat === "spectator") {
     return (
-      <div className="composer watching">
+      <section className="composer watching">
         <p>
           <T>You're watching. Join in whenever you like.</T>
         </p>
@@ -449,16 +466,16 @@ function Composer() {
         >
           <T>Join in</T>
         </button>
-      </div>
+      </section>
     );
   }
   if (me.muted) {
     return (
-      <div className="composer watching">
+      <section className="composer watching">
         <p>
           <T>You're hushed for now: you can read, but not write.</T>
         </p>
-      </div>
+      </section>
     );
   }
 
@@ -512,9 +529,9 @@ function Composer() {
             </button>
           </Tip>
         ))}
-        <span className="hint">
+        <small className="hint">
           <T>{MODE_HINT[mode]}</T>
-        </span>
+        </small>
       </fieldset>
       <Field
         placeholder={mode === "say" ? "“…”" : mode === "story" ? "The story should…" : "I…"}
@@ -535,8 +552,8 @@ function Composer() {
           }}
         />
       </Field>
-      <div className="composer-actions">
-        <span className="hint">
+      <footer className="composer-actions">
+        <small className="hint">
           <T>
             {writing
               ? "You can write ahead while the story is writing."
@@ -544,7 +561,7 @@ function Composer() {
                 ? "Ready. Waiting for the others, or change your turn."
                 : "Others see this as you write. Ready sends it when everyone is ready."}
           </T>
-        </span>
+        </small>
         <button
           type="submit"
           className={isReady ? "" : "primary"}
@@ -552,7 +569,7 @@ function Composer() {
         >
           <T>{isReady ? "Not ready" : "Ready"}</T>
         </button>
-      </div>
+      </footer>
     </form>
   );
 }

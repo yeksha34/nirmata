@@ -60,9 +60,9 @@ export function Field({
     <span className="field">
       {children}
       {empty && (
-        <span className={multiline ? "ph multiline" : "ph"} aria-hidden="true">
+        <small className={multiline ? "ph multiline" : "ph"} aria-hidden="true">
           <T with={values}>{placeholder}</T>
-        </span>
+        </small>
       )}
     </span>
   );
@@ -94,20 +94,18 @@ export function Choice<V extends string>({
       <legend>
         <T>{legend}</T>
       </legend>
-      <div className="choice-options">
-        {options.map((o) => (
-          <label key={o.value} className={o.value === value ? "choice-opt is-on" : "choice-opt"}>
-            <input
-              type="radio"
-              name={name}
-              className="sr-only"
-              checked={o.value === value}
-              onChange={() => onChange(o.value)}
-            />
-            <span>{o.raw ? o.label : <T>{o.label}</T>}</span>
-          </label>
-        ))}
-      </div>
+      {options.map((o) => (
+        <label key={o.value} className={o.value === value ? "choice-opt is-on" : "choice-opt"}>
+          <input
+            type="radio"
+            name={name}
+            className="sr-only"
+            checked={o.value === value}
+            onChange={() => onChange(o.value)}
+          />
+          {o.raw ? o.label : <T>{o.label}</T>}
+        </label>
+      ))}
     </fieldset>
   );
 }
@@ -220,7 +218,7 @@ function AskDialog({ question }: { question: Question }) {
             autoFocus
           />
         )}
-        <div className="dialog-actions">
+        <footer className="dialog-actions">
           <button type="button" onClick={cancel}>
             <T>Cancel</T>
           </button>
@@ -231,7 +229,7 @@ function AskDialog({ question }: { question: Question }) {
           >
             <T>{question.action}</T>
           </button>
-        </div>
+        </footer>
       </form>
     </Modal>
   );

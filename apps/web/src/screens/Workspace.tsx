@@ -86,22 +86,20 @@ export function Workspace({ name }: { name: string }) {
 
   if (detail === undefined)
     return (
-      <div className="ws-wrap">
-        <Empty>
-          <T>Opening the world…</T>
-        </Empty>
-      </div>
+      <Empty>
+        <T>Opening the world…</T>
+      </Empty>
     );
   if (detail === null)
     return (
-      <div className="ws-wrap">
+      <>
         <button type="button" className="plain" onClick={nav.home}>
           <T>← All worlds</T>
         </button>
         <Empty>
           <T>This world could not be opened. The reason is shown above.</T>
         </Empty>
-      </div>
+      </>
     );
 
   const { world, stories, cards, broken } = detail;
@@ -118,7 +116,7 @@ export function Workspace({ name }: { name: string }) {
     });
 
   return (
-    <div className="ws-wrap">
+    <>
       <OpenStoryNotice />
       <div className="ws" data-editing={editingCard ? "true" : "false"}>
         <aside className="ws-rail" aria-label="Your worlds">
@@ -134,14 +132,16 @@ export function Workspace({ name }: { name: string }) {
                   aria-current={w.name === name ? "true" : undefined}
                   onClick={() => nav.open(w.name)}
                 >
-                  <span>{w.title}</span>
-                  <span className="count">{w.stories}</span>
+                  {w.title}
+                  <data className="count" value={w.stories}>
+                    {w.stories}
+                  </data>
                 </button>
               </li>
             ))}
           </ul>
           <button type="button" className="dashed" onClick={() => setCreating(true)}>
-            <span aria-hidden="true">＋</span> <T>New world</T>
+            <T>New world</T>
           </button>
           <button type="button" className="plain home-link" onClick={nav.home}>
             <T>← Front page</T>
@@ -150,10 +150,10 @@ export function Workspace({ name }: { name: string }) {
 
         <section className="ws-list" aria-label={world.title}>
           <header className="ws-title">
-            <div>
+            <hgroup>
               <h1>{world.title}</h1>
               <p className="muted">{world.tagline || <T>No tagline yet.</T>}</p>
-            </div>
+            </hgroup>
             {!world.problem && (
               <Tip
                 below
@@ -197,8 +197,18 @@ export function Workspace({ name }: { name: string }) {
                     onClick={() => setTab(t.id)}
                   >
                     <T>{t.label}</T>
-                    {t.id === "cards" && <span className="tab-count"> {cards.length}</span>}
-                    {t.id === "stories" && <span className="tab-count"> {stories.length}</span>}
+                    {t.id === "cards" && (
+                      <data className="tab-count" value={cards.length}>
+                        {" "}
+                        {cards.length}
+                      </data>
+                    )}
+                    {t.id === "stories" && (
+                      <data className="tab-count" value={stories.length}>
+                        {" "}
+                        {stories.length}
+                      </data>
+                    )}
                   </button>
                 ))}
               </nav>
@@ -251,7 +261,7 @@ export function Workspace({ name }: { name: string }) {
                   {detail.manifest && (
                     <WorldFacts manifest={detail.manifest} onEdit={() => setEditing(true)} />
                   )}
-                  <div className="world-danger">
+                  <section className="world-danger">
                     <button type="button" className="danger" onClick={() => setPutting(true)}>
                       <T>Put away</T>
                     </button>
@@ -261,7 +271,7 @@ export function Workspace({ name }: { name: string }) {
                         back.
                       </T>
                     </p>
-                  </div>
+                  </section>
                 </>
               )}
             </>
@@ -299,7 +309,7 @@ export function Workspace({ name }: { name: string }) {
             />
           )}
           {!(tab === "cards" && editingCard) && (
-            <div className="editor-empty">
+            <section className="editor-empty">
               <p className="eyebrow quiet">
                 <T>Cards</T>
               </p>
@@ -321,7 +331,7 @@ export function Workspace({ name }: { name: string }) {
                   <T>Go to the cards</T>
                 </button>
               )}
-            </div>
+            </section>
           )}
         </section>
       </div>
@@ -380,6 +390,6 @@ export function Workspace({ name }: { name: string }) {
           }}
         />
       )}
-    </div>
+    </>
   );
 }

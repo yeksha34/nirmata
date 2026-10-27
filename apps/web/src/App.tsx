@@ -89,9 +89,9 @@ export function App() {
 
   if (booting)
     return (
-      <div className="boot" role="status">
+      <output className="boot">
         <T>Opening the table…</T>
-      </div>
+      </output>
     );
 
   const screen = state.you ? screenFor(state) : undefined;
@@ -106,7 +106,7 @@ export function App() {
               onJoined={joined}
             />
           ) : (
-            <div className="shell">
+            <>
               <HeaderBar />
               <main>
                 {screen === "worlds" && <Worlds />}
@@ -121,7 +121,7 @@ export function App() {
                   <TableScreen />
                 </StoryWindow>
               )}
-            </div>
+            </>
           )}
           <Toasts />
         </AskProvider>
