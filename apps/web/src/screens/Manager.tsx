@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, Fragment, useEffect, useState } from "react";
 import { api } from "../api";
 import { useSave } from "../app-context";
 import { Choice, Field } from "../controls";
@@ -105,9 +105,9 @@ export function CardList({
   const [picking, setPicking] = useState(false);
   const present = KINDS.filter((k) => cards.some((c) => c.fm.kind === k.id));
   return (
-    <div className="card-index">
+    <section className="card-index" aria-label="Cards">
       {broken.length > 0 && (
-        <div className="broken">
+        <section className="broken">
           <strong>
             <T with={{ n: broken.length }}>
               {broken.length === 1 ? "One card can't be read" : "{n} cards can't be read"}
@@ -120,32 +120,30 @@ export function CardList({
             {broken.map((b) => (
               <li key={b.path}>
                 <code>{b.path}</code>
-                <span className="error">
+                <strong className="error">
                   {" "}
                   <Problems list={b.problems} />
-                </span>
-                <span className="card-actions">
-                  <button
-                    type="button"
-                    className="plain"
-                    onClick={() =>
-                      onDialog({ is: "text", path: b.path, file: b.file, problems: b.problems })
-                    }
-                  >
-                    <T>Fix as text</T>
-                  </button>
-                  <button
-                    type="button"
-                    className="plain"
-                    onClick={() => onDialog({ is: "remove", path: b.path, name: b.path })}
-                  >
-                    <T>Remove</T>
-                  </button>
-                </span>
+                </strong>
+                <button
+                  type="button"
+                  className="plain"
+                  onClick={() =>
+                    onDialog({ is: "text", path: b.path, file: b.file, problems: b.problems })
+                  }
+                >
+                  <T>Fix as text</T>
+                </button>
+                <button
+                  type="button"
+                  className="plain"
+                  onClick={() => onDialog({ is: "remove", path: b.path, name: b.path })}
+                >
+                  <T>Remove</T>
+                </button>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
 
       {cards.length === 0 && broken.length === 0 && (
@@ -170,7 +168,7 @@ export function CardList({
                     onClick={() => onSelect(c.path)}
                   >
                     <strong>{c.fm.name}</strong>
-                    {c.fm.summary && <span className="muted">{c.fm.summary}</span>}
+                    {c.fm.summary && <small className="muted">{c.fm.summary}</small>}
                   </button>
                 </li>
               ))}
@@ -183,30 +181,28 @@ export function CardList({
           <legend className="eyebrow quiet">
             <T>New card</T>
           </legend>
-          <div>
-            {KINDS.map((k) => (
-              <button
-                key={k.id}
-                type="button"
-                onClick={() => {
-                  setPicking(false);
-                  onNew(k.id);
-                }}
-              >
-                <T>{k.one}</T>
-              </button>
-            ))}
-            <button type="button" className="plain" onClick={() => setPicking(false)}>
-              <T>Cancel</T>
+          {KINDS.map((k) => (
+            <button
+              key={k.id}
+              type="button"
+              onClick={() => {
+                setPicking(false);
+                onNew(k.id);
+              }}
+            >
+              <T>{k.one}</T>
             </button>
-          </div>
+          ))}
+          <button type="button" className="plain" onClick={() => setPicking(false)}>
+            <T>Cancel</T>
+          </button>
         </fieldset>
       ) : (
         <button type="button" className="dashed" onClick={() => setPicking(true)}>
-          <span aria-hidden="true">＋</span> <T>New card</T>
+          <T>New card</T>
         </button>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -225,9 +221,9 @@ export function WorldFacts({ manifest, onEdit }: { manifest: Manifest; onEdit: (
         </dt>
         <dd>
           {manifest.tagline || (
-            <span className="muted">
+            <small className="muted">
               <T>None yet.</T>
-            </span>
+            </small>
           )}
         </dd>
         <dt>
@@ -235,9 +231,9 @@ export function WorldFacts({ manifest, onEdit }: { manifest: Manifest; onEdit: (
         </dt>
         <dd>
           {manifest.genre.join(", ") || (
-            <span className="muted">
+            <small className="muted">
               <T>None yet.</T>
-            </span>
+            </small>
           )}
         </dd>
         <dt>
@@ -245,9 +241,9 @@ export function WorldFacts({ manifest, onEdit }: { manifest: Manifest; onEdit: (
         </dt>
         <dd>
           {manifest.tone.join(", ") || (
-            <span className="muted">
+            <small className="muted">
               <T>None yet.</T>
-            </span>
+            </small>
           )}
         </dd>
         <dt>
@@ -412,44 +408,42 @@ export function CardEditor({
         <T>← All cards</T>
       </button>
       <header className="editor-head">
-        <div>
+        <hgroup>
           <p className="eyebrow">
             <T>{card ? `${k.one} card` : `New ${k.one.toLowerCase()}`}</T>
           </p>
           <h2 className="editor-title">{name.trim() || <T>Untitled</T>}</h2>
-        </div>
-        <div className="editor-status">
-          <span className={isSaved ? "saved-flag is-saved" : "saved-flag"} role="status">
-            {isSaved && (
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
-              </svg>
-            )}
-            <T>{status}</T>
-          </span>
-          {card && (
-            <button
-              type="button"
-              onClick={() => onDialog({ is: "text", path: card.path, file: card.file ?? "" })}
+        </hgroup>
+        <output className={isSaved ? "saved-flag is-saved" : "saved-flag"}>
+          {isSaved && (
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
             >
-              <T>View raw file</T>
-            </button>
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
           )}
-        </div>
+          <T>{status}</T>
+        </output>
+        {card && (
+          <button
+            type="button"
+            onClick={() => onDialog({ is: "text", path: card.path, file: card.file ?? "" })}
+          >
+            <T>View raw file</T>
+          </button>
+        )}
       </header>
 
       {options.length > 1 && (
-        <div>
+        <>
           <Choice
             legend={card ? "Parts from" : "Start from"}
             value={templateId}
@@ -460,38 +454,28 @@ export function CardEditor({
             {template && <T>{template.description}</T>}{" "}
             {card && <T>Parts you have filled in are kept.</T>}
           </p>
-        </div>
+        </>
       )}
 
-      <div className="two">
-        <div>
-          <label htmlFor="cf-name">
-            <T>Name</T>
-          </label>
-          <input
-            id="cf-name"
-            value={name}
-            maxLength={120}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="cf-keywords">
-            <T>Keywords</T>{" "}
-            <span className="faint">
-              <T>· what brings this card into a scene</T>
-            </span>
-          </label>
-          <Field placeholder="fog, mist, haze" empty={!keywords}>
-            <input
-              id="cf-keywords"
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-            />
-          </Field>
-        </div>
-      </div>
+      <label htmlFor="cf-name">
+        <T>Name</T>
+      </label>
+      <input
+        id="cf-name"
+        value={name}
+        maxLength={120}
+        onChange={(e) => setName(e.target.value)}
+        required
+      />
+      <label htmlFor="cf-keywords">
+        <T>Keywords</T>{" "}
+        <small className="faint">
+          <T>· what brings this card into a scene</T>
+        </small>
+      </label>
+      <Field placeholder="fog, mist, haze" empty={!keywords}>
+        <input id="cf-keywords" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+      </Field>
 
       <label htmlFor="cf-summary">
         <T>Summary</T>
@@ -525,7 +509,7 @@ export function CardEditor({
       )}
 
       {kind === "rule" && (
-        <div className="two">
+        <>
           <Choice
             legend="How strict"
             value={severity}
@@ -545,18 +529,15 @@ export function CardEditor({
             ]}
             onChange={setScope}
           />
-        </div>
+        </>
       )}
 
       <label className="check">
         <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} />
-        <span>
-          <T>Always in the storyteller's view</T>
-          <span className="faint">
-            {" "}
-            <T>· use sparingly: it costs space in every turn</T>
-          </span>
-        </span>
+        <T>Always in the storyteller's view</T>
+        <small className="faint">
+          <T>· use sparingly: it costs space in every turn</T>
+        </small>
       </label>
 
       {parts.length > 0 && (
@@ -565,7 +546,7 @@ export function CardEditor({
             <T>The details</T>
           </legend>
           {parts.map((p) => (
-            <div key={p.id}>
+            <Fragment key={p.id}>
               <label htmlFor={`cf-part-${p.id}`}>
                 <T>{p.label}</T>
               </label>
@@ -580,16 +561,16 @@ export function CardEditor({
                   <T>{p.hint}</T>
                 </p>
               )}
-            </div>
+            </Fragment>
           ))}
         </fieldset>
       )}
 
       <label htmlFor="cf-body">
         <T>{parts.length > 0 ? "More notes" : "Body"}</T>{" "}
-        <span className="faint">
+        <small className="faint">
           <T>· markdown</T>
-        </span>
+        </small>
       </label>
       <textarea
         id="cf-body"
@@ -607,20 +588,18 @@ export function CardEditor({
       {card && (
         <p className="linked">
           {links.length > 0 ? (
-            <>
-              <T
-                with={{
-                  names: links.map((c, i) => (
-                    <span key={c.path}>
-                      {i > 0 && ", "}
-                      <strong>{c.fm.name}</strong>
-                    </span>
-                  )),
-                }}
-              >
-                {"Linked from {names}."}
-              </T>
-            </>
+            <T
+              with={{
+                names: links.map((c, i) => (
+                  <Fragment key={c.path}>
+                    {i > 0 && ", "}
+                    <strong>{c.fm.name}</strong>
+                  </Fragment>
+                )),
+              }}
+            >
+              {"Linked from {names}."}
+            </T>
           ) : (
             <T>No other card links to this one yet.</T>
           )}
@@ -632,7 +611,7 @@ export function CardEditor({
           <T>{problem}</T>
         </p>
       )}
-      <div className="editor-actions">
+      <footer className="editor-actions">
         <button type="submit" className="primary" disabled={busy || !name.trim() || !dirty}>
           <T>Save</T>
         </button>
@@ -645,7 +624,7 @@ export function CardEditor({
             <T>Remove</T>
           </button>
         )}
-      </div>
+      </footer>
     </form>
   );
 }
@@ -725,14 +704,14 @@ export function CardTextDialog({
             <T>{problem}</T>
           </p>
         )}
-        <div className="dialog-actions">
+        <footer className="dialog-actions">
           <button type="button" onClick={onClose}>
             <T>Cancel</T>
           </button>
           <button type="submit" className="primary" disabled={busy || !text.trim()}>
             <T>Save</T>
           </button>
-        </div>
+        </footer>
       </form>
     </Modal>
   );
@@ -769,7 +748,7 @@ export function RemoveCard({
           <T>{problem}</T>
         </p>
       )}
-      <div className="dialog-actions">
+      <footer className="dialog-actions">
         <button type="button" onClick={onClose}>
           <T>Keep it</T>
         </button>
@@ -783,7 +762,7 @@ export function RemoveCard({
         >
           <T>Remove the card</T>
         </button>
-      </div>
+      </footer>
     </Modal>
   );
 }

@@ -1,11 +1,12 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { Fragment, type ReactNode, useEffect, useRef } from "react";
 import { useApp } from "./app-context";
 import { T } from "./i18n";
+import type { Notice } from "./store";
 import type { SeatKind } from "./types";
 
 export function Brand() {
   return (
-    <span className="brand">
+    <p className="brand">
       <svg
         viewBox="0 0 24 24"
         width="26"
@@ -20,10 +21,8 @@ export function Brand() {
         <path d="M12 2v2M9 4h6M8 7h8l1 10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z" />
         <path d="M12 10c1.6 1.6 1.6 3.2 0 4.8-1.6-1.6-1.6-3.2 0-4.8z" />
       </svg>
-      <span>
-        <T>Nirmata</T>
-      </span>
-    </span>
+      <T>Nirmata</T>
+    </p>
   );
 }
 
@@ -35,7 +34,7 @@ const SEAT_LABEL: Record<SeatKind, string> = {
 
 export function SeatBadge({ seat, muted }: { seat: SeatKind; muted?: boolean }) {
   return (
-    <span className={`badge badge-${seat}`}>
+    <data value={seat} className={`badge badge-${seat}`}>
       <T>{SEAT_LABEL[seat]}</T>
       {muted && (
         <>
@@ -43,7 +42,7 @@ export function SeatBadge({ seat, muted }: { seat: SeatKind; muted?: boolean }) 
           <T>hushed</T>
         </>
       )}
-    </span>
+    </data>
   );
 }
 
@@ -53,10 +52,10 @@ export function Problems({ list }: { list: readonly string[] }) {
     <>
       {list.map((text, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: the problems never reorder
-        <span key={i}>
+        <Fragment key={i}>
           {i > 0 && "; "}
           <T>{text}</T>
-        </span>
+        </Fragment>
       ))}
     </>
   );
@@ -66,27 +65,30 @@ export function Toasts() {
   const { state, dispatch } = useApp();
   if (!state.notices.length) return null;
   return (
-    <div className="toasts" aria-live="polite">
+    <section className="toasts" aria-label="Notices">
       {state.notices.map((n) => (
-        <div
-          key={n.id}
-          className={`toast toast-${n.kind}`}
-          role={n.kind === "error" ? "alert" : "status"}
-        >
-          <span>
-            <T>{n.text}</T>
-          </span>
-          <button
-            type="button"
-            className="plain"
-            aria-label="Dismiss"
-            onClick={() => dispatch({ type: "dismiss", id: n.id })}
-          >
-            ×
-          </button>
-        </div>
+        <Toast key={n.id} notice={n} onDismiss={() => dispatch({ type: "dismiss", id: n.id })} />
       ))}
-    </div>
+    </section>
+  );
+}
+
+function Toast({ notice, onDismiss }: { notice: Notice; onDismiss: () => void }) {
+  const body = (
+    <>
+      <T>{notice.text}</T>
+      <button type="button" className="plain" aria-label="Dismiss" onClick={onDismiss}>
+        ×
+      </button>
+    </>
+  );
+  // an <output> is a polite status by itself; a problem is spoken at once
+  return notice.kind === "error" ? (
+    <p className="toast toast-error" role="alert">
+      {body}
+    </p>
+  ) : (
+    <output className={`toast toast-${notice.kind}`}>{body}</output>
   );
 }
 
@@ -104,10 +106,10 @@ export function Panel({
 }) {
   return (
     <section className="panel">
-      <div className="panel-head">
+      <header className="panel-head">
         <h2>{plain ? title : <T>{title}</T>}</h2>
         {aside}
-      </div>
+      </header>
       {children}
     </section>
   );

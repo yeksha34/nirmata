@@ -94,6 +94,10 @@ code {
   padding: 0 0.3em;
   border-radius: 4px;
 }
+/* <small> marks secondary text; the classes that use it say how big it is */
+small {
+  font-size: inherit;
+}
 
 .sr-only {
   position: absolute;
@@ -246,6 +250,7 @@ label {
 .brand {
   display: inline-flex;
   align-items: center;
+  margin: 0;
   gap: 10px;
   font-family: var(--story-font);
   font-size: 1.5rem;
@@ -271,14 +276,20 @@ label {
   backdrop-filter: blur(6px);
 }
 .world-name {
+  margin: 0;
   font-family: var(--story-font);
   color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.spacer {
-  flex: 1;
+/* what follows the title sits at the right: the jump box when there is one, else the status dot */
+.topbar > .jump,
+.topbar > .tip {
+  margin-left: auto;
+}
+.topbar > .jump ~ .tip {
+  margin-left: 0;
 }
 
 main {
@@ -353,15 +364,17 @@ main {
   z-index: 10;
   display: grid;
   min-width: 13rem;
-  margin-top: 4px;
+  margin: 4px 0 0;
   padding: 6px;
   gap: 4px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface);
   box-shadow: var(--shadow);
+  list-style: none;
 }
 .menu-body button {
+  width: 100%;
   text-align: left;
   border-color: transparent;
 }
@@ -496,16 +509,25 @@ main {
   list-style: none;
 }
 .story-row {
-  display: flex;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
   align-items: center;
-  justify-content: space-between;
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
 }
-.story-row-text {
+.story-row > * {
+  grid-column: 1;
   min-width: 0;
+}
+/* the story's words stand on the left; the button spans their rows on the right */
+.story-row > button {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+}
+.story-row > .chip {
+  justify-self: start;
 }
 .preview {
   margin: 0;
@@ -561,6 +583,13 @@ main {
   display: flex;
   gap: 8px;
   align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.story-bar-actions li {
+  display: flex;
+  align-items: center;
 }
 .saved {
   color: var(--ok);
@@ -589,10 +618,13 @@ main {
   margin: 0.3em 0;
   font-family: var(--story-font);
 }
-.streaming .caret {
+/* the blinking caret at the end of what is being written */
+.streaming > p:last-child::after {
+  content: "";
   display: inline-block;
   width: 0.5em;
   height: 1.1em;
+  margin-left: 0.15em;
   background: var(--accent);
   vertical-align: text-bottom;
   animation: blink 1s steps(2, start) infinite;
@@ -798,12 +830,20 @@ main {
   min-width: 0;
   overflow: hidden;
   font-family: var(--story-font);
+  font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* with no grip before it (a phone sheet, a full page) the title keeps the grip's room */
+.win-title:first-child {
+  margin-left: 28px;
 }
 .win-buttons {
   display: flex;
   gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 .win-buttons button {
   min-width: 34px;
@@ -852,9 +892,22 @@ main {
   background: var(--surface);
   box-shadow: var(--shadow);
 }
+/* the dot before the title: green while the story is being written */
+.win-chip::before {
+  content: "";
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.win-chip.is-working::before {
+  background: var(--ok);
+}
 .win-chip-title {
   overflow: hidden;
   font-family: var(--story-font);
+  font-weight: inherit;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -900,6 +953,7 @@ main {
   gap: 8px;
   align-items: flex-start;
   justify-content: space-between;
+  margin: 0;
   padding: 10px 12px;
   border-radius: 10px;
   background: var(--ink);
@@ -923,13 +977,17 @@ main {
     padding: 12px;
   }
   .story-row {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
+  }
+  .story-row > button {
+    grid-column: 1;
+    grid-row: auto;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .streaming .caret {
+  .streaming > p:last-child::after {
     animation: none;
   }
 }
@@ -978,15 +1036,6 @@ main {
   flex: 1 1 14rem;
   min-width: 0;
 }
-.card-actions {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 2px 10px;
-  margin-left: 0.6em;
-}
-.card-item > .card-actions {
-  margin-left: 0;
-}
 .facts {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -1010,22 +1059,15 @@ main {
   margin: 0.4em 0 0;
   padding-left: 1.2em;
 }
+.broken li .plain {
+  margin-left: 0.6em;
+}
 .broken .hint {
   margin-bottom: 0.4em;
 }
 .dialog.wide {
   width: min(94vw, 44rem);
   max-height: 92vh;
-}
-.dialog .two {
-  display: grid;
-  gap: 0 12px;
-  grid-template-columns: 1fr 1fr;
-}
-@media (max-width: 560px) {
-  .dialog .two {
-    grid-template-columns: 1fr;
-  }
 }
 label.check {
   display: flex;
@@ -1250,6 +1292,10 @@ button.dashed {
   border-style: dashed;
   background: transparent;
 }
+button.dashed::before {
+  content: "＋";
+  content: "＋" / "";
+}
 .home-link {
   align-self: flex-start;
   margin-top: 8px;
@@ -1343,11 +1389,6 @@ button.dashed {
 .kind-picker {
   margin-top: 8px;
 }
-.kind-picker div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
 .ws-editor {
   min-width: 0;
   padding: 24px 32px;
@@ -1370,15 +1411,11 @@ button.dashed {
   font-size: 2rem;
   font-weight: 500;
 }
-.editor-status {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-}
 .saved-flag {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  margin-left: auto;
   font-weight: 600;
   color: var(--muted);
 }
@@ -1454,6 +1491,9 @@ button.dashed {
 }
 
 fieldset.kind-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   min-width: 0;
   margin: 8px 0 0;
   padding: 0;
@@ -1654,6 +1694,9 @@ button .tr > .en,
 }
 
 fieldset.choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   min-width: 0;
   margin: 0.9em 0 0.3em;
   padding: 0;
@@ -1664,11 +1707,6 @@ fieldset.choice legend {
   margin-bottom: 0.3em;
   font-weight: 600;
   font-size: 0.9rem;
-}
-.choice-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 label.choice-opt {
   display: inline-flex;

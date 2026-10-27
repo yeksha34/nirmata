@@ -195,9 +195,9 @@ export function JumpBox({ onClose }: { onClose: () => void }) {
               onClick={h.go}
             >
               <strong>{h.title}</strong>
-              <span className="muted">
+              <small className="muted">
                 <T>{h.note}</T>
-              </span>
+              </small>
             </button>
           </li>
         ))}

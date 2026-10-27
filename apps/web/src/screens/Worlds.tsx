@@ -38,7 +38,7 @@ function Home() {
   }, [act]);
 
   return (
-    <div className="worlds">
+    <section className="worlds">
       <header className="hero">
         <p className="eyebrow">
           <T>For storytellers, alone or at a table</T>
@@ -108,14 +108,14 @@ function Home() {
               <li key={w.name}>
                 <button type="button" className="world-card" onClick={() => onOpen(w.name)}>
                   <strong>{w.title}</strong>
-                  <span className="muted">
+                  <small className="muted">
                     {w.problem ? (
                       <T with={{ problem: w.problem }}>{"Can't be read: {problem}"}</T>
                     ) : (
                       w.tagline || <T>No tagline yet</T>
                     )}
-                  </span>
-                  <span className="meta">
+                  </small>
+                  <small className="meta">
                     <T with={{ n: w.stories }}>
                       {w.stories === 0
                         ? "No stories yet"
@@ -123,7 +123,7 @@ function Home() {
                           ? "{n} saved story"
                           : "{n} saved stories"}
                     </T>
-                  </span>
+                  </small>
                 </button>
               </li>
             ))}
@@ -140,6 +140,6 @@ function Home() {
           }}
         />
       )}
-    </div>
+    </section>
   );
 }

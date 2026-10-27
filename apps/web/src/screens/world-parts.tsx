@@ -59,32 +59,30 @@ export function StoryRow({
 }) {
   return (
     <li className="story-row">
-      <div className="story-row-text">
-        {world && <span className="chip">{world}</span>}
-        <p className="preview">
-          {story.damaged ? (
-            <T>This story's file can't be read.</T>
-          ) : (
-            story.preview || <T>Just begun</T>
-          )}
-        </p>
-        <p className="meta">
-          {story.damaged ? (
-            <T>Needs repair before it can be continued</T>
-          ) : (
-            <>
-              <Ago iso={story.updatedAt} /> ·{" "}
-              <T with={{ n: story.turns }}>{story.turns === 1 ? "{n} turn" : "{n} turns"}</T>
-              {story.players.length > 0 && (
-                <>
-                  {" "}
-                  · <T with={{ names: story.players.join(", ") }}>{"with {names}"}</T>
-                </>
-              )}
-            </>
-          )}
-        </p>
-      </div>
+      {world && <small className="chip">{world}</small>}
+      <p className="preview">
+        {story.damaged ? (
+          <T>This story's file can't be read.</T>
+        ) : (
+          story.preview || <T>Just begun</T>
+        )}
+      </p>
+      <p className="meta">
+        {story.damaged ? (
+          <T>Needs repair before it can be continued</T>
+        ) : (
+          <>
+            <Ago iso={story.updatedAt} /> ·{" "}
+            <T with={{ n: story.turns }}>{story.turns === 1 ? "{n} turn" : "{n} turns"}</T>
+            {story.players.length > 0 && (
+              <>
+                {" "}
+                · <T with={{ names: story.players.join(", ") }}>{"with {names}"}</T>
+              </>
+            )}
+          </>
+        )}
+      </p>
       <button
         type="button"
         className="primary"
@@ -158,14 +156,14 @@ export function CreateWorld({
             in the world's folder later.
           </T>
         </p>
-        <div className="dialog-actions">
+        <footer className="dialog-actions">
           <button type="button" onClick={onClose}>
             <T>Cancel</T>
           </button>
           <button type="submit" className="primary" disabled={busy || !title.trim()}>
             <T>Make the world</T>
           </button>
-        </div>
+        </footer>
       </form>
     </Modal>
   );
@@ -185,26 +183,25 @@ export function StartStory({
   const [arc, setArc] = useState("");
   return (
     <Panel title="Start a new story">
-      <div className="new-story">
+      <form
+        className="new-story"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void act(() => api.startStoryIn(name, arc || undefined));
+        }}
+      >
         {arcs.length > 0 && (
-          <>
-            <Choice
-              legend="Begin with"
-              value={arc}
-              options={[
-                { value: "", label: "Let the story begin its own way" },
-                ...arcs.map((a) => ({ value: a.fm.id, label: a.fm.name, raw: true })),
-              ]}
-              onChange={setArc}
-            />
-          </>
+          <Choice
+            legend="Begin with"
+            value={arc}
+            options={[
+              { value: "", label: "Let the story begin its own way" },
+              ...arcs.map((a) => ({ value: a.fm.id, label: a.fm.name, raw: true })),
+            ]}
+            onChange={setArc}
+          />
         )}
-        <button
-          type="button"
-          className="primary"
-          disabled={busy}
-          onClick={() => act(() => api.startStoryIn(name, arc || undefined))}
-        >
+        <button type="submit" className="primary" disabled={busy}>
           <T>Start a new story</T>
         </button>
         <p className="hint">
@@ -213,7 +210,7 @@ export function StartStory({
             changes a story you've started.
           </T>
         </p>
-      </div>
+      </form>
     </Panel>
   );
 }
@@ -314,14 +311,14 @@ export function EditWorld({
             <T>{problem}</T>
           </p>
         )}
-        <div className="dialog-actions">
+        <footer className="dialog-actions">
           <button type="button" onClick={onClose}>
             <T>Cancel</T>
           </button>
           <button type="submit" className="primary" disabled={busy || !title.trim()}>
             <T>Save</T>
           </button>
-        </div>
+        </footer>
       </form>
     </Modal>
   );
@@ -358,7 +355,7 @@ export function PutAway({
           </T>
         </p>
       )}
-      <div className="dialog-actions">
+      <footer className="dialog-actions">
         <button type="button" onClick={onClose}>
           <T>Keep it</T>
         </button>
@@ -373,7 +370,7 @@ export function PutAway({
         >
           <T>Put it away</T>
         </button>
-      </div>
+      </footer>
     </Modal>
   );
 }

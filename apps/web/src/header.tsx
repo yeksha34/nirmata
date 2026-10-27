@@ -28,11 +28,10 @@ export function HeaderBar() {
         </nav>
       )}
       {state.world && state.story && (
-        <span className="world-name" title={state.world.tagline}>
+        <p className="world-name" title={state.world.tagline}>
           {state.world.title}
-        </span>
+        </p>
       )}
-      <span className="spacer" />
       {isHost && (
         <button
           type="button"
@@ -70,31 +69,32 @@ export function HeaderBar() {
               : "Connecting…"
         }
       >
-        <span className={`dot dot-${state.connection}`} role="status">
-          <span className="sr-only">
-            {state.connection === "live" ? "Connected" : "Connection lost, trying again"}
-          </span>
-        </span>
+        <output
+          className={`dot dot-${state.connection}`}
+          aria-label={state.connection === "live" ? "Connected" : "Connection lost, trying again"}
+        />
       </Tip>
       {you && (
         <details className="menu">
           <summary>
-            <span className="nick-text">{you.nick}</span>{" "}
+            <bdi className="nick-text">{you.nick}</bdi>{" "}
             <SeatBadge seat={you.seat} muted={you.muted} />
           </summary>
-          <div className="menu-body">
-            <button
-              type="button"
-              onClick={() =>
-                act(async () => {
-                  await api.leave().catch(() => undefined);
-                  leave();
-                })
-              }
-            >
-              <T>Leave the table</T>
-            </button>
-          </div>
+          <menu className="menu-body">
+            <li>
+              <button
+                type="button"
+                onClick={() =>
+                  act(async () => {
+                    await api.leave().catch(() => undefined);
+                    leave();
+                  })
+                }
+              >
+                <T>Leave the table</T>
+              </button>
+            </li>
+          </menu>
         </details>
       )}
     </header>

@@ -142,15 +142,14 @@ export function StoryWindow({
       <button
         ref={chip}
         type="button"
-        className="win-chip"
+        className={working ? "win-chip is-working" : "win-chip"}
         onClick={() => show("open")}
         aria-label={`Open the story: ${title}`}
       >
-        <span className={`dot ${working ? "dot-live" : ""}`} aria-hidden="true" />
-        <span className="win-chip-title">{heading ?? title}</span>
-        <span className="muted">
+        <strong className="win-chip-title">{heading ?? title}</strong>
+        <small className="muted">
           <T>{working ? "writing…" : "story"}</T>
-        </span>
+        </small>
       </button>,
       document.body,
     );
@@ -179,7 +178,7 @@ export function StoryWindow({
           }
         }}
       >
-        {!narrow && !maximized ? (
+        {!narrow && !maximized && (
           <button
             ref={grip}
             type="button"
@@ -189,34 +188,36 @@ export function StoryWindow({
           >
             ⠿
           </button>
-        ) : (
-          <span className="win-grip" aria-hidden="true" />
         )}
-        <span className="win-title">{heading ?? title}</span>
-        <div className="win-buttons" data-no-drag>
-          <Tip below text="Minimize">
-            <button
-              type="button"
-              className="plain"
-              aria-label="Minimize the story"
-              onClick={() => show("minimized")}
-            >
-              –
-            </button>
-          </Tip>
-          {!narrow && (
-            <Tip below text={maximized ? "Restore" : "Fill the page"}>
+        <h2 className="win-title">{heading ?? title}</h2>
+        <menu className="win-buttons" data-no-drag>
+          <li>
+            <Tip below text="Minimize">
               <button
                 type="button"
                 className="plain"
-                aria-label={maximized ? "Restore the story window" : "Fill the page"}
-                onClick={() => show(maximized ? "open" : "maximized")}
+                aria-label="Minimize the story"
+                onClick={() => show("minimized")}
               >
-                {maximized ? "❐" : "□"}
+                –
               </button>
             </Tip>
+          </li>
+          {!narrow && (
+            <li>
+              <Tip below text={maximized ? "Restore" : "Fill the page"}>
+                <button
+                  type="button"
+                  className="plain"
+                  aria-label={maximized ? "Restore the story window" : "Fill the page"}
+                  onClick={() => show(maximized ? "open" : "maximized")}
+                >
+                  {maximized ? "❐" : "□"}
+                </button>
+              </Tip>
+            </li>
           )}
-        </div>
+        </menu>
       </header>
       <div className="win-body">{children}</div>
       {!narrow && !maximized && (

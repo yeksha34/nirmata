@@ -12,7 +12,7 @@ export function Waiting() {
   const host = state.board?.host ?? <T>The host</T>;
   if (state.story) {
     return (
-      <div className="waiting">
+      <section className="waiting">
         <Panel plain title={state.world?.title ?? "The story"}>
           <p className="lead">
             <T>The story is open in the window.</T>
@@ -24,11 +24,11 @@ export function Waiting() {
             </T>
           </p>
         </Panel>
-      </div>
+      </section>
     );
   }
   return (
-    <div className="waiting">
+    <section className="waiting">
       <Panel plain={!!state.world} title={state.world ? state.world.title : "Waiting for the host"}>
         <p className="lead">
           {state.world ? (
@@ -44,6 +44,6 @@ export function Waiting() {
         {state.world?.tagline && <p className="muted">{state.world.tagline}</p>}
       </Panel>
       <People />
-    </div>
+    </section>
   );
 }

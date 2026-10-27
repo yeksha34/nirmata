@@ -40,24 +40,33 @@ export function People() {
         {board.participants.map((p) => (
           <li key={p.nick}>
             <Tip text={online.has(p.nick.toLowerCase()) ? "Here" : "Not connected"}>
-              <span className={`dot dot-${online.has(p.nick.toLowerCase()) ? "live" : "lost"}`} />
+              <output
+                className={`dot dot-${online.has(p.nick.toLowerCase()) ? "live" : "lost"}`}
+                aria-label={online.has(p.nick.toLowerCase()) ? "Here" : "Not connected"}
+              />
             </Tip>
-            <span className="nick">{p.nick}</span>
+            <bdi className="nick">{p.nick}</bdi>
             <SeatBadge seat={p.seat} muted={p.muted} />
             {hostView && p.seat !== "host" && (
               <details className="menu menu-right">
                 <summary aria-label={`Actions for ${p.nick}`}>…</summary>
-                <div className="menu-body">
-                  <button type="button" onClick={() => mod(p, p.muted ? "unmute" : "mute")}>
-                    <T>{p.muted ? "Let them speak" : "Hush"}</T>
-                  </button>
-                  <button type="button" onClick={() => rename(p)}>
-                    <T>Rename</T>
-                  </button>
-                  <button type="button" className="danger" onClick={() => mod(p, "kick")}>
-                    <T>Send away</T>
-                  </button>
-                </div>
+                <menu className="menu-body">
+                  <li>
+                    <button type="button" onClick={() => mod(p, p.muted ? "unmute" : "mute")}>
+                      <T>{p.muted ? "Let them speak" : "Hush"}</T>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" onClick={() => rename(p)}>
+                      <T>Rename</T>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" className="danger" onClick={() => mod(p, "kick")}>
+                      <T>Send away</T>
+                    </button>
+                  </li>
+                </menu>
               </details>
             )}
           </li>
@@ -159,26 +168,26 @@ function DraftCard({
 
   return (
     <li className={`draft${draft.ready ? " is-ready" : ""}`}>
-      <div className="draft-head">
+      <header className="draft-head">
         <strong>{isMine ? <T>You</T> : draft.nick}</strong>
-        <span className="chip">
+        <data value={draft.mode} className="chip">
           <T>{MODE_LABEL[draft.mode]}</T>
-        </span>
+        </data>
         {draft.ready && (
-          <span className="ready">
+          <strong className="ready">
             ✓ <T>Ready</T>
-          </span>
+          </strong>
         )}
         {draft.objections > 0 && (
           <Tip text="Objections still standing">
-            <span className="objection-count">
+            <data value={draft.objections} className="objection-count">
               <T with={{ n: draft.objections }}>
                 {draft.objections === 1 ? "{n} objection" : "{n} objections"}
               </T>
-            </span>
+            </data>
           </Tip>
         )}
-      </div>
+      </header>
       <p>{draft.text}</p>
       {!isMine && canSpeak && !objecting && (
         <button type="button" className="plain" onClick={() => setObjecting(true)}>
@@ -224,9 +233,9 @@ function Remarks() {
   };
 
   return (
-    <div className="remarks">
+    <section className="remarks" aria-label="Talk about the turn">
       {board.remarks.length > 0 && (
-        <ul aria-label="Talk about the turn">
+        <ul>
           {board.remarks.map((r) => (
             <RemarkLine
               key={r.id}
@@ -259,7 +268,7 @@ function Remarks() {
           </T>
         </p>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -267,11 +276,11 @@ function RemarkLine({ remark, mine }: { remark: Remark; mine: boolean }) {
   const { act } = useAct();
   return (
     <li className={`remark remark-${remark.kind}${remark.answered ? " is-answered" : ""}`}>
-      <span className="remark-by">
+      <strong className="remark-by">
         {mine ? <T>You</T> : remark.by}
         {remark.kind === "objection" && remark.about ? ` → ${remark.about}` : ""}
-      </span>
-      <span>{remark.text}</span>
+      </strong>
+      {remark.text}
       {remark.answered && (
         <em>
           {" "}

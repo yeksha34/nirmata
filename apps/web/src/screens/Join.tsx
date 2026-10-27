@@ -35,7 +35,7 @@ export function Join({
   };
 
   return (
-    <div className="join">
+    <main className="join">
       <form className="join-card" onSubmit={submit}>
         <Brand />
         <h1>{info?.world ? info.world.title : <T>Join the table</T>}</h1>
@@ -73,9 +73,7 @@ export function Join({
         {needsAdult && (
           <label className="check">
             <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} />
-            <span>
-              <T>I am an adult (18 or older). This story is for adult readers.</T>
-            </span>
+            <T>I am an adult (18 or older). This story is for adult readers.</T>
           </label>
         )}
 
@@ -97,6 +95,6 @@ export function Join({
           </T>
         </p>
       </form>
-    </div>
+    </main>
   );
 }
