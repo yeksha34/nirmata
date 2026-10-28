@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { api, seat } from "./api";
 import { AppProvider } from "./app-context";
+import { ClippedTips } from "./clipped-tips";
 import { AskProvider } from "./controls";
 import { HeaderBar } from "./header";
 import { T, useTapToTranslate } from "./i18n";
@@ -124,6 +125,7 @@ export function App() {
             </>
           )}
           <Toasts />
+          <ClippedTips />
         </AskProvider>
       </NavProvider>
     </AppProvider>
