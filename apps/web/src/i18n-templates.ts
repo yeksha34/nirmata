@@ -16,7 +16,7 @@ export const HI_TEMPLATES: Record<string, string> = {
     "छोटी आदतें जो उन्हें पन्ने पर पहचानने योग्य बनाती हैं।",
   "What they are after, and what they would give up for it.":
     "वे किसके पीछे हैं, और उसके लिए क्या छोड़ देंगे।",
-  "Host-only. Never revealed unprompted.": "केवल मेज़बान के लिए। बिना पूछे कभी प्रकट नहीं होता।",
+  "Host-only. Never revealed unprompted.": "केवल यजमान के लिए। बिना पूछे कभी प्रकट नहीं होता।",
   "Who they answer to, protect, fear or are tied to.":
     "वे किसके प्रति उत्तरदायी हैं, किसकी रक्षा करते हैं, किससे डरते हैं या किससे बँधे हैं।",
   "What has happened to them so far.": "अब तक उनके साथ क्या हुआ है।",

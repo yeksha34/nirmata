@@ -7,7 +7,7 @@ export const HI_SERVER: Record<string, string> = {
   "Something went wrong on the server. Try again.": "सर्वर पर कुछ गड़बड़ हो गई। फिर प्रयास करें।",
   "Something went wrong with the story.": "कथा में कुछ गड़बड़ हो गई।",
   "Something went wrong with the story. The host can try again.":
-    "कथा में कुछ गड़बड़ हो गई। मेज़बान फिर प्रयास कर सकते हैं।",
+    "कथा में कुछ गड़बड़ हो गई। यजमान फिर प्रयास कर सकते हैं।",
   "That request is not right: {why}": "वह अनुरोध ठीक नहीं है: {why}",
   "Pick a nickname to join with.": "जुड़ने के लिए कोई उपनाम चुनें।",
   "There is nothing at that address.": "उस पते पर कुछ नहीं है।",
@@ -18,10 +18,10 @@ export const HI_SERVER: Record<string, string> = {
     "संसार के नाम में छोटे अक्षर, अंक और हाइफ़न होते हैं।",
   "A world's name uses lowercase letters, digits and hyphens, 2 to 40 characters.":
     "संसार के नाम में छोटे अक्षर, अंक और हाइफ़न होते हैं, 2 से 40 अक्षर।",
-  "Only the host can see the settings.": "केवल मेज़बान सेटिंग देख सकते हैं।",
+  "Only the host can see the settings.": "केवल यजमान सेटिंग देख सकते हैं।",
   "That is too much to send at once.": "इतना सब एक साथ नहीं भेजा जा सकता।",
   "Choose a world first.": "पहले कोई संसार चुनें।",
-  "That host key is not right.": "वह मेज़बान-कुंजी सही नहीं है।",
+  "That host key is not right.": "वह यजमान-कुंजी सही नहीं है।",
   "The table is full. Try again later.": "पटल भरा है। बाद में फिर प्रयास करें।",
   "Join the table first.": "पहले पटल पर आएँ।",
   "You left the table.": "आपने पटल छोड़ दिया।",
@@ -33,7 +33,7 @@ export const HI_SERVER: Record<string, string> = {
   "There is nothing on the board to close, or the story is busy.":
     "बंद करने को पटल पर कुछ नहीं है, या कथा व्यस्त है।",
   "There is no such moment in this story.": "इस कथा में ऐसा कोई क्षण नहीं है।",
-  "There is no story yet. The host can start one.": "अभी कोई कथा नहीं है। मेज़बान एक आरंभ कर सकते हैं।",
+  "There is no story yet. The host can start one.": "अभी कोई कथा नहीं है। यजमान एक आरंभ कर सकते हैं।",
   "The story is busy writing. Wait for it to finish.":
     "कथा लिखने में व्यस्त है। उसके पूरा होने की प्रतीक्षा करें।",
 
@@ -56,31 +56,31 @@ export const HI_SERVER: Record<string, string> = {
     '"{name}" को समेटा नहीं जा सका ({why})। इसके फ़ोल्डर का उपयोग करने वाली हर चीज़ बंद करें और फिर प्रयास करें।',
   'The saved story "{id}" is damaged: {why}': 'संचित कथा "{id}" क्षतिग्रस्त है: {why}',
   "The host has not allowed players to read the source cards.":
-    "मेज़बान ने खिलाड़ियों को मूल पत्रक पढ़ने की अनुमति नहीं दी है।",
+    "यजमान ने खिलाड़ियों को मूल पत्रक पढ़ने की अनुमति नहीं दी है।",
   "This story has no copy of its cards to save a world from.":
     "इस कथा के पास अपने पत्रकों की प्रति नहीं है जिससे संसार संचित किया जा सके।",
 
   // permissions
-  "Only the host can edit the source cards.": "केवल मेज़बान मूल पत्रक संपादित कर सकते हैं।",
-  "Only the host can start a story.": "केवल मेज़बान कथा आरंभ कर सकते हैं।",
+  "Only the host can edit the source cards.": "केवल यजमान मूल पत्रक संपादित कर सकते हैं।",
+  "Only the host can start a story.": "केवल यजमान कथा आरंभ कर सकते हैं।",
   "You can't take part in this story.": "आप इस कथा में भाग नहीं ले सकते।",
   "You can't undo in this story.": "आप इस कथा में पूर्ववत नहीं कर सकते।",
   "You can't edit turns in this story.": "आप इस कथा में बारियाँ संपादित नहीं कर सकते।",
   "You can't pin facts in this story.": "आप इस कथा में तथ्य टाँक नहीं सकते।",
   "Only the host can jump to another branch of the story.":
-    "केवल मेज़बान कथा की किसी दूसरी शाखा पर जा सकते हैं।",
-  "Only the host can update plot points.": "केवल मेज़बान कथानक-बिंदु अद्यतन कर सकते हैं।",
-  "Only the host can add plot points.": "केवल मेज़बान कथानक-बिंदु जोड़ सकते हैं।",
-  "Only the host can take back plot points.": "केवल मेज़बान कथानक-बिंदु वापस ले सकते हैं।",
-  "Only the host can start a new chapter.": "केवल मेज़बान नया अध्याय आरंभ कर सकते हैं।",
-  "Only the host can change settings.": "केवल मेज़बान सेटिंग बदल सकते हैं।",
-  "Only the host can wield that power.": "केवल मेज़बान उस शक्ति का प्रयोग कर सकते हैं।",
+    "केवल यजमान कथा की किसी दूसरी शाखा पर जा सकते हैं।",
+  "Only the host can update plot points.": "केवल यजमान कथानक-बिंदु अद्यतन कर सकते हैं।",
+  "Only the host can add plot points.": "केवल यजमान कथानक-बिंदु जोड़ सकते हैं।",
+  "Only the host can take back plot points.": "केवल यजमान कथानक-बिंदु वापस ले सकते हैं।",
+  "Only the host can start a new chapter.": "केवल यजमान नया अध्याय आरंभ कर सकते हैं।",
+  "Only the host can change settings.": "केवल यजमान सेटिंग बदल सकते हैं।",
+  "Only the host can wield that power.": "केवल यजमान उस शक्ति का प्रयोग कर सकते हैं।",
 
   // the board
   'The nickname "{nick}" is already taken at this table.':
     'उपनाम "{nick}" इस पटल पर पहले से लिया जा चुका है।',
-  "The host cannot leave the table.": "मेज़बान पटल नहीं छोड़ सकते।",
-  "The host keeps their seat at the table.": "मेज़बान पटल पर अपना आसन बनाए रखते हैं।",
+  "The host cannot leave the table.": "यजमान पटल नहीं छोड़ सकते।",
+  "The host keeps their seat at the table.": "यजमान पटल पर अपना आसन बनाए रखते हैं।",
   "Keep a turn under {n} characters.": "बारी {n} अक्षरों से कम रखें।",
   "Keep a remark under {n} characters.": "टिप्पणी {n} अक्षरों से कम रखें।",
   "Write your turn before marking it ready.": "तैयार चिह्नित करने से पहले अपनी बारी लिखें।",
@@ -91,13 +91,13 @@ export const HI_SERVER: Record<string, string> = {
   "Opt in to play before writing a turn.": "बारी लिखने से पहले खेलने के लिए सम्मिलित हों।",
   "Your voice is hushed for now: you can read, but not write.":
     "अभी आपकी वाणी रोकी गई है: आप पढ़ सकते हैं, लिख नहीं सकते।",
-  "That power cannot be used on the host.": "वह शक्ति मेज़बान पर प्रयोग नहीं की जा सकती।",
+  "That power cannot be used on the host.": "वह शक्ति यजमान पर प्रयोग नहीं की जा सकती।",
   "Write something first.": "पहले कुछ लिखें।",
 
   // the storyteller
   "This story has already started.": "यह कथा पहले ही आरंभ हो चुकी है।",
   "Type something to do or say first.": "पहले कुछ करने या कहने के लिए लिखें।",
-  "The host has not started this story yet.": "मेज़बान ने अभी यह कथा आरंभ नहीं की।",
+  "The host has not started this story yet.": "यजमान ने अभी यह कथा आरंभ नहीं की।",
   "There is no reply to retry yet.": "दोबारा आज़माने के लिए अभी कोई उत्तर नहीं है।",
   "The reply to retry does not follow a player action.":
     "दोबारा आज़माया जाने वाला उत्तर किसी खिलाड़ी की क्रिया के बाद का नहीं है।",

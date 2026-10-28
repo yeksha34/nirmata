@@ -37,7 +37,7 @@ export const HI_TEXT: Record<string, string> = {
   story: "कथा",
   Untitled: "बिना शीर्षक",
   hushed: "चुप कराया गया",
-  "The host": "मेज़बान",
+  "The host": "यजमान",
   "A reply broke a rule ({text}).": "एक उत्तर ने नियम तोड़ा ({text})।",
   "Something went wrong ({n}).": "कुछ गड़बड़ हो गई ({n})।",
 
@@ -48,7 +48,7 @@ export const HI_TEXT: Record<string, string> = {
   // joining and waiting
   "Join the table": "पटल पर आएँ",
   "{host} is hosting. Pick a name to come in; you can watch first and join in whenever you like.":
-    "{host} मेज़बानी कर रहे हैं। भीतर आने के लिए नाम चुनें; पहले देख सकते हैं और जब चाहें सम्मिलित हो सकते हैं।",
+    "{host} यजमान हैं। भीतर आने के लिए नाम चुनें; पहले देख सकते हैं और जब चाहें सम्मिलित हो सकते हैं।",
   "Pick a name to come in.": "भीतर आने के लिए नाम चुनें।",
   "Up to 24 letters or digits, no spaces.": "24 अक्षर या अंक तक, रिक्त स्थान नहीं।",
   "I am an adult (18 or older). This story is for adult readers.":
@@ -56,9 +56,9 @@ export const HI_TEXT: Record<string, string> = {
   "Come in": "भीतर आएँ",
   "Coming in…": "भीतर आ रहे हैं…",
   "Running the server? Open the link it printed in your terminal to take the host's seat.":
-    "सर्वर चला रहे हैं? मेज़बान का आसन लेने के लिए टर्मिनल में छपा लिंक खोलें।",
+    "सर्वर चला रहे हैं? यजमान का आसन लेने के लिए टर्मिनल में छपा लिंक खोलें।",
   "The story": "कथा",
-  "Waiting for the host": "मेज़बान की प्रतीक्षा",
+  "Waiting for the host": "यजमान की प्रतीक्षा",
   "Drag it by its title bar to put it where you like, or minimize it to a chip in the corner and open it again from there.":
     "इसे शीर्ष-पट्टी से खींचकर जहाँ चाहें रखें, या छोटा करके कोने में चिप बना दें और वहीं से फिर खोलें।",
   "{host} is choosing a story. It will appear here the moment it begins.":
