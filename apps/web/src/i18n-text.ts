@@ -210,4 +210,23 @@ export const HI_TEXT: Record<string, string> = {
   "Remove {name}?": "{name} हटाएँ?",
   "This deletes the card's file, {path}, from the world's folder. Stories already begun keep their own copy. If the world is in git, the file can be brought back.":
     "यह संसार के फ़ोल्डर से पत्रक की संचिका, {path}, मिटा देता है। पहले से आरंभ कथाएँ अपनी प्रति रखती हैं। यदि संसार git में है, तो संचिका लौटाई जा सकती है।",
+
+  // the reader
+  Read: "पढ़ें",
+  "Read it as a book": "इसे पुस्तक की तरह पढ़ें",
+  Close: "बंद करें",
+  Contents: "विषय-सूची",
+  "Title page": "आवरण-पृष्ठ",
+  Mood: "वातावरण",
+  Dusk: "गोधूलि",
+  Embers: "अंगारे",
+  Forest: "वन",
+  Rain: "वर्षा",
+  Moonlight: "चाँदनी",
+  Ink: "स्याही",
+  "Sound on": "ध्वनि चालू",
+  "Sound off": "ध्वनि बंद",
+  "The end": "समाप्त",
+  "Page {n} of {total}": "पृष्ठ {n} / {total}",
+  "Turn the page with the arrow keys, or swipe": "पृष्ठ पलटने के लिए तीर-कुंजियाँ दबाएँ, या उँगली फिराएँ",
 };

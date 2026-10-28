@@ -282,7 +282,11 @@ describe("telling a story", () => {
 
     const index = await readFile(join(r.stories.folder(body.id), "chapters", "index.md"), "utf8");
     expect(index).toContain("# Chapters");
-    expect(r.table.snapshot(r.table.seat(dana.token)).story?.chapters.length).toBeGreaterThan(0);
+    const story = r.table.snapshot(r.table.seat(dana.token)).story;
+    expect(story?.chapters.length).toBeGreaterThan(0);
+    // each chapter says which turn it was cut at, so a reader can lay the turns out in chapters
+    const ids = new Set(story?.turns.map((t) => t.id));
+    for (const c of story?.chapters ?? []) expect(ids.has(c.through), c.title).toBe(true);
   });
 
   it("resumes a saved story in a new server, and carries on from it", async () => {

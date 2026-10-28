@@ -4,6 +4,8 @@ import { useAct, useApp } from "../app-context";
 import { Tip } from "../controls";
 import { T } from "../i18n";
 import { useNav } from "../nav";
+import { type Book, bookFromWorld } from "../reader/book";
+import { Reader } from "../reader/Reader";
 import type { CardKind, WorldDetail, WorldSummary } from "../types";
 import { Empty, Panel } from "../ui";
 import {
@@ -51,6 +53,7 @@ export function Workspace({ name }: { name: string }) {
   const [editing, setEditing] = useState(false);
   const [putting, setPutting] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [reading, setReading] = useState<Book>();
 
   const load = useCallback(
     () => act(() => api.worldDetail(name)).then((d) => setDetail(d ?? null)),
@@ -155,20 +158,43 @@ export function Workspace({ name }: { name: string }) {
               <p className="muted">{world.tagline || <T>No tagline yet.</T>}</p>
             </hgroup>
             {!world.problem && (
-              <Tip
-                below
-                text={
-                  locked
-                    ? "A story is open. Put it away first."
-                    : latest
-                      ? "Carry on with the latest story"
-                      : "Start a story"
-                }
-              >
-                <button type="button" className="primary" disabled={busy || locked} onClick={play}>
-                  <T>{latest ? "Continue" : "Play"}</T>
-                </button>
-              </Tip>
+              <menu className="title-actions">
+                {cards.length > 0 && (
+                  <li>
+                    <Tip below text="Read it as a book">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReading(bookFromWorld({ ...world, ...detail.manifest, name }, cards))
+                        }
+                      >
+                        <T>Read</T>
+                      </button>
+                    </Tip>
+                  </li>
+                )}
+                <li>
+                  <Tip
+                    below
+                    text={
+                      locked
+                        ? "A story is open. Put it away first."
+                        : latest
+                          ? "Carry on with the latest story"
+                          : "Start a story"
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="primary"
+                      disabled={busy || locked}
+                      onClick={play}
+                    >
+                      <T>{latest ? "Continue" : "Play"}</T>
+                    </button>
+                  </Tip>
+                </li>
+              </menu>
             )}
           </header>
 
@@ -336,6 +362,7 @@ export function Workspace({ name }: { name: string }) {
         </section>
       </div>
 
+      {reading && <Reader book={reading} onClose={() => setReading(undefined)} />}
       {dialog?.is === "text" && (
         <CardTextDialog
           world={name}

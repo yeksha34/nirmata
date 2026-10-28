@@ -26,6 +26,8 @@ export interface ChapterView {
   number: number;
   title: string;
   open: boolean;
+  /** The last turn in it: where the next chapter starts. */
+  through: string;
 }
 
 export interface StoryView {
@@ -59,7 +61,12 @@ export function storyView(id: string, session: StorySession): StoryView {
     started: session.state.log.length > 0,
     busy: session.isBusy,
     turns: session.turns.map(turnView),
-    chapters: session.chapters.map((c) => ({ number: c.number, title: c.title, open: c.open })),
+    chapters: session.chapters.map((c) => ({
+      number: c.number,
+      title: c.title,
+      open: c.open,
+      through: c.through,
+    })),
   };
 }
 

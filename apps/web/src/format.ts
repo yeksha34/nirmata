@@ -78,3 +78,9 @@ export function words(text: string): string[] {
     .map((w) => w.trim())
     .filter(Boolean);
 }
+
+/** "life-outside-the-story" as "Life outside the story", for a part no template names. */
+export const humanize = (id: string) => {
+  const text = id.replace(/-/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};

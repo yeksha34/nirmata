@@ -4,6 +4,8 @@ import { useAct, useApp } from "../app-context";
 import { Field, Tip, useAsk } from "../controls";
 import { MODE_LABEL } from "../format";
 import { T } from "../i18n";
+import { type Book, bookFromDraft } from "../reader/book";
+import { Reader } from "../reader/Reader";
 import { waitingFor } from "../store";
 import type { Draft, Participant, Remark } from "../types";
 import { Empty, Panel, SeatBadge } from "../ui";
@@ -155,6 +157,7 @@ function DraftCard({
 }) {
   const { act } = useAct();
   const [objecting, setObjecting] = useState(false);
+  const [reading, setReading] = useState<Book>();
   const [text, setText] = useState("");
 
   const send = async (e: FormEvent) => {
@@ -189,6 +192,10 @@ function DraftCard({
         )}
       </header>
       <p>{draft.text}</p>
+      <button type="button" className="plain" onClick={() => setReading(bookFromDraft(draft))}>
+        <T>Read</T>
+      </button>
+      {reading && <Reader book={reading} onClose={() => setReading(undefined)} />}
       {!isMine && canSpeak && !objecting && (
         <button type="button" className="plain" onClick={() => setObjecting(true)}>
           <T>Object…</T>

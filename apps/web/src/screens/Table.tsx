@@ -4,6 +4,8 @@ import { useAct, useApp } from "../app-context";
 import { Field, Tip, useAsk } from "../controls";
 import { MODE_HINT, MODE_LABEL, worldName } from "../format";
 import { T } from "../i18n";
+import { type Book, bookFromStory } from "../reader/book";
+import { Reader } from "../reader/Reader";
 import { visibleTurns } from "../store";
 import type { Mode, TurnView } from "../types";
 import { BoardPanel, People } from "./Board";
@@ -151,6 +153,7 @@ function StoryBar() {
   const { act, busy } = useAct();
   const ask = useAsk();
   const [saving, setSaving] = useState(false);
+  const [reading, setReading] = useState<Book>();
   const story = state.story;
   const me = state.you;
   const writing = state.streaming !== null || story?.busy === true || state.board?.busy === true;
@@ -245,6 +248,22 @@ function StoryBar() {
             </li>
           </>
         )}
+        {story && (
+          <li>
+            <Tip text="Read it as a book">
+              <button
+                type="button"
+                onClick={() =>
+                  setReading(
+                    bookFromStory(state.world, story.id, visibleTurns(state), story.chapters),
+                  )
+                }
+              >
+                <T>Read</T>
+              </button>
+            </Tip>
+          </li>
+        )}
         {host && (
           <li>
             <details className="menu menu-right">
@@ -299,6 +318,7 @@ function StoryBar() {
         )}
       </menu>
       {saving && <SaveWorld onClose={() => setSaving(false)} />}
+      {reading && <Reader book={reading} onClose={() => setReading(undefined)} />}
     </header>
   );
 }

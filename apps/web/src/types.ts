@@ -31,6 +31,8 @@ export interface ChapterView {
   number: number;
   title: string;
   open: boolean;
+  /** The last turn in it: where the next chapter starts. */
+  through?: string;
 }
 
 export interface StoryView {
