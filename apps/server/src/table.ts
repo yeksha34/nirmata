@@ -249,6 +249,16 @@ export class Table {
     return this.options.library.detail(name);
   }
 
+  /** One chapter or draft of a world, to read, without opening the world. Host only. */
+  async worldWriting(
+    seat: Seat,
+    name: string,
+    path: string,
+  ): Promise<{ path: string; title: string; text: string }> {
+    requireCan(this.actor(seat), "story.start");
+    return this.options.library.writing(name, path);
+  }
+
   /** Make a new world. It is not opened: the host goes to its page and starts a story there. */
   async createWorld(
     seat: Seat,

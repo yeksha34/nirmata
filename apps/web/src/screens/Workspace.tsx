@@ -17,6 +17,7 @@ import {
   useTemplates,
   WorldFacts,
 } from "./Manager";
+import { Writings } from "./Writings";
 import {
   CreateWorld,
   EditWorld,
@@ -26,9 +27,11 @@ import {
   StoryRow,
 } from "./world-parts";
 
-type Tab = "cards" | "stories" | "world";
+type Tab = "cards" | "chapters" | "drafts" | "stories" | "world";
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: "cards", label: "Cards" },
+  { id: "chapters", label: "Chapters" },
+  { id: "drafts", label: "Drafts" },
   { id: "stories", label: "Stories" },
   { id: "world", label: "World" },
 ];
@@ -105,7 +108,13 @@ export function Workspace({ name }: { name: string }) {
       </>
     );
 
-  const { world, stories, cards, broken } = detail;
+  const { world, stories, cards, broken, chapters, drafts } = detail;
+  const counts: Partial<Record<Tab, number>> = {
+    cards: cards.length,
+    chapters: chapters.length,
+    drafts: drafts.length,
+    stories: stories.length,
+  };
   const arcs = cards.filter((c) => c.fm.kind === "arc");
   const selected = cards.find((c) => c.path === nav.card);
   const editingCard = selected !== undefined || making !== undefined;
@@ -223,16 +232,10 @@ export function Workspace({ name }: { name: string }) {
                     onClick={() => setTab(t.id)}
                   >
                     <T>{t.label}</T>
-                    {t.id === "cards" && (
-                      <data className="tab-count" value={cards.length}>
+                    {counts[t.id] !== undefined && (
+                      <data className="tab-count" value={counts[t.id]}>
                         {" "}
-                        {cards.length}
-                      </data>
-                    )}
-                    {t.id === "stories" && (
-                      <data className="tab-count" value={stories.length}>
-                        {" "}
-                        {stories.length}
+                        {counts[t.id]}
                       </data>
                     )}
                   </button>
@@ -253,6 +256,24 @@ export function Workspace({ name }: { name: string }) {
                     setMaking(kind);
                   }}
                   onDialog={setDialog}
+                />
+              )}
+
+              {tab === "chapters" && (
+                <Writings
+                  world={{ name, title: world.title }}
+                  title="Chapters"
+                  kind="chapters"
+                  items={chapters}
+                />
+              )}
+
+              {tab === "drafts" && (
+                <Writings
+                  world={{ name, title: world.title }}
+                  title="Drafts"
+                  kind="drafts"
+                  items={drafts}
                 />
               )}
 

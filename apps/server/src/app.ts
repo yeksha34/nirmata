@@ -160,6 +160,12 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
   app.get("/api/worlds/:name", async (c) =>
     c.json(await table.worldDetail(seatOf(c), c.req.param("name"))),
   );
+  // a chapter or a draft in a world's folder, to read
+  app.get("/api/worlds/:name/writing", async (c) => {
+    const path = c.req.query("path");
+    if (!path) throw new HttpError(400, "bad_request", "Say which chapter or draft to read.");
+    return c.json(await table.worldWriting(seatOf(c), c.req.param("name"), path));
+  });
   app.patch("/api/worlds/:name", async (c) => {
     const seat = seatOf(c);
     const body = await json(

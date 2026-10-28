@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rename, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { type ImportReport, importStory, type Recipe, walk } from "./legacy";
@@ -79,6 +79,20 @@ async function put(path: string, data: Buffer): Promise<void> {
   await rename(temp, path);
 }
 
+/**
+ * Gives a file in the world the modification time of the story's file it came from, so "last
+ * changed" means when the author changed it, not when it was copied. Only the time changes.
+ */
+async function alignTime(from: string, to: string): Promise<void> {
+  try {
+    const [a, b] = await Promise.all([stat(from), stat(to)]);
+    if (Math.abs(a.mtimeMs - b.mtimeMs) > 1000) await utimes(to, a.atime, a.mtime);
+  } catch (e) {
+    // a file with no counterpart in the story (a card made from several) keeps its own time
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+  }
+}
+
 /** Puts a file aside; one that is not there is not an error. */
 async function move(from: string, to: string): Promise<boolean> {
   await mkdir(dirname(to), { recursive: true });
@@ -147,10 +161,12 @@ export async function syncImport(
       const there = await read(join(dest, rel));
       const have = there ? sha(there) : undefined;
 
+      let current = false;
       const write = async (into: "added" | "updated") => {
         if (!options.dryRun) await put(join(dest, rel), data);
         report[into].push(rel);
         next[rel] = now;
+        current = true;
       };
       const replace = async () => {
         await away(rel);
@@ -165,6 +181,7 @@ export async function syncImport(
       if (have === now) {
         report.unchanged++;
         next[rel] = now;
+        current = true;
       } else if (have === undefined) {
         // not in the world: new, or taken out of it since
         if (base === undefined) await write("added");
@@ -181,6 +198,7 @@ export async function syncImport(
       } else {
         await conflict();
       }
+      if (current && !options.dryRun) await alignTime(join(src, rel), join(dest, rel));
     }
 
     // files the importer wrote before and no longer does

@@ -1,4 +1,4 @@
-// Hindi for the sentences, hints, tooltips and statuses of the screens. Keyed by the exact English
+﻿// Hindi for the sentences, hints, tooltips and statuses of the screens. Keyed by the exact English
 // text the screen passes to <T> or bilingual(); {name} marks a place where the screen puts a value
 // (a nickname, a count, a file name). Written for this app and not yet read by a native speaker.
 export const HI_TEXT: Record<string, string> = {
@@ -210,6 +210,15 @@ export const HI_TEXT: Record<string, string> = {
   "Remove {name}?": "{name} हटाएँ?",
   "This deletes the card's file, {path}, from the world's folder. Stories already begun keep their own copy. If the world is in git, the file can be brought back.":
     "यह संसार के फ़ोल्डर से पत्रक की संचिका, {path}, मिटा देता है। पहले से आरंभ कथाएँ अपनी प्रति रखती हैं। यदि संसार git में है, तो संचिका लौटाई जा सकती है।",
+
+  // chapters and drafts
+  Drafts: "मसौदे",
+  Chapter: "अध्याय",
+  Draft: "मसौदा",
+  "Read all the chapters": "सभी अध्याय पढ़ें",
+  "{n} KB": "{n} केबी",
+  "No chapters in this world yet.": "इस संसार में अभी कोई अध्याय नहीं।",
+  "No drafts in this world yet.": "इस संसार में अभी कोई मसौदा नहीं।",
 
   // the reader
   Read: "पढ़ें",

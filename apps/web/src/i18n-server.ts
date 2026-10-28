@@ -14,6 +14,7 @@ export const HI_SERVER: Record<string, string> = {
   "A world needs a title.": "संसार को एक शीर्षक चाहिए।",
   "A card needs a name.": "पत्रक को एक नाम चाहिए।",
   "Say which card to remove.": "बताएँ कि कौन-सा पत्रक हटाना है।",
+  "Say which chapter or draft to read.": "बताएँ कि कौन-सा अध्याय या मसौदा पढ़ना है।",
   "A world's name uses lowercase letters, digits and hyphens.":
     "संसार के नाम में छोटे अक्षर, अंक और हाइफ़न होते हैं।",
   "A world's name uses lowercase letters, digits and hyphens, 2 to 40 characters.":
@@ -47,6 +48,7 @@ export const HI_SERVER: Record<string, string> = {
   'There is no story "{id}".': '"{id}" नाम की कोई कथा नहीं है।',
   'There is no world "{name}".': '"{name}" नाम का कोई संसार नहीं है।',
   "There is no card at {path}.": "{path} पर कोई पत्रक नहीं है।",
+  "There is no chapter or draft at {path}.": "{path} पर कोई अध्याय या मसौदा नहीं है।",
   'There is no card "{id}" in this world.': 'इस संसार में "{id}" नाम का कोई पत्रक नहीं है।',
   'There is no card "{id}" to remove.': 'हटाने के लिए "{id}" नाम का कोई पत्रक नहीं है।',
   "That card cannot be read, so it cannot be edited as a form. Edit it as text.":

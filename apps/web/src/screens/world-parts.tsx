@@ -11,7 +11,7 @@ import { Modal, Panel } from "../ui";
 
 /** Shown while a story is open in the window: why starting another waits, and how to free it. */
 /** How long ago a story was last played, in words. */
-function Ago({ iso }: { iso: string }) {
+export function Ago({ iso }: { iso: string }) {
   const when = agoParts(iso);
   if (!when) return null;
   if ("date" in when) {

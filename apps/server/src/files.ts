@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import {
   appendFile,
   mkdir,
+  open,
   readdir,
   readFile,
   rename,
@@ -9,7 +10,7 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import { basename, dirname, join, resolve, sep } from "node:path";
+import { basename, dirname, join, posix, resolve, sep } from "node:path";
 import {
   type Card,
   CardFrontmatter,
@@ -31,6 +32,9 @@ import { type EventSink, HostError, type SourceBackend } from "@nirmata/host";
 
 /** Where a world keeps its cards. Same layout the editor and the linter use. */
 const CARD_DIRS = ["lore", "characters", "setting", "plot", ".agents/rules"] as const;
+
+/** Where a world keeps prose that is not a card: finished chapters, and work in progress. */
+const WRITING_DIRS = ["chapters", "drafts"] as const;
 
 const isMissing = (e: unknown) => (e as NodeJS.ErrnoException).code === "ENOENT";
 
@@ -75,6 +79,26 @@ async function markdownFiles(dir: string): Promise<string[]> {
     else if (name.endsWith(".md") && !name.startsWith("_")) out.push(full);
   }
   return out;
+}
+
+/** A file's first heading, or its name made readable: "playground_coldbrook.md" is "Playground coldbrook". */
+function titleFrom(text: string, rel: string): string {
+  const heading = /^#{1,2}[ \t]+(.+?)[ \t]*$/m.exec(text.slice(0, 2000));
+  if (heading?.[1]) return heading[1];
+  const name = basename(rel, ".md").replace(/[_-]+/g, " ").trim();
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/** The title of a file, reading only its beginning. */
+async function titleOf(file: string): Promise<string> {
+  const handle = await open(file, "r");
+  try {
+    const buffer = Buffer.alloc(2048);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    return titleFrom(buffer.subarray(0, bytesRead).toString("utf8"), file.replaceAll("\\", "/"));
+  } finally {
+    await handle.close();
+  }
 }
 
 /** One card file: its text, and either the card it holds or what is wrong with it. */
@@ -128,6 +152,58 @@ export class WorldFiles implements SourceBackend {
       }
     }
     return out;
+  }
+
+  /**
+   * The chapters and drafts in the world: markdown under `chapters/` and `drafts/` that is not a
+   * card (`skip` holds the cards' paths; the scene cards live in `chapters/scenes/`).
+   */
+  async writings(
+    skip: ReadonlySet<string>,
+  ): Promise<{ chapters: WritingSummary[]; drafts: WritingSummary[] }> {
+    const found: Record<(typeof WRITING_DIRS)[number], WritingSummary[]> = {
+      chapters: [],
+      drafts: [],
+    };
+    for (const dir of WRITING_DIRS) {
+      for (const file of await markdownFiles(join(this.root, dir))) {
+        const rel = file.slice(this.root.length + 1).replaceAll("\\", "/");
+        if (skip.has(rel) || basename(rel) === "index.md") continue;
+        // the scenes beside the chapters are one-line beats, not chapters
+        if (rel.startsWith("chapters/scenes/")) continue;
+        const info = await stat(file);
+        found[dir].push({
+          path: rel,
+          title: await titleOf(file),
+          size: info.size,
+          updatedAt: info.mtime.toISOString(),
+        });
+      }
+    }
+    // "chapter_1" comes before "chapter_1_part_2", and "chapter_2" before "chapter_10"
+    const stem = (w: WritingSummary) => w.path.replace(/\.md$/, "");
+    const byName = (a: WritingSummary, b: WritingSummary) =>
+      stem(a).localeCompare(stem(b), undefined, { numeric: true });
+    return {
+      chapters: found.chapters.sort(byName),
+      drafts: found.drafts.sort((a, b) =>
+        a.updatedAt === b.updatedAt ? byName(a, b) : a.updatedAt < b.updatedAt ? 1 : -1,
+      ),
+    };
+  }
+
+  /** The text of one chapter or draft. Only those folders, and only markdown, can be asked for. */
+  async writing(path: string): Promise<{ path: string; title: string; text: string }> {
+    const rel = posix.normalize(path.replaceAll("\\", "/"));
+    const dir = rel.split("/")[0] ?? "";
+    if (!(WRITING_DIRS as readonly string[]).includes(dir) || !rel.endsWith(".md")) {
+      throw new HostError("nothing_to_do", `There is no chapter or draft at ${rel}.`);
+    }
+    const full = inside(this.root, rel);
+    const text = await readIfThere(full);
+    if (text === undefined)
+      throw new HostError("nothing_to_do", `There is no chapter or draft at ${rel}.`);
+    return { path: rel, title: titleFrom(text, rel), text };
   }
 
   /** The world's cards. A card that cannot be read stops this, naming the file (stories need all). */
@@ -491,6 +567,17 @@ export interface BrokenCard {
   problems: string[];
 }
 
+/** A chapter or a draft a world carries: prose in a file that is not a card. */
+export interface WritingSummary {
+  /** Inside the world's folder, with forward slashes. */
+  path: string;
+  /** Its first heading, or its file's name. */
+  title: string;
+  /** In bytes. */
+  size: number;
+  updatedAt: string;
+}
+
 export interface WorldDetail {
   world: WorldSummary;
   /** world.json as read; missing when the world cannot be read. */
@@ -498,6 +585,10 @@ export interface WorldDetail {
   stories: StorySummary[];
   cards: CardView[];
   broken: BrokenCard[];
+  /** Chapters, oldest first, as the file names run. */
+  chapters: WritingSummary[];
+  /** Work in progress, the most recently changed first. */
+  drafts: WritingSummary[];
 }
 
 /** What the manager's form sends for a card; the id, path and any extra fields stay as they were. */
@@ -609,8 +700,10 @@ export class Library {
   async detail(name: string): Promise<WorldDetail> {
     const found = await this.summary(name);
     if (!found) throw new HostError("nothing_to_do", `There is no world "${name}".`);
-    if (found.problem) return { world: found, stories: [], cards: [], broken: [] };
+    if (found.problem)
+      return { world: found, stories: [], cards: [], broken: [], chapters: [], drafts: [] };
     const files = await this.open(name).cardFiles();
+    const writings = await this.open(name).writings(new Set(files.map((f) => f.path)));
     return {
       world: found,
       manifest: await this.open(name).world(),
@@ -619,7 +712,16 @@ export class Library {
       broken: files.flatMap((f) =>
         f.card ? [] : [{ path: f.path, file: f.text, problems: f.problems ?? [] }],
       ),
+      ...writings,
     };
+  }
+
+  /** One chapter or draft of a world, in full, for reading. */
+  async writing(
+    name: string,
+    path: string,
+  ): Promise<{ path: string; title: string; text: string }> {
+    return this.open(name).writing(path);
   }
 
   /**
