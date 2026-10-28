@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -135,6 +135,22 @@ describe("keeping an imported world the same as its story", () => {
     await syncImport(src, world, recipe);
     expect(await text(world, "characters/mine.md")).toBe("my own\n");
     expect(await text(world, "stories/20261028-100000-abcd/events.jsonl")).toBe("{}\n");
+  });
+
+  it("gives a copied file the time its story's file was last changed, not the time of the copy", async () => {
+    const { src, world } = await setup();
+    const then = new Date("2026-03-01T12:00:00Z");
+    await utimes(join(src, CHAPTER), then, then);
+    // the world's copy was made just now; the next sync sets its time right, content unchanged
+    const r = await syncImport(src, world, recipe);
+    expect(r.unchanged).toBe(4);
+    expect((await stat(join(world, CHAPTER))).mtime.toISOString()).toBe(then.toISOString());
+
+    const later = new Date("2026-04-01T12:00:00Z");
+    await write(src, CHAPTER, "Changed.\n");
+    await utimes(join(src, CHAPTER), later, later);
+    await syncImport(src, world, recipe);
+    expect((await stat(join(world, CHAPTER))).mtime.toISOString()).toBe(later.toISOString());
   });
 
   it("does not bring in an editor's scratch files", async () => {

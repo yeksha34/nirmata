@@ -1776,3 +1776,45 @@ label.choice-opt:has(input:focus-visible) {
   font-family: ui-monospace, "Cascadia Code", Consolas, "Noto Sans Devanagari Variable", monospace;
   line-height: 1.5;
 }
+
+/* ---- a world's chapters and drafts ---- */
+
+.writings {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+.writings .read-all {
+  justify-self: start;
+}
+.writing-rows {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.writing-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.writing-row strong {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.writing-row .muted {
+  grid-column: 1;
+  font-size: 0.9rem;
+}
+.writing-row .tip {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}

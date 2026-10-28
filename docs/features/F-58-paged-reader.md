@@ -20,6 +20,10 @@ A **Read** button opens the reader over the screen it was pressed on:
 | The world's page | the whole world: a cover with its title, tagline, genre and tone, then every card as a chapter, in the order a reader wants them (lore, places, people, arcs, scenes, rules) |
 | The story window | the story so far, in the chapters it has been cut into (the rest of what has been written goes on the end of the last), the players' lines as quotations |
 | A draft on the board | what someone has written for the next round |
+| The world's **Chapters** tab | one chapter, or **Read all the chapters** one after the other (the world's cover, then each under its title) |
+| The world's **Drafts** tab | one draft |
+
+The Chapters and Drafts tabs list the prose in a world's `chapters/` and `drafts/` folders (markdown that is not a card; the one-line scene beats in `chapters/scenes/` are left out). Chapters run in file-name order (`chapter_1`, `chapter_1_part_2`, `chapter_2`, `chapter_10`), drafts newest first, each with its first heading as its title, how long ago it was changed and its size. The server serves the list with the world's page and each text on request (`GET /api/worlds/:name/writing?path=`, host only, and only for markdown under those two folders). A 373 KB chapter opens as a 397-page book in under a second.
 
 Under the hood ([reader/](../../apps/web/src/reader/)):
 - **book.ts** turns each of those into one `Book` (a cover and chapters of paragraphs, headings, quotations, lists and rules); markdown is read for bold, italic, code, lists, quotations and headings.

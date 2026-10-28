@@ -9,6 +9,7 @@ import type {
   WorldDetail,
   WorldInfo,
   WorldSummary,
+  Writing,
   You,
 } from "./types";
 
@@ -114,6 +115,10 @@ export const api = {
   // the worlds page: every world, without opening any of them
   recent: () => get<{ stories: RecentStory[] }>("/api/recent").then((r) => r.stories),
   worldDetail: (name: string) => get<WorldDetail>(`/api/worlds/${encodeURIComponent(name)}`),
+  writing: (name: string, path: string) =>
+    get<Writing>(
+      `/api/worlds/${encodeURIComponent(name)}/writing?path=${encodeURIComponent(path)}`,
+    ),
   createWorld: (args: { title: string; tagline?: string; premise?: string }) =>
     post<{ world: WorldSummary }>("/api/worlds", args).then((r) => r.world),
   editWorld: (

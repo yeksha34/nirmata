@@ -203,6 +203,23 @@ export interface RecentStory extends StorySummary {
   worldTitle: string;
 }
 
+/** A chapter or a draft a world carries: prose in a file that is not a card. */
+export interface WritingSummary {
+  path: string;
+  /** Its first heading, or its file's name. */
+  title: string;
+  /** In bytes. */
+  size: number;
+  updatedAt: string;
+}
+
+/** One of them in full, to read. */
+export interface Writing {
+  path: string;
+  title: string;
+  text: string;
+}
+
 /** A world's page: its details, saved stories and cards, whether or not it is the open one. */
 export interface WorldDetail {
   world: WorldSummary;
@@ -210,6 +227,10 @@ export interface WorldDetail {
   stories: StorySummary[];
   cards: Card[];
   broken: BrokenCard[];
+  /** Oldest first, as the file names run. */
+  chapters: WritingSummary[];
+  /** The most recently changed first. */
+  drafts: WritingSummary[];
 }
 
 /** A live event while the story is being written. */

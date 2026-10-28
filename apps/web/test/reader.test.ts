@@ -5,6 +5,8 @@ import {
   bookFromDraft,
   bookFromStory,
   bookFromWorld,
+  bookFromWriting,
+  bookFromWritings,
   inline,
   MOOD_LABEL,
   MOODS,
@@ -252,6 +254,47 @@ describe("a draft as a book", () => {
     const book = bookFromDraft({ nick: "Sam", mode: "say", text: "“Who is there?”" });
     expect(book).toMatchObject({ kicker: "Say", title: "Sam", id: "draft:Sam" });
     expect(book.chapters[0]?.blocks).toEqual([{ kind: "p", text: "“Who is there?”" }]);
+  });
+});
+
+describe("a chapter or a draft as a book", () => {
+  const chapter = {
+    path: "chapters/chapter_1.md",
+    title: "The Lamp Goes Out",
+    text: "# The Lamp Goes Out\n\nDark came early.\n\n> “Who is there?”\n",
+  };
+
+  it("is its title and the world's on the cover, then its text without the title said twice", () => {
+    const book = bookFromWriting({ title: "Ashfall" }, chapter, "chapter");
+    expect(book).toMatchObject({
+      id: "writing:chapters/chapter_1.md",
+      kicker: "Chapter",
+      title: "The Lamp Goes Out",
+      lede: "Ashfall",
+      mood: "dusk",
+    });
+    expect(book.chapters).toHaveLength(1);
+    expect(book.chapters[0]?.blocks).toEqual([
+      { kind: "p", text: "Dark came early." },
+      { kind: "quote", text: "“Who is there?”" },
+    ]);
+  });
+
+  it("is a draft in its own mood, and needs no world", () => {
+    const book = bookFromWriting(undefined, { ...chapter, title: "Draft" }, "draft");
+    expect(book.kicker).toBe("Draft");
+    expect(book.mood).toBe("rain");
+    expect(book.lede).toBeUndefined();
+  });
+
+  it("reads every chapter of a world one after the other, each under its own title", () => {
+    const book = bookFromWritings({ name: "ashfall", title: "Ashfall" }, [
+      chapter,
+      { path: "chapters/chapter_2.md", title: "Morning", text: "Light.\n" },
+    ]);
+    expect(book).toMatchObject({ kicker: "Chapters", title: "Ashfall", id: "chapters:ashfall" });
+    expect(book.chapters.map((c) => c.title)).toEqual(["The Lamp Goes Out", "Morning"]);
+    expect(book.chapters[1]?.blocks).toEqual([{ kind: "p", text: "Light." }]);
   });
 });
 

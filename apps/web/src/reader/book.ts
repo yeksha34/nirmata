@@ -273,6 +273,55 @@ export function bookFromStory(
   };
 }
 
+/** A chapter or draft as the world has it: markdown, with a title taken from its first heading. */
+export interface WritingText {
+  path: string;
+  title: string;
+  text: string;
+}
+
+/** One chapter or draft: a cover with its title, then the text, a page after page. */
+export function bookFromWriting(
+  world: { title: string } | undefined,
+  writing: WritingText,
+  kind: "chapter" | "draft",
+): Book {
+  return {
+    id: `writing:${writing.path}`,
+    kicker: kind === "chapter" ? "Chapter" : "Draft",
+    title: writing.title,
+    ...(world?.title ? { lede: world.title } : {}),
+    tags: [],
+    mood: kind === "chapter" ? "dusk" : "rain",
+    chapters: [
+      {
+        id: "text",
+        title: "",
+        blocks: withoutOwnTitle(parseBlocks(writing.text), writing.title),
+      },
+    ],
+  };
+}
+
+/** A world's chapters read one after the other: the world's cover, then each chapter under its title. */
+export function bookFromWritings(
+  world: { name: string; title: string },
+  writings: readonly WritingText[],
+): Book {
+  return {
+    id: `chapters:${world.name}`,
+    kicker: "Chapters",
+    title: world.title,
+    tags: [],
+    mood: "dusk",
+    chapters: writings.map((w) => ({
+      id: w.path,
+      title: w.title,
+      blocks: withoutOwnTitle(parseBlocks(w.text), w.title),
+    })),
+  };
+}
+
 /** A turn someone is writing on the board. */
 export function bookFromDraft(draft: Pick<Draft, "nick" | "mode" | "text">): Book {
   return {
