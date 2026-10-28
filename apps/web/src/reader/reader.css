@@ -191,6 +191,10 @@ dialog.reader > .reader-foot {
   position: relative;
   z-index: 2;
 }
+/* the toolbar's menus hang down over the book, so the toolbar has to be above it, not beside it */
+dialog.reader > .reader-bar {
+  z-index: 5;
+}
 .atmosphere {
   position: absolute;
   inset: 0;
