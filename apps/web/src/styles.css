@@ -1818,3 +1818,28 @@ label.choice-opt:has(input:focus-visible) {
   grid-column: 2;
   grid-row: 1 / span 2;
 }
+
+/* ---- the whole of a text that is cut short with an ellipsis (clipped-tips.tsx) ---- */
+
+.clip-tip {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.clip-tip small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
