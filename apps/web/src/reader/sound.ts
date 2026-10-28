@@ -2,34 +2,23 @@ import type { Mood } from "./book";
 
 /**
  * The room the book is read in, made of nothing but the Web Audio API: noise through filters for
- * wind, rain and fire, a few slow sine tones for a pad, small bursts for crackle and crickets, and
- * a swish of paper for each page turned. No sound files. It makes no noise until the reader asks
+ * wind, rain, fire and the air of a quiet room, small bursts for crackle and crickets, and a
+ * swish of paper for each page turned. No sound files. It makes no noise until the reader asks
  * for it, and it stops when the reader closes.
+ *
+ * There is nothing here that holds a note. A sustained tone under the weather sounds like a
+ * machine left on, and it was the one thing a listener asked to have taken away.
  */
 
-export type Layer = "wind" | "rain" | "fire" | "pad" | "crickets";
+export type Layer = "wind" | "rain" | "fire" | "crickets" | "room";
 
 const LAYERS: Record<Mood, Layer[]> = {
-  dusk: ["wind", "pad"],
-  ember: ["fire", "pad"],
-  forest: ["wind", "crickets", "pad"],
-  rain: ["rain", "pad"],
-  moon: ["wind", "pad"],
-  ink: ["pad"],
-};
-
-/**
- * The tones of each mood's pad, in hertz: a warm open chord, or a minor one. They sit around
- * middle C and above: a laptop's or a phone's speaker plays almost nothing below 150 Hz, so a
- * chord an octave lower was there and could not be heard.
- */
-const CHORD: Record<Mood, number[]> = {
-  dusk: [392, 493.9, 587.3],
-  ember: [196, 293.7, 392, 493.9],
-  forest: [261.6, 392, 523.3],
-  rain: [220, 329.6, 440],
-  moon: [220, 329.6, 440, 523.3],
-  ink: [261.6, 392],
+  dusk: ["wind"],
+  ember: ["fire"],
+  forest: ["wind", "crickets"],
+  rain: ["rain"],
+  moon: ["wind", "room"],
+  ink: ["room"],
 };
 
 /**
@@ -141,7 +130,7 @@ export function openAmbience(mood: Mood): Ambience | null {
     s.start(ctx.currentTime, Math.random() * 2, seconds + 0.05);
   };
 
-  const build = (layer: Layer, chord: number[], out: AudioNode): Stop => {
+  const build = (layer: Layer, out: AudioNode): Stop => {
     const stops: Stop[] = [];
     switch (layer) {
       case "wind": {
@@ -151,7 +140,7 @@ export function openAmbience(mood: Mood): Ambience | null {
         band.frequency.value = 700;
         band.Q.value = 0.7;
         const level = ctx.createGain();
-        level.gain.value = 1.1;
+        level.gain.value = 1.4;
         s.connect(band).connect(level).connect(out);
         wobble(level.gain, 0.07, 0.35, stops);
         wobble(band.frequency, 0.05, 260, stops);
@@ -218,25 +207,18 @@ export function openAmbience(mood: Mood): Ambience | null {
         stops.push(() => window.clearTimeout(timer));
         break;
       }
-      case "pad": {
+      case "room": {
+        // the air of a quiet room: soft, dark noise that slowly breathes, with no pitch to it
+        const s = source("brown", true);
         const low = ctx.createBiquadFilter();
         low.type = "lowpass";
-        low.frequency.value = 2200;
+        low.frequency.value = 1100;
         const level = ctx.createGain();
-        level.gain.value = 1.0 / chord.length;
-        low.connect(level).connect(out);
-        chord.forEach((hz, i) => {
-          const o = ctx.createOscillator();
-          o.type = i % 2 ? "triangle" : "sine";
-          o.frequency.value = hz;
-          o.detune.value = ((i % 3) - 1) * 7;
-          const own = ctx.createGain();
-          own.gain.value = 0.22;
-          o.connect(own).connect(low);
-          wobble(own.gain, 0.05 + i * 0.013, 0.1, stops);
-          o.start();
-          stops.push(() => o.stop());
-        });
+        level.gain.value = 0.55;
+        s.connect(low).connect(level).connect(out);
+        wobble(level.gain, 0.09, 0.2, stops);
+        s.start();
+        stops.push(() => s.stop());
         break;
       }
     }
@@ -260,7 +242,7 @@ export function openAmbience(mood: Mood): Ambience | null {
     bus.gain.value = 0;
     bus.gain.linearRampToValueAtTime(1, ctx.currentTime + FADE);
     bus.connect(master);
-    current = { bus, stop: LAYERS[mood].map((layer) => build(layer, CHORD[mood], bus)) };
+    current = { bus, stop: LAYERS[mood].map((layer) => build(layer, bus)) };
     if (old) {
       old.bus.gain.cancelScheduledValues(ctx.currentTime);
       old.bus.gain.setValueAtTime(old.bus.gain.value, ctx.currentTime);
