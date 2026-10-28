@@ -311,7 +311,16 @@ describe("the moods", () => {
     expect(layersFor("ember")).toContain("fire");
     expect(layersFor("rain")).toContain("rain");
     expect(layersFor("forest")).toContain("crickets");
-    expect(layersFor("ink")).toEqual(["pad"]);
+    expect(layersFor("ink")).toEqual(["room"]);
+  });
+
+  it("hold no note: every layer is noise or a short burst, never a sustained tone", () => {
+    // a steady tone under the weather was heard as a machine left on, and was taken out
+    const noiseOrBursts = new Set(["wind", "rain", "fire", "crickets", "room"]);
+    for (const mood of MOODS) {
+      for (const layer of layersFor(mood))
+        expect(noiseOrBursts.has(layer), `${mood}: ${layer}`).toBe(true);
+    }
   });
 
   it("make no sound where the browser has no Web Audio", () => {
