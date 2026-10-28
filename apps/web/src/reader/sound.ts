@@ -18,15 +18,26 @@ const LAYERS: Record<Mood, Layer[]> = {
   ink: ["pad"],
 };
 
-/** The tones of each mood's pad, in hertz: a warm open chord, or a minor one. */
+/**
+ * The tones of each mood's pad, in hertz: a warm open chord, or a minor one. They sit around
+ * middle C and above: a laptop's or a phone's speaker plays almost nothing below 150 Hz, so a
+ * chord an octave lower was there and could not be heard.
+ */
 const CHORD: Record<Mood, number[]> = {
-  dusk: [196, 246.9, 293.7],
-  ember: [98, 146.8, 196, 246.9],
-  forest: [130.8, 196, 261.6],
-  rain: [110, 164.8, 220],
-  moon: [110, 164.8, 220, 261.6],
-  ink: [130.8, 196],
+  dusk: [392, 493.9, 587.3],
+  ember: [196, 293.7, 392, 493.9],
+  forest: [261.6, 392, 523.3],
+  rain: [220, 329.6, 440],
+  moon: [220, 329.6, 440, 523.3],
+  ink: [261.6, 392],
 };
+
+/**
+ * How loud everything is before the limiter; the layers below are balanced against each other.
+ * Measured at the output, 0.6 puts the room at about -20 dBFS, which is clearly there without
+ * being music; the first version sat at -30 and was lost under a laptop's fan.
+ */
+const LEVEL = 0.6;
 
 export const layersFor = (mood: Mood): Layer[] => LAYERS[mood];
 
@@ -51,11 +62,26 @@ export function openAmbience(mood: Mood): Ambience | null {
   if (!Context) return null;
   const ctx = new Context();
   void ctx.resume();
+  // a browser may keep sound suspended until the page has been touched; the next touch starts it
+  const wake = () => {
+    if (ctx.state === "suspended") void ctx.resume();
+  };
+  document.addEventListener("pointerdown", wake, { passive: true });
+  document.addEventListener("keydown", wake);
+
+  // everything goes through a limiter, so it can be loud enough to hear without ever clipping
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -14;
+  limiter.knee.value = 12;
+  limiter.ratio.value = 8;
+  limiter.attack.value = 0.005;
+  limiter.release.value = 0.25;
+  limiter.connect(ctx.destination);
 
   const master = ctx.createGain();
   master.gain.value = 0;
-  master.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 2);
-  master.connect(ctx.destination);
+  master.gain.linearRampToValueAtTime(LEVEL, ctx.currentTime + 2);
+  master.connect(limiter);
 
   const noise = (kind: "white" | "brown") => {
     const length = ctx.sampleRate * 3;
@@ -122,13 +148,13 @@ export function openAmbience(mood: Mood): Ambience | null {
         const s = source("brown", true);
         const band = ctx.createBiquadFilter();
         band.type = "bandpass";
-        band.frequency.value = 380;
+        band.frequency.value = 700;
         band.Q.value = 0.7;
         const level = ctx.createGain();
-        level.gain.value = 0.55;
+        level.gain.value = 1.1;
         s.connect(band).connect(level).connect(out);
-        wobble(level.gain, 0.07, 0.3, stops);
-        wobble(band.frequency, 0.05, 160, stops);
+        wobble(level.gain, 0.07, 0.35, stops);
+        wobble(band.frequency, 0.05, 260, stops);
         s.start();
         stops.push(() => s.stop());
         break;
@@ -142,9 +168,9 @@ export function openAmbience(mood: Mood): Ambience | null {
         low.type = "lowpass";
         low.frequency.value = 7500;
         const level = ctx.createGain();
-        level.gain.value = 0.13;
+        level.gain.value = 0.4;
         s.connect(high).connect(low).connect(level).connect(out);
-        wobble(level.gain, 0.11, 0.025, stops);
+        wobble(level.gain, 0.11, 0.07, stops);
         s.start();
         stops.push(() => s.stop());
         break;
@@ -153,17 +179,17 @@ export function openAmbience(mood: Mood): Ambience | null {
         const s = source("brown", true);
         const low = ctx.createBiquadFilter();
         low.type = "lowpass";
-        low.frequency.value = 230;
+        low.frequency.value = 450;
         const level = ctx.createGain();
-        level.gain.value = 0.5;
+        level.gain.value = 1.0;
         s.connect(low).connect(level).connect(out);
-        wobble(level.gain, 0.4, 0.12, stops);
+        wobble(level.gain, 0.4, 0.25, stops);
         s.start();
         stops.push(() => s.stop());
         let timer = 0;
         const crackle = () => {
           const pop = 1800 + Math.random() * 2800;
-          burst(out, pop, pop * 0.6, 1.6, 0.06 + Math.random() * 0.12, 0.03 + Math.random() * 0.07);
+          burst(out, pop, pop * 0.6, 1.6, 0.25 + Math.random() * 0.45, 0.03 + Math.random() * 0.07);
           timer = window.setTimeout(crackle, 50 + Math.random() * 520);
         };
         crackle();
@@ -180,7 +206,7 @@ export function openAmbience(mood: Mood): Ambience | null {
             const at = ctx.currentTime + i * 0.07;
             o.frequency.value = pitch;
             env.gain.setValueAtTime(0, at);
-            env.gain.linearRampToValueAtTime(0.018, at + 0.012);
+            env.gain.linearRampToValueAtTime(0.06, at + 0.012);
             env.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
             o.connect(env).connect(out);
             o.start(at);
@@ -195,9 +221,9 @@ export function openAmbience(mood: Mood): Ambience | null {
       case "pad": {
         const low = ctx.createBiquadFilter();
         low.type = "lowpass";
-        low.frequency.value = 900;
+        low.frequency.value = 2200;
         const level = ctx.createGain();
-        level.gain.value = 0.9 / chord.length;
+        level.gain.value = 1.0 / chord.length;
         low.connect(level).connect(out);
         chord.forEach((hz, i) => {
           const o = ctx.createOscillator();
@@ -205,9 +231,9 @@ export function openAmbience(mood: Mood): Ambience | null {
           o.frequency.value = hz;
           o.detune.value = ((i % 3) - 1) * 7;
           const own = ctx.createGain();
-          own.gain.value = 0.07;
+          own.gain.value = 0.22;
           o.connect(own).connect(low);
-          wobble(own.gain, 0.05 + i * 0.013, 0.035, stops);
+          wobble(own.gain, 0.05 + i * 0.013, 0.1, stops);
           o.start();
           stops.push(() => o.stop());
         });
@@ -255,11 +281,13 @@ export function openAmbience(mood: Mood): Ambience | null {
       if (!closed) play(next);
     },
     flip: () => {
-      if (!closed) burst(master, 1300, 3800, 0.9, 0.2, 0.24);
+      if (!closed) burst(master, 1300, 3800, 0.9, 0.7, 0.24);
     },
     close: () => {
       if (closed) return;
       closed = true;
+      document.removeEventListener("pointerdown", wake);
+      document.removeEventListener("keydown", wake);
       master.gain.cancelScheduledValues(ctx.currentTime);
       master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
       master.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
