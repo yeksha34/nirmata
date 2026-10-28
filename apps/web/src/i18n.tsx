@@ -17,7 +17,7 @@ const WORDS: Record<string, string> = {
   // header and brand
   Nirmata: "निर्माता",
   Worlds: "संसार",
-  Host: "मेज़बान",
+  Host: "यजमान",
   Playing: "खेल रहे हैं",
   Watching: "देख रहे हैं",
   "Leave the table": "पटल छोड़ें",
