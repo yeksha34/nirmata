@@ -10,6 +10,7 @@ import {
   serializeCard,
   type WorldManifest,
 } from "@nirmata/core";
+import { isNoise } from "./watch-core";
 
 /**
  * Brings a story written the older way into a world Nirmata can host: a folder of markdown files
@@ -549,10 +550,12 @@ function cardOf(d: Keyed): Card {
   return { path: d.path, fm, body: d.body ? `${d.body}\n` : "" };
 }
 
-async function* walk(dir: string, rel = ""): AsyncGenerator<string> {
+export async function* walk(dir: string, rel = ""): AsyncGenerator<string> {
   for (const name of (await readdir(dir)).sort()) {
     if ([".git", "__pycache__", "node_modules"].includes(name)) continue;
     const path = posix.join(rel, name);
+    // an editor's scratch file or a sync client's temporary one is not part of the story
+    if (isNoise(name)) continue;
     if ((await stat(join(dir, name))).isDirectory()) yield* walk(join(dir, name), path);
     else yield path;
   }
