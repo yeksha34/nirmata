@@ -13,6 +13,7 @@ import { MODE_LABEL } from "../format";
 import { T } from "../i18n";
 import { type Block, type Book, inline, MOOD_LABEL, MOODS, type Mood } from "./book";
 import { draw, MOOD_WEATHER, seed, step } from "./particles";
+import { QuillCursor } from "./QuillCursor";
 import { type Ambience, openAmbience } from "./sound";
 import {
   clamp,
@@ -530,6 +531,7 @@ export function Reader({ book, onClose }: { book: Book; onClose: () => void }) {
       onKeyDown={onKey}
     >
       <Atmosphere mood={mood} />
+      <QuillCursor />
 
       <header className="reader-bar">
         <button type="button" className="reader-close" onClick={onClose}>

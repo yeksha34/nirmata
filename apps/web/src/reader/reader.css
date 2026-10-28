@@ -795,3 +795,26 @@ dialog.reader > .reader-foot {
     display: none;
   }
 }
+
+/* ---- the quill, and the pages that trail it while the mouse moves (QuillCursor.tsx) ---- */
+
+.quill-cursor {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  /* once the quill has taken over; the system cursor stays on whatever can be clicked */
+  dialog.reader.has-quill {
+    cursor: none;
+  }
+  dialog.reader.has-quill :is(button, summary, input, select, textarea, label, a) {
+    cursor: pointer;
+  }
+  dialog.reader.has-quill :is(button, input):disabled {
+    cursor: not-allowed;
+  }
+}
