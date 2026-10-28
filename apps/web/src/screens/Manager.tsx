@@ -1,9 +1,11 @@
 import { type FormEvent, Fragment, useEffect, useState } from "react";
 import { api } from "../api";
 import { useSave } from "../app-context";
-import { Choice, Field } from "../controls";
-import { words } from "../format";
+import { Choice, Field, Tip } from "../controls";
+import { humanize, words } from "../format";
 import { Both, T } from "../i18n";
+import { type Book, bookFromCard } from "../reader/book";
+import { Reader } from "../reader/Reader";
 import type {
   BrokenCard,
   Card,
@@ -59,12 +61,6 @@ const SYNTAX = `<card id="char.marrow" kind="character" name="Marrow" role="npc"
 
 Anything else, as plain markdown.
 </card>`;
-
-/** "life-outside-the-story" as "Life outside the story", for a part no template names. */
-export const humanize = (id: string) => {
-  const text = id.replace(/-/g, " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
-};
 
 let templatesOnce: Promise<CardTemplate[]> | undefined;
 
@@ -330,6 +326,7 @@ export function CardEditor({
   const [scope, setScope] = useState(card?.fm.scope ?? "both");
   const [severity, setSeverity] = useState(card?.fm.severity ?? "should");
   const [body, setBody] = useState(card?.body ?? "");
+  const [reading, setReading] = useState<Book>();
   const k = kindOf(kind);
 
   // the template's parts first, then any part the card has that the template does not name
@@ -403,229 +400,256 @@ export function CardEditor({
   const isSaved = card && !dirty && !busy;
 
   return (
-    <form className="editor" onSubmit={submit}>
-      <button type="button" className="plain back-to-list" onClick={onBack}>
-        <T>← All cards</T>
-      </button>
-      <header className="editor-head">
-        <hgroup>
-          <p className="eyebrow">
-            <T>{card ? `${k.one} card` : `New ${k.one.toLowerCase()}`}</T>
-          </p>
-          <h2 className="editor-title">{name.trim() || <T>Untitled</T>}</h2>
-        </hgroup>
-        <output className={isSaved ? "saved-flag is-saved" : "saved-flag"}>
-          {isSaved && (
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M5 12.5l4.5 4.5L19 7.5" />
-            </svg>
-          )}
-          <T>{status}</T>
-        </output>
-        {card && (
-          <button
-            type="button"
-            onClick={() => onDialog({ is: "text", path: card.path, file: card.file ?? "" })}
-          >
-            <T>View raw file</T>
-          </button>
-        )}
-      </header>
-
-      {options.length > 1 && (
-        <>
-          <Choice
-            legend={card ? "Parts from" : "Start from"}
-            value={templateId}
-            options={options.map((t) => ({ value: t.id, label: t.label }))}
-            onChange={pickTemplate}
-          />
-          <p className="hint">
-            {template && <T>{template.description}</T>}{" "}
-            {card && <T>Parts you have filled in are kept.</T>}
-          </p>
-        </>
-      )}
-
-      <label htmlFor="cf-name">
-        <T>Name</T>
-      </label>
-      <input
-        id="cf-name"
-        value={name}
-        maxLength={120}
-        onChange={(e) => setName(e.target.value)}
-        required
-      />
-      <label htmlFor="cf-keywords">
-        <T>Keywords</T>{" "}
-        <small className="faint">
-          <T>· what brings this card into a scene</T>
-        </small>
-      </label>
-      <Field placeholder="fog, mist, haze" empty={!keywords}>
-        <input id="cf-keywords" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
-      </Field>
-
-      <label htmlFor="cf-summary">
-        <T>Summary</T>
-      </label>
-      <input
-        id="cf-summary"
-        value={summary}
-        maxLength={300}
-        onChange={(e) => setSummary(e.target.value)}
-      />
-      <p className="hint">
-        <T>Shown to the storyteller even when the whole card is not brought up.</T>
-      </p>
-
-      {kind === "character" && (
-        <Choice
-          legend="Part in the story"
-          value={role}
-          options={[
-            { value: "", label: "No particular part" },
-            { value: "npc", label: "Someone in the story" },
-            { value: "companion", label: "Companion" },
-            { value: "antagonist", label: "Antagonist" },
-            { value: "player-template", label: "Starting character" },
-            ...(role && !["npc", "companion", "antagonist", "player-template"].includes(role)
-              ? [{ value: role, label: role, raw: true }]
-              : []),
-          ]}
-          onChange={setRole}
-        />
-      )}
-
-      {kind === "rule" && (
-        <>
-          <Choice
-            legend="How strict"
-            value={severity}
-            options={[
-              { value: "should", label: "Should: dropped first if space runs short" },
-              { value: "must", label: "Must: never dropped" },
-            ]}
-            onChange={setSeverity}
-          />
-          <Choice
-            legend="Applies to"
-            value={scope}
-            options={[
-              { value: "both", label: "Stories and chapters" },
-              { value: "story", label: "Stories only" },
-              { value: "chapter", label: "Chapters only" },
-            ]}
-            onChange={setScope}
-          />
-        </>
-      )}
-
-      <label className="check">
-        <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} />
-        <T>Always in the storyteller's view</T>
-        <small className="faint">
-          <T>· use sparingly: it costs space in every turn</T>
-        </small>
-      </label>
-
-      {parts.length > 0 && (
-        <fieldset className="parts">
-          <legend>
-            <T>The details</T>
-          </legend>
-          {parts.map((p) => (
-            <Fragment key={p.id}>
-              <label htmlFor={`cf-part-${p.id}`}>
-                <T>{p.label}</T>
-              </label>
-              <textarea
-                id={`cf-part-${p.id}`}
-                rows={2}
-                value={values[p.id] ?? ""}
-                onChange={(e) => setValues({ ...values, [p.id]: e.target.value })}
-              />
-              {p.hint && (
-                <p className="hint">
-                  <T>{p.hint}</T>
-                </p>
-              )}
-            </Fragment>
-          ))}
-        </fieldset>
-      )}
-
-      <label htmlFor="cf-body">
-        <T>{parts.length > 0 ? "More notes" : "Body"}</T>{" "}
-        <small className="faint">
-          <T>· markdown</T>
-        </small>
-      </label>
-      <textarea
-        id="cf-body"
-        rows={parts.length > 0 ? 4 : 10}
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-      />
-      <p className="hint">
-        <T with={{ example: <code>[The Fog](../lore/the_fog.md)</code> }}>
-          {"Link to other cards with relative paths, as in {example}"}
-        </T>
-        .
-      </p>
-
-      {card && (
-        <p className="linked">
-          {links.length > 0 ? (
-            <T
-              with={{
-                names: links.map((c, i) => (
-                  <Fragment key={c.path}>
-                    {i > 0 && ", "}
-                    <strong>{c.fm.name}</strong>
-                  </Fragment>
-                )),
-              }}
-            >
-              {"Linked from {names}."}
-            </T>
-          ) : (
-            <T>No other card links to this one yet.</T>
-          )}
-        </p>
-      )}
-
-      {problem && (
-        <p className="error" role="alert">
-          <T>{problem}</T>
-        </p>
-      )}
-      <footer className="editor-actions">
-        <button type="submit" className="primary" disabled={busy || !name.trim() || !dirty}>
-          <T>Save</T>
+    <>
+      <form className="editor" onSubmit={submit}>
+        <button type="button" className="plain back-to-list" onClick={onBack}>
+          <T>← All cards</T>
         </button>
-        {card && (
-          <button
-            type="button"
-            className="danger"
-            onClick={() => onDialog({ is: "remove", path: card.path, name: card.fm.name })}
-          >
-            <T>Remove</T>
-          </button>
+        <header className="editor-head">
+          <hgroup>
+            <p className="eyebrow">
+              <T>{card ? `${k.one} card` : `New ${k.one.toLowerCase()}`}</T>
+            </p>
+            <h2 className="editor-title">{name.trim() || <T>Untitled</T>}</h2>
+          </hgroup>
+          <output className={isSaved ? "saved-flag is-saved" : "saved-flag"}>
+            {isSaved && (
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+            )}
+            <T>{status}</T>
+          </output>
+          <Tip text="Read it as a book">
+            <button
+              type="button"
+              onClick={() =>
+                setReading(
+                  bookFromCard({
+                    ...(card ? { path: card.path } : {}),
+                    fm: {
+                      kind,
+                      name,
+                      summary,
+                      keywords: words(keywords),
+                      fields: trimmed(
+                        Object.fromEntries(parts.map((p) => [p.id, values[p.id] ?? ""])),
+                      ),
+                    },
+                    body,
+                  }),
+                )
+              }
+            >
+              <T>Read</T>
+            </button>
+          </Tip>
+          {card && (
+            <button
+              type="button"
+              onClick={() => onDialog({ is: "text", path: card.path, file: card.file ?? "" })}
+            >
+              <T>View raw file</T>
+            </button>
+          )}
+        </header>
+
+        {options.length > 1 && (
+          <>
+            <Choice
+              legend={card ? "Parts from" : "Start from"}
+              value={templateId}
+              options={options.map((t) => ({ value: t.id, label: t.label }))}
+              onChange={pickTemplate}
+            />
+            <p className="hint">
+              {template && <T>{template.description}</T>}{" "}
+              {card && <T>Parts you have filled in are kept.</T>}
+            </p>
+          </>
         )}
-      </footer>
-    </form>
+
+        <label htmlFor="cf-name">
+          <T>Name</T>
+        </label>
+        <input
+          id="cf-name"
+          value={name}
+          maxLength={120}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        <label htmlFor="cf-keywords">
+          <T>Keywords</T>{" "}
+          <small className="faint">
+            <T>· what brings this card into a scene</T>
+          </small>
+        </label>
+        <Field placeholder="fog, mist, haze" empty={!keywords}>
+          <input id="cf-keywords" value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+        </Field>
+
+        <label htmlFor="cf-summary">
+          <T>Summary</T>
+        </label>
+        <input
+          id="cf-summary"
+          value={summary}
+          maxLength={300}
+          onChange={(e) => setSummary(e.target.value)}
+        />
+        <p className="hint">
+          <T>Shown to the storyteller even when the whole card is not brought up.</T>
+        </p>
+
+        {kind === "character" && (
+          <Choice
+            legend="Part in the story"
+            value={role}
+            options={[
+              { value: "", label: "No particular part" },
+              { value: "npc", label: "Someone in the story" },
+              { value: "companion", label: "Companion" },
+              { value: "antagonist", label: "Antagonist" },
+              { value: "player-template", label: "Starting character" },
+              ...(role && !["npc", "companion", "antagonist", "player-template"].includes(role)
+                ? [{ value: role, label: role, raw: true }]
+                : []),
+            ]}
+            onChange={setRole}
+          />
+        )}
+
+        {kind === "rule" && (
+          <>
+            <Choice
+              legend="How strict"
+              value={severity}
+              options={[
+                { value: "should", label: "Should: dropped first if space runs short" },
+                { value: "must", label: "Must: never dropped" },
+              ]}
+              onChange={setSeverity}
+            />
+            <Choice
+              legend="Applies to"
+              value={scope}
+              options={[
+                { value: "both", label: "Stories and chapters" },
+                { value: "story", label: "Stories only" },
+                { value: "chapter", label: "Chapters only" },
+              ]}
+              onChange={setScope}
+            />
+          </>
+        )}
+
+        <label className="check">
+          <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} />
+          <T>Always in the storyteller's view</T>
+          <small className="faint">
+            <T>· use sparingly: it costs space in every turn</T>
+          </small>
+        </label>
+
+        {parts.length > 0 && (
+          <fieldset className="parts">
+            <legend>
+              <T>The details</T>
+            </legend>
+            {parts.map((p) => (
+              <Fragment key={p.id}>
+                <label htmlFor={`cf-part-${p.id}`}>
+                  <T>{p.label}</T>
+                </label>
+                <textarea
+                  id={`cf-part-${p.id}`}
+                  rows={2}
+                  value={values[p.id] ?? ""}
+                  onChange={(e) => setValues({ ...values, [p.id]: e.target.value })}
+                />
+                {p.hint && (
+                  <p className="hint">
+                    <T>{p.hint}</T>
+                  </p>
+                )}
+              </Fragment>
+            ))}
+          </fieldset>
+        )}
+
+        <label htmlFor="cf-body">
+          <T>{parts.length > 0 ? "More notes" : "Body"}</T>{" "}
+          <small className="faint">
+            <T>· markdown</T>
+          </small>
+        </label>
+        <textarea
+          id="cf-body"
+          rows={parts.length > 0 ? 4 : 10}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+        />
+        <p className="hint">
+          <T with={{ example: <code>[The Fog](../lore/the_fog.md)</code> }}>
+            {"Link to other cards with relative paths, as in {example}"}
+          </T>
+          .
+        </p>
+
+        {card && (
+          <p className="linked">
+            {links.length > 0 ? (
+              <T
+                with={{
+                  names: links.map((c, i) => (
+                    <Fragment key={c.path}>
+                      {i > 0 && ", "}
+                      <strong>{c.fm.name}</strong>
+                    </Fragment>
+                  )),
+                }}
+              >
+                {"Linked from {names}."}
+              </T>
+            ) : (
+              <T>No other card links to this one yet.</T>
+            )}
+          </p>
+        )}
+
+        {problem && (
+          <p className="error" role="alert">
+            <T>{problem}</T>
+          </p>
+        )}
+        <footer className="editor-actions">
+          <button type="submit" className="primary" disabled={busy || !name.trim() || !dirty}>
+            <T>Save</T>
+          </button>
+          {card && (
+            <button
+              type="button"
+              className="danger"
+              onClick={() => onDialog({ is: "remove", path: card.path, name: card.fm.name })}
+            >
+              <T>Remove</T>
+            </button>
+          )}
+        </footer>
+      </form>
+      {reading && <Reader book={reading} onClose={() => setReading(undefined)} />}
+    </>
   );
 }
 

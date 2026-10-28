@@ -41,7 +41,7 @@ const codeish = (text) =>
   /^[a-z][a-zA-Z0-9_-]*$/.test(text) ||
   /^[./#\[\{<]/.test(text) ||
   /^[\w./-]+\.\w+$/.test(text) ||
-  /^(ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Enter|Escape|POST|GET|PUT|DELETE|PATCH|NFKD|ApiError|Ctrl K)$/.test(text) ||
+  /^(ArrowUp|ArrowDown|ArrowLeft|ArrowRight|PageUp|PageDown|Home|Enter|Escape|POST|GET|PUT|DELETE|PATCH|NFKD|ApiError|Ctrl K)$/.test(text) ||
   /^[a-z][\w-]*( [a-z][\w-]*)*$/.test(text.replace(/\$\{[^}]*\}/g, "x"));
 
 /** Every English literal that reaches a screen, as `{ file, line, kind, text }`. */

@@ -1315,6 +1315,14 @@ button.dashed::before {
 .ws-title h1 {
   font-size: 1.75rem;
 }
+.title-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 .ws-title p {
   margin: 2px 0 0;
   font-size: 0.95rem;
