@@ -278,4 +278,20 @@ export const HI_SERVER: Record<string, string> = {
     "एक चतुर ताला खटकता है और {target} की नाम-पट्टिका घूमकर {newName} पढ़वाने लगती है।",
   "A hidden panel flips on {target}'s seat; the name on it now says {newName}.":
     "{target} के आसन पर एक छिपी पट्टी पलट जाती है; उस पर लिखा नाम अब {newName} कहता है।",
+
+  // visual novel adaptations
+  'Invalid visual novel slug "{slug}".': 'दृश्य-उपन्यास का अमान्य स्लग "{slug}"।',
+  'There is no visual novel adaptation "{slug}".': 'कोई दृश्य-उपन्यास रूपांतरण "{slug}" नहीं है।',
+  'Visual novel adaptation "{slug}" already exists.': 'दृश्य-उपन्यास रूपांतरण "{slug}" पहले से मौजूद है।',
+  'Scene "{scene}" had no dialogue lines; generated placeholder slide.':
+    'दृश्य "{scene}" में कोई संवाद पंक्तियाँ नहीं थीं; प्लेसहोल्डर स्लाइड बनाई गई।',
+  "Menu defined with no choice options": "बिना किसी विकल्प के मेनू परिभाषित किया गया",
+  'Slide "{slide}" jumps to non-existent scene "{scene}".':
+    'स्लाइड "{slide}" गैर-मौजूद दृश्य "{scene}" पर जाती है।',
+  'Choice "{choice}" in slide "{slide}" branches to non-existent scene "{scene}".':
+    'स्लाइड "{slide}" में विकल्प "{choice}" गैर-मौजूद दृश्य "{scene}" पर शाखा बनाता है।',
+  'Variable "{variable}" modified in choice "{choice}" is not declared in manifest.':
+    'विकल्प "{choice}" में बदला गया चर "{variable}" मैनिफ़ेस्ट में घोषित नहीं है।',
+  'Scene "{scene}" is never targeted by any menu choice or jump.':
+    'दृश्य "{scene}" को कभी किसी मेनू विकल्प या जंप द्वारा लक्षित नहीं किया गया है।',
 };

@@ -25,6 +25,11 @@ const ALLOWED: Array<{ file: string; text: string; why: string }> = [
     text: "My world",
     why: "the starting title in a field that is then edited",
   },
+  {
+    file: "vn/VnCanvas.tsx",
+    text: "VnStageScene",
+    why: "internal Phaser scene key, never shown on screen",
+  },
 ];
 
 describe("static text in the screens", () => {
