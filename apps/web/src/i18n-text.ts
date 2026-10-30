@@ -1,4 +1,4 @@
-﻿// Hindi for the sentences, hints, tooltips and statuses of the screens. Keyed by the exact English
+// Hindi for the sentences, hints, tooltips and statuses of the screens. Keyed by the exact English
 // text the screen passes to <T> or bilingual(); {name} marks a place where the screen puts a value
 // (a nickname, a count, a file name). Written for this app and not yet read by a native speaker.
 export const HI_TEXT: Record<string, string> = {
@@ -242,4 +242,13 @@ export const HI_TEXT: Record<string, string> = {
   "The end": "समाप्त",
   "Page {n} of {total}": "पृष्ठ {n} / {total}",
   "Turn the page with the arrow keys, or swipe": "पृष्ठ पलटने के लिए तीर-कुंजियाँ दबाएँ, या उँगली फिराएँ",
+
+  // visual novels
+  "Adapt to VN": "दृश्य-उपन्यास बनाएँ",
+  "Adapt this prose into an interactive visual novel":
+    "इस गद्य को एक संवादात्मक दृश्य-उपन्यास में रूपांतरित करें",
+  "Recompile VN": "VN फिर संकलित करें",
+  "Compile visual novel slides": "दृश्य-उपन्यास की स्लाइडें संकलित करें",
+  "VN: {count} slides": "दृश्य-उपन्यास: {count} स्लाइडें",
+  "Visual novel adaptation with slides ready": "दृश्य-उपन्यास रूपांतरण स्लाइडों सहित तैयार है",
 };

@@ -15,6 +15,9 @@ import {
   type Card,
   CardFrontmatter,
   checkCards,
+  compileVn,
+  createStarterAdaptationMd,
+  createStarterManifest,
   formatIssues,
   type ProjectedFile,
   parseCard,
@@ -26,6 +29,13 @@ import {
   serializeCard,
   serializeEvent,
   turnsOf,
+  type VnDiagnostic,
+  type VnManifest,
+  VnManifestSchema,
+  type VnMode,
+  type VnSlideDeck,
+  type VnSummary,
+  type VnTier,
   type WorldManifest,
 } from "@nirmata/core";
 import { type EventSink, HostError, type SourceBackend } from "@nirmata/host";
@@ -62,6 +72,19 @@ export function inside(root: string, rel: string): string {
     throw new HostError("invalid_card", "That path is outside the world's folder.");
   }
   return full;
+}
+
+/** Validates and normalizes an adaptation slug (e.g. "ch01-first-contact"). */
+export function sanitizeSlug(raw: string): string {
+  const s = raw
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!s || s === "." || s === "..") {
+    throw new HostError("invalid_card", `Invalid visual novel slug "${raw}".`);
+  }
+  return s;
 }
 
 async function markdownFiles(dir: string): Promise<string[]> {
@@ -234,6 +257,147 @@ export class WorldFiles implements SourceBackend {
   async remove(cardId: string): Promise<void> {
     const found = (await this.cards()).find((c) => c.fm.id === cardId);
     if (found) await rm(this.cardFile(found.path), { force: true });
+  }
+
+  get vnsDir(): string {
+    return join(this.root, "vns");
+  }
+
+  async vns(): Promise<VnSummary[]> {
+    let slugs: string[];
+    try {
+      slugs = await readdir(this.vnsDir);
+    } catch (e) {
+      if (isMissing(e)) return [];
+      throw e;
+    }
+    const summaries: VnSummary[] = [];
+    for (const slug of slugs.sort()) {
+      const manifestPath = join(this.vnsDir, slug, "manifest.json");
+      const text = await readIfThere(manifestPath);
+      if (!text) continue;
+      try {
+        const raw = JSON.parse(text);
+        const parsed = VnManifestSchema.safeParse(raw);
+        if (parsed.success) {
+          const m = parsed.data;
+          let slideCount: number | undefined;
+          const slidesText = await readIfThere(join(this.vnsDir, slug, "slides.json"));
+          if (slidesText) {
+            try {
+              const slidesJson = JSON.parse(slidesText);
+              if (Array.isArray(slidesJson.slides)) {
+                slideCount = slidesJson.slides.length;
+              }
+            } catch {}
+          }
+          summaries.push({
+            slug: m.slug,
+            title: m.title,
+            source: m.source,
+            mode: m.mode,
+            mc: m.mc,
+            tier: m.tier,
+            slideCount,
+            routes: m.routes,
+            updatedAt: m.updatedAt,
+          });
+        }
+      } catch {}
+    }
+    return summaries;
+  }
+
+  async vn(
+    slug: string,
+  ): Promise<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck }> {
+    const safeSlug = sanitizeSlug(slug);
+    const dir = inside(this.root, `vns/${safeSlug}`);
+    const manifestText = await readIfThere(join(dir, "manifest.json"));
+    if (!manifestText) {
+      throw new HostError("nothing_to_do", `There is no visual novel adaptation "${slug}".`);
+    }
+    const manifest = VnManifestSchema.parse(JSON.parse(manifestText));
+    const adaptationMd = (await readIfThere(join(dir, "adaptation.md"))) || "";
+    let slides: VnSlideDeck | undefined;
+    const slidesText = await readIfThere(join(dir, "slides.json"));
+    if (slidesText) {
+      try {
+        slides = JSON.parse(slidesText);
+      } catch {}
+    }
+    return { manifest, adaptationMd, slides };
+  }
+
+  async saveVn(
+    slug: string,
+    data: { manifest?: VnManifest; adaptationMd?: string; slides?: VnSlideDeck },
+  ): Promise<void> {
+    const safeSlug = sanitizeSlug(slug);
+    const dir = inside(this.root, `vns/${safeSlug}`);
+    await mkdir(dir, { recursive: true });
+    if (data.manifest) {
+      await writeAtomic(join(dir, "manifest.json"), JSON.stringify(data.manifest, null, 2));
+    }
+    if (data.adaptationMd !== undefined) {
+      await writeAtomic(join(dir, "adaptation.md"), data.adaptationMd);
+    }
+    if (data.slides) {
+      await writeAtomic(join(dir, "slides.json"), JSON.stringify(data.slides, null, 2));
+    }
+  }
+
+  async scaffoldVn(options: {
+    slug: string;
+    title: string;
+    source: string;
+    mode?: VnMode;
+    mc?: string;
+    tier?: VnTier;
+  }): Promise<VnSummary> {
+    const safeSlug = sanitizeSlug(options.slug);
+    const dir = inside(this.root, `vns/${safeSlug}`);
+    if (await readIfThere(join(dir, "manifest.json"))) {
+      throw new HostError("bad_state", `Visual novel adaptation "${safeSlug}" already exists.`);
+    }
+    const manifest = createStarterManifest({ ...options, slug: safeSlug });
+    const adaptationMd = createStarterAdaptationMd({ ...options, slug: safeSlug });
+    const { deck } = compileVn(adaptationMd, { manifest });
+
+    await mkdir(join(dir, "assets"), { recursive: true });
+    await writeAtomic(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
+    await writeAtomic(join(dir, "adaptation.md"), adaptationMd);
+    await writeAtomic(join(dir, "slides.json"), JSON.stringify(deck, null, 2));
+
+    return {
+      slug: manifest.slug,
+      title: manifest.title,
+      source: manifest.source,
+      mode: manifest.mode,
+      mc: manifest.mc,
+      tier: manifest.tier,
+      slideCount: deck.slides.length,
+      routes: manifest.routes,
+      updatedAt: manifest.updatedAt,
+    };
+  }
+
+  async compileVn(slug: string): Promise<{ slides: VnSlideDeck; diagnostics: VnDiagnostic[] }> {
+    const safeSlug = sanitizeSlug(slug);
+    const dir = inside(this.root, `vns/${safeSlug}`);
+    const manifestText = await readIfThere(join(dir, "manifest.json"));
+    if (!manifestText) {
+      throw new HostError("nothing_to_do", `There is no visual novel adaptation "${slug}".`);
+    }
+    const manifest = VnManifestSchema.parse(JSON.parse(manifestText));
+    const adaptationMd = (await readIfThere(join(dir, "adaptation.md"))) || "";
+    const result = compileVn(adaptationMd, { manifest });
+
+    manifest.updatedAt = new Date().toISOString();
+    await writeAtomic(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
+    await writeAtomic(join(dir, "slides.json"), JSON.stringify(result.deck, null, 2));
+
+    return { slides: result.deck, diagnostics: result.diagnostics };
   }
 
   /** The folder that holds this world and its siblings. */
@@ -589,6 +753,8 @@ export interface WorldDetail {
   chapters: WritingSummary[];
   /** Work in progress, the most recently changed first. */
   drafts: WritingSummary[];
+  /** Visual novel adaptations in the world. */
+  vns: VnSummary[];
 }
 
 /** What the manager's form sends for a card; the id, path and any extra fields stay as they were. */
@@ -701,9 +867,18 @@ export class Library {
     const found = await this.summary(name);
     if (!found) throw new HostError("nothing_to_do", `There is no world "${name}".`);
     if (found.problem)
-      return { world: found, stories: [], cards: [], broken: [], chapters: [], drafts: [] };
+      return {
+        world: found,
+        stories: [],
+        cards: [],
+        broken: [],
+        chapters: [],
+        drafts: [],
+        vns: [],
+      };
     const files = await this.open(name).cardFiles();
     const writings = await this.open(name).writings(new Set(files.map((f) => f.path)));
+    const vns = await this.open(name).vns();
     return {
       world: found,
       manifest: await this.open(name).world(),
@@ -713,7 +888,53 @@ export class Library {
         f.card ? [] : [{ path: f.path, file: f.text, problems: f.problems ?? [] }],
       ),
       ...writings,
+      vns,
     };
+  }
+
+  /** Visual novel adaptations in a world. */
+  async vns(name: string): Promise<VnSummary[]> {
+    return this.open(name).vns();
+  }
+
+  /** One visual novel adaptation in full. */
+  async vn(
+    name: string,
+    slug: string,
+  ): Promise<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck }> {
+    return this.open(name).vn(slug);
+  }
+
+  /** Save manifest, adaptation markdown, or slides for a visual novel adaptation. */
+  async saveVn(
+    name: string,
+    slug: string,
+    data: { manifest?: VnManifest; adaptationMd?: string; slides?: VnSlideDeck },
+  ): Promise<void> {
+    return this.open(name).saveVn(slug, data);
+  }
+
+  /** Scaffold a new visual novel adaptation from a chapter or draft. */
+  async scaffoldVn(
+    name: string,
+    options: {
+      slug: string;
+      title: string;
+      source: string;
+      mode?: VnMode;
+      mc?: string;
+      tier?: VnTier;
+    },
+  ): Promise<VnSummary> {
+    return this.open(name).scaffoldVn(options);
+  }
+
+  /** Compile a visual novel's adaptation.md into slides.json and save it. */
+  async compileVn(
+    name: string,
+    slug: string,
+  ): Promise<{ slides: VnSlideDeck; diagnostics: VnDiagnostic[] }> {
+    return this.open(name).compileVn(slug);
   }
 
   /** One chapter or draft of a world, in full, for reading. */
