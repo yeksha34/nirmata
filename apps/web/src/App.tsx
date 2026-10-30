@@ -13,6 +13,7 @@ import { Waiting } from "./screens/Waiting";
 import { Worlds } from "./screens/Worlds";
 import { initialState, reducer, screenFor } from "./store";
 import { StoryWindow } from "./story-window";
+import { ThemeToggle } from "./theme-toggle";
 import type { TableInfo } from "./types";
 import { Toasts } from "./ui";
 
@@ -126,6 +127,7 @@ export function App() {
           )}
           <Toasts />
           <ClippedTips />
+          <ThemeToggle />
         </AskProvider>
       </NavProvider>
     </AppProvider>

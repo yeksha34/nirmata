@@ -19,28 +19,33 @@
   --radius-lg: 14px;
   --story-font: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --ui-font: "Hanken Grotesk Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color-scheme: light dark;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #17130e;
-    --surface: #211b14;
-    --ink: #efe6d6;
-    --muted: #a99b87;
-    --line: #3a3126;
-    --accent: #e08a2e;
-    --accent-ink: #1b1209;
-    --accent-soft: #3a2a14;
-    --accent-deep: #f0c48a;
-    --line-strong: #4f4434;
-    --ink-soft: #d8cbb6;
-    --sunk: #1d1710;
-    --ok: #6cc28a;
-    --bad: #ff8a80;
-    --warn-bg: #3b3115;
-    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
-  }
+/*
+ * The design (the "Nirmata" canvas) is the light palette above, and that is what everyone sees.
+ * Dark is the reader's own choice, made with the toggle in the bottom right corner and kept in
+ * this browser; it is never taken from the system, so a computer set to dark does not turn the
+ * app brown. theme.test.ts keeps this block to the same names as the light one.
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #17130e;
+  --surface: #211b14;
+  --ink: #efe6d6;
+  --muted: #a99b87;
+  --line: #3a3126;
+  --accent: #e08a2e;
+  --accent-ink: #1b1209;
+  --accent-soft: #3a2a14;
+  --accent-deep: #f0c48a;
+  --line-strong: #4f4434;
+  --ink-soft: #d8cbb6;
+  --sunk: #1d1710;
+  --ok: #6cc28a;
+  --bad: #ff8a80;
+  --warn-bg: #3b3115;
+  --shadow: 0 1px 2px rgb(0 0 0 / 40%);
 }
 
 * {
@@ -880,13 +885,14 @@ main {
 }
 .win-chip {
   position: fixed;
-  right: 16px;
+  /* beside the theme toggle, which has the corner */
+  right: 72px;
   bottom: 16px;
   z-index: 8;
   display: flex;
   gap: 8px;
   align-items: center;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw - 88px);
   padding: 0.5em 1em;
   border-radius: 999px;
   background: var(--surface);
@@ -1842,4 +1848,35 @@ label.choice-opt:has(input:focus-visible) {
   margin-top: 2px;
   font-size: 0.8rem;
   opacity: 0.75;
+}
+
+/* ---- the dark mode toggle, bottom right (theme-toggle.tsx) ---- */
+
+.theme-corner {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 6;
+  margin: 0;
+}
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-color: var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+}
+.theme-toggle:hover:not(:disabled) {
+  color: var(--accent-deep);
+}
+/* the tooltip hangs from the right edge, so it stays on the screen in the corner */
+.theme-corner .tip-bubble {
+  right: 0;
+  left: auto;
+  transform: none;
 }
