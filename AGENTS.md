@@ -7,6 +7,7 @@ Nirmata: build worlds, then host stories in them. Start at [docs/README.md](docs
 - Before changing behaviour read [docs/lifecycle.md](docs/lifecycle.md); after changing it, follow `track-feature`.
 - Record bugs in [docs/bugs.md](docs/bugs.md) (`log-bug`) and choices in [docs/decisions/](docs/decisions/) (`record-decision`).
 - Never commit secrets, and never copy private story content into this repo ([ADR-0005](docs/decisions/0005-scaffold-content-neutral.md)).
+- Do only what was asked. Never inspect, query git, or explore directories outside this workspace (e.g. external repos) unless explicitly told to do so. Do not invent side tasks or preemptive investigations that waste tokens.
 - Check a world: `node .agents/skills/world-lint/driver.mjs check`.
 
 | Skill | Use for |

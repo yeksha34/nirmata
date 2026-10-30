@@ -30,3 +30,4 @@ worlds/*/stories/*
 !worlds/*/stories/.gitkeep
 
 .claude/worktrees/
+worlds/
