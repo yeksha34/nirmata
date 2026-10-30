@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| State | Building |
+| State | Review |
 | Priority | Should |
 | Owner | unassigned |
-| Branch | `feat/F-59-adaptation-pipeline` |
+| Branch | `feat/F-59-vn-player` |
 | Target tag | v0.3.0 |
 
 ## Value
@@ -16,13 +16,13 @@ Authors can adapt their written chapters and drafts into interactive visual nove
 - [x] The adaptation output is saved to `worlds/<name>/vns/<slug>/` containing `manifest.json` and `adaptation.md` following the `story-to-vn-adaptation` specification.
 - [x] A compiler parses the neutral script notation in `adaptation.md` into a typed, deterministic slide deck in `slides.json`.
 - [x] The slide deck validates scene jumps, menu choices, and route variable operations.
-- [ ] A Phaser.js presentation screen displays the visual novel:
+- [x] A Phaser.js presentation screen displays the visual novel:
   - Background rendering with transition support.
   - Character sprite slots (left, center, right) and expression swapping.
-  - Procedural placeholder fallbacks for backgrounds and sprites when image assets do not exist.
+  - Procedural placeholder fallbacks for backgrounds and sprites when image assets do not exist (warm temple atmosphere gradients & Classical Hindu Temple Sculpture silhouettes).
   - Dialogue box with typewriter text effect, speaker nameplate, and distinct formatting for inner monologue `( MC )`.
   - Interactive choice menus that branch to target scenes and update variables.
-- [ ] Game loop hooks are in place for future capabilities: dialogue backlog, save/load state, auto-play, skip, and audio playback.
+- [x] Game loop hooks are in place for future capabilities: dialogue backlog, save/load state, auto-play, skip, and audio playback.
 - [x] The world's Writings view (`Writings.tsx`) shows an "Adapt to VN" or "Play VN" action next to each chapter and draft.
 
 ## Non-goals
@@ -44,10 +44,14 @@ Authors can adapt their written chapters and drafts into interactive visual nove
 |---|---|---|
 | 2026-10-30 | `npx vitest run packages/core/test/vn.test.ts` | 15/15 tests pass (parser, compiler, stage states, menus, validator) |
 | 2026-10-30 | `npx vitest run apps/server/test/vn.test.ts` | 3/3 tests pass (scaffold, disk compile, REST API) |
+| 2026-10-30 | `npx vitest run apps/web/test/vn-player.test.ts` | 4/4 tests pass (var mutations, menu choice jump mapping) |
+| 2026-10-30 | `npx vitest run apps/web` | 11/11 test files pass, 101/101 tests pass |
 | 2026-10-30 | `npm run typecheck` & `npm run lint` | 0 errors, 0 warnings across all packages |
+| 2026-10-30 | `node .agents/skills/world-lint/driver.mjs check` | 0 broken links |
 
 ## History
 | Date | Change |
 |---|---|
+| 2026-10-30 | Implemented Phaser.js visual novel player in `apps/web`: 2D canvas stage with procedural atmosphere backgrounds and temple sculpture silhouettes, typewriter dialogue, branching choice menus, backlog drawer, variables drawer, and Play VN button in Writings. |
 | 2026-10-30 | Implemented VN adaptation pipeline: parser, compiler, slide deck validator, server filesystem & REST endpoints, and Writings UI actions. |
 | 2026-10-30 | Specified feature and documented pipeline states, output scaffolding, and presentation engine ([ADR-0019](../../docs/decisions/0019-vn-adaptation-pipeline-and-player.md)). |

@@ -5,7 +5,8 @@ import { Tip } from "../controls";
 import { T } from "../i18n";
 import { type Book, bookFromWriting, bookFromWritings } from "../reader/book";
 import { Reader } from "../reader/Reader";
-import type { VnSummary, WritingSummary } from "../types";
+import type { VnManifest, VnSlideDeck, VnSummary, WritingSummary } from "../types";
+import { VnPlayer } from "../vn/VnPlayer";
 import { Ago } from "./world-parts";
 
 /** A size in kilobytes, to the nearest one (a short file is "1"). */
@@ -33,6 +34,10 @@ export function Writings({
 }) {
   const { act, busy } = useAct();
   const [reading, setReading] = useState<Book>();
+  const [playingVn, setPlayingVn] = useState<{
+    manifest: VnManifest;
+    slides: VnSlideDeck;
+  } | null>(null);
 
   const readOne = async (item: WritingSummary) => {
     const writing = await act(() => api.writing(world.name, item.path));
@@ -42,6 +47,13 @@ export function Writings({
   const readAll = async () => {
     const all = await act(() => Promise.all(items.map((i) => api.writing(world.name, i.path))));
     if (all) setReading(bookFromWritings(world, all));
+  };
+
+  const playOne = async (slug: string) => {
+    const res = await act(() => api.vn(world.name, slug));
+    if (res?.slides) {
+      setPlayingVn({ manifest: res.manifest, slides: res.slides });
+    }
   };
 
   const adaptOne = async (item: WritingSummary) => {
@@ -88,11 +100,23 @@ export function Writings({
                     <Ago iso={item.updatedAt} /> · <T with={{ n: kb(item.size) }}>{"{n} KB"}</T>
                   </small>
                   {vn && (
-                    <Tip text="Visual novel adaptation with slides ready">
-                      <span className="tag vn-badge">
-                        <T with={{ count: vn.slideCount ?? 0 }}>{"VN: {count} slides"}</T>
-                      </span>
-                    </Tip>
+                    <>
+                      <Tip text="Visual novel adaptation with slides ready">
+                        <data value={vn.slideCount ?? 0} className="tag vn-badge">
+                          <T with={{ count: vn.slideCount ?? 0 }}>{"VN: {count} slides"}</T>
+                        </data>
+                      </Tip>
+                      <Tip text="Play this visual novel in the browser">
+                        <button
+                          type="button"
+                          className="primary"
+                          disabled={busy}
+                          onClick={() => playOne(vn.slug)}
+                        >
+                          <T>Play VN</T>
+                        </button>
+                      </Tip>
+                    </>
                   )}
                   <Tip text="Read it as a book">
                     <button type="button" disabled={busy} onClick={() => readOne(item)}>
@@ -119,6 +143,14 @@ export function Writings({
         </>
       )}
       {reading && <Reader book={reading} onClose={() => setReading(undefined)} />}
+      {playingVn && (
+        <VnPlayer
+          world={world}
+          manifest={playingVn.manifest}
+          slides={playingVn.slides}
+          onClose={() => setPlayingVn(null)}
+        />
+      )}
     </section>
   );
 }
