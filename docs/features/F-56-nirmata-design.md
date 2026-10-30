@@ -15,6 +15,7 @@ The app looks and works like the owner's design canvas ("Nirmata", in their Arti
 The design canvas "Nirmata" (artboards: Home page, World workspace, Play on a phone). Taken from it: the colours (the app already used the same paper, surface, line and soft-accent values; the accent is now `#9a4f04`), Newsreader for names and story text and Hanken Grotesk for controls, the lantern logo with a serif wordmark, uppercase small labels over groups, 10 px controls and 14 px panels, a "Saved" mark with a tick, the jump box (Ctrl K), the three-pane workspace, the editor header with "View raw file", the "Linked from ..." strip, and a quiet left-ruled block for what is on the table.
 
 ## Acceptance criteria
+- [x] **Light is the design, and the default.** The canvas defines only the light palette, so that is what everyone sees, whatever the system prefers (a system set to dark used to turn the app brown). Dark is a choice made with the toggle in the bottom right corner (a 44 px control in the design's terms, moon in light and sun in dark, Hindi tooltip with English on hover), kept in this browser. Two tests keep it so: the style sheet never reads `prefers-color-scheme`, and the dark palette has exactly the light one's colour names ([theme.test.ts](../../apps/web/test/theme.test.ts)).
 - [x] The fonts ship with the app (`@fontsource-variable`), so nothing is fetched from the network (N-01); light and dark both use the tokens.
 - [x] Header: lantern mark and wordmark, "Worlds", a jump box, connection dot, seat menu; the jump box and Ctrl or Cmd K are the host's.
 - [x] Jump box: type to find a world, or a card in the world on show; arrow keys and Enter; Escape closes.
@@ -43,9 +44,11 @@ The design canvas "Nirmata" (artboards: Home page, World workspace, Play on a ph
 |---|---|---|
 | 2026-10-26 | `vitest`, `tsc`, `biome`, `vite build` | 441 tests pass; no test changed (the design is styling and layout) |
 | 2026-10-26 | The in-app browser, demo model, host | Front page, three-pane workspace, a card opened in the editor (Saved, View raw file, parts), Ctrl K to a card, the story window over the page |
-| not yet | Dark mode, phone width of the workspace, a screen reader | Not checked |
+| 2026-10-30 | The in-app browser with the system set to dark | The app stays in the design's light palette; the toggle (bottom right) switches to dark, keeps the choice over a reload and switches back |
+| not yet | Phone width of the workspace, a screen reader | Not checked |
 
 ## History
 | Date | Change |
 |---|---|
 | 2026-10-26 | Applied from the owner's Nirmata design canvas |
+| 2026-10-30 | Light is the default whatever the system prefers; dark by the toggle |

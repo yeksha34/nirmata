@@ -211,6 +211,10 @@ export const HI_TEXT: Record<string, string> = {
   "This deletes the card's file, {path}, from the world's folder. Stories already begun keep their own copy. If the world is in git, the file can be brought back.":
     "यह संसार के फ़ोल्डर से पत्रक की संचिका, {path}, मिटा देता है। पहले से आरंभ कथाएँ अपनी प्रति रखती हैं। यदि संसार git में है, तो संचिका लौटाई जा सकती है।",
 
+  // light and dark
+  "Dark mode": "गहरा रूप",
+  "Light mode": "हल्का रूप",
+
   // chapters and drafts
   Drafts: "मसौदे",
   Chapter: "अध्याय",
