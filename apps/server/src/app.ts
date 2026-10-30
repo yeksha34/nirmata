@@ -69,6 +69,21 @@ const SettingsPatch = z
   })
   .strict();
 
+const ScaffoldVn = z.object({
+  slug: z.string().trim().min(1).max(100),
+  title: z.string().trim().min(1).max(200),
+  source: z.string().trim().min(1),
+  mode: z.enum(["mode_1", "mode_2a", "mode_2b", "mode_2_open"]).optional(),
+  mc: z.string().trim().max(100).optional(),
+  tier: z.enum(["micro", "short", "mid", "large"]).optional(),
+});
+
+const SaveVn = z.object({
+  manifest: z.any().optional(),
+  adaptationMd: z.string().optional(),
+  slides: z.any().optional(),
+});
+
 export interface AppOptions {
   table: Table;
   /** Called with the cause of any failure the caller is only told "went wrong" about. */
@@ -166,6 +181,27 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
     if (!path) throw new HttpError(400, "bad_request", "Say which chapter or draft to read.");
     return c.json(await table.worldWriting(seatOf(c), c.req.param("name"), path));
   });
+  // visual novel adaptations in a world
+  app.get("/api/worlds/:name/vns", async (c) =>
+    c.json({ vns: await table.worldVns(seatOf(c), c.req.param("name")) }),
+  );
+  app.get("/api/worlds/:name/vns/:slug", async (c) =>
+    c.json(await table.worldVn(seatOf(c), c.req.param("name"), c.req.param("slug"))),
+  );
+  app.post("/api/worlds/:name/vns/scaffold", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(c, ScaffoldVn);
+    return c.json({ vn: await table.scaffoldWorldVn(seat, c.req.param("name"), body) }, 201);
+  });
+  app.put("/api/worlds/:name/vns/:slug", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(c, SaveVn);
+    await table.saveWorldVn(seat, c.req.param("name"), c.req.param("slug"), body);
+    return c.json({ ok: true });
+  });
+  app.post("/api/worlds/:name/vns/:slug/compile", async (c) =>
+    c.json(await table.compileWorldVn(seatOf(c), c.req.param("name"), c.req.param("slug"))),
+  );
   app.patch("/api/worlds/:name", async (c) => {
     const seat = seatOf(c);
     const body = await json(

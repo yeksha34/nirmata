@@ -6,6 +6,12 @@ import type {
   RecentStory,
   Snapshot,
   TableInfo,
+  VnDiagnostic,
+  VnManifest,
+  VnMode,
+  VnSlideDeck,
+  VnSummary,
+  VnTier,
   WorldDetail,
   WorldInfo,
   WorldSummary,
@@ -169,4 +175,41 @@ export const api = {
       "/api/story/save-as-world",
       args,
     ).then((r) => r.world),
+
+  // visual novel adaptations
+  vns: (worldName: string) =>
+    get<{ vns: VnSummary[] }>(`/api/worlds/${encodeURIComponent(worldName)}/vns`).then(
+      (r) => r.vns,
+    ),
+  vn: (worldName: string, slug: string) =>
+    get<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}`,
+    ),
+  scaffoldVn: (
+    worldName: string,
+    args: {
+      slug: string;
+      title: string;
+      source: string;
+      mode?: VnMode;
+      mc?: string;
+      tier?: VnTier;
+    },
+  ) =>
+    post<{ vn: VnSummary }>(`/api/worlds/${encodeURIComponent(worldName)}/vns/scaffold`, args).then(
+      (r) => r.vn,
+    ),
+  saveVn: (
+    worldName: string,
+    slug: string,
+    data: { manifest?: VnManifest; adaptationMd?: string; slides?: VnSlideDeck },
+  ) =>
+    put<{ ok: boolean }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}`,
+      data,
+    ),
+  compileVn: (worldName: string, slug: string) =>
+    post<{ slides: VnSlideDeck; diagnostics: VnDiagnostic[] }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/compile`,
+    ),
 };

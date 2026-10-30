@@ -265,6 +265,8 @@ export function Workspace({ name }: { name: string }) {
                   title="Chapters"
                   kind="chapters"
                   items={chapters}
+                  vns={detail.vns}
+                  onVnChange={load}
                 />
               )}
 
@@ -274,6 +276,8 @@ export function Workspace({ name }: { name: string }) {
                   title="Drafts"
                   kind="drafts"
                   items={drafts}
+                  vns={detail.vns}
+                  onVnChange={load}
                 />
               )}
 
