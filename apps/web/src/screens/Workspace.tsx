@@ -4,10 +4,18 @@ import { useAct, useApp } from "../app-context";
 import { Tip } from "../controls";
 import { T } from "../i18n";
 import { useNav } from "../nav";
-import { type Book, bookFromWorld } from "../reader/book";
+import { type Book, bookFromWorld, bookFromWriting, bookFromWritings } from "../reader/book";
 import { Reader } from "../reader/Reader";
-import type { CardKind, WorldDetail, WorldSummary } from "../types";
+import type {
+  CardKind,
+  VnManifest,
+  VnSlideDeck,
+  WorldDetail,
+  WorldSummary,
+  WritingSummary,
+} from "../types";
 import { Empty, Panel } from "../ui";
+import { VnPlayer } from "../vn/VnPlayer";
 import {
   CardEditor,
   CardList,
@@ -17,7 +25,7 @@ import {
   useTemplates,
   WorldFacts,
 } from "./Manager";
-import { Writings } from "./Writings";
+import { WritingDetail, WritingsList } from "./Writings";
 import {
   CreateWorld,
   EditWorld,
@@ -57,6 +65,11 @@ export function Workspace({ name }: { name: string }) {
   const [putting, setPutting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [reading, setReading] = useState<Book>();
+  const [selectedWriting, setSelectedWriting] = useState<string>();
+  const [playingVn, setPlayingVn] = useState<{
+    manifest: VnManifest;
+    slides: VnSlideDeck;
+  } | null>(null);
 
   const load = useCallback(
     () => act(() => api.worldDetail(name)).then((d) => setDetail(d ?? null)),
@@ -126,6 +139,55 @@ export function Workspace({ name }: { name: string }) {
       if (latest) await api.resumeStoryIn(name, latest.id);
       else await api.startStoryIn(name);
     });
+
+  const currentWritings = tab === "chapters" ? chapters : drafts;
+  const activeWriting =
+    currentWritings.find((i) => i.path === selectedWriting) ?? currentWritings[0];
+
+  const playVn = async (slug: string) => {
+    const res = await act(() => api.vn(name, slug));
+    if (res?.slides) {
+      setPlayingVn({ manifest: res.manifest, slides: res.slides });
+    }
+  };
+
+  const adaptVn = async (item: WritingSummary) => {
+    const slug = item.path.replace(/\.md$/, "").replace(/[^a-zA-Z0-9_-]+/g, "-");
+    const res = await act(() =>
+      api.scaffoldVn(name, {
+        slug,
+        title: item.title,
+        source: item.path,
+        mode: "mode_1",
+        tier: "short",
+      }),
+    );
+    if (res) {
+      void load();
+      await playVn(slug);
+    }
+  };
+
+  const compileVn = async (slug: string) => {
+    const res = await act(() => api.compileVn(name, slug));
+    if (res) {
+      void load();
+      await playVn(slug);
+    }
+  };
+
+  const readWriting = async (item: WritingSummary) => {
+    const writing = await act(() => api.writing(name, item.path));
+    if (writing)
+      setReading(
+        bookFromWriting({ title: world.title }, writing, tab === "chapters" ? "chapter" : "draft"),
+      );
+  };
+
+  const readAllChapters = async () => {
+    const all = await act(() => Promise.all(chapters.map((i) => api.writing(name, i.path))));
+    if (all) setReading(bookFromWritings({ name, title: world.title }, all));
+  };
 
   return (
     <>
@@ -260,24 +322,27 @@ export function Workspace({ name }: { name: string }) {
               )}
 
               {tab === "chapters" && (
-                <Writings
-                  world={{ name, title: world.title }}
+                <WritingsList
                   title="Chapters"
                   kind="chapters"
                   items={chapters}
                   vns={detail.vns}
-                  onVnChange={load}
+                  selected={activeWriting?.path}
+                  onSelect={setSelectedWriting}
+                  onReadAll={readAllChapters}
+                  busy={busy}
                 />
               )}
 
               {tab === "drafts" && (
-                <Writings
-                  world={{ name, title: world.title }}
+                <WritingsList
                   title="Drafts"
                   kind="drafts"
                   items={drafts}
                   vns={detail.vns}
-                  onVnChange={load}
+                  selected={activeWriting?.path}
+                  onSelect={setSelectedWriting}
+                  busy={busy}
                 />
               )}
 
@@ -359,7 +424,31 @@ export function Workspace({ name }: { name: string }) {
               onDialog={setDialog}
             />
           )}
-          {!(tab === "cards" && editingCard) && (
+          {(tab === "chapters" || tab === "drafts") && activeWriting && (
+            <WritingDetail
+              key={activeWriting.path}
+              world={{ name, title: world.title }}
+              kind={tab}
+              item={activeWriting}
+              vn={detail.vns?.find((v) => v.source === activeWriting.path)}
+              busy={busy}
+              onPlayVn={playVn}
+              onRead={readWriting}
+              onAdaptVn={adaptVn}
+              onCompileVn={compileVn}
+            />
+          )}
+          {(tab === "chapters" || tab === "drafts") && !activeWriting && (
+            <section className="editor-empty">
+              <p className="eyebrow quiet">
+                <T>{tab === "chapters" ? "Chapters" : "Drafts"}</T>
+              </p>
+              <p>
+                <T>Choose a writing to read or inspect</T>
+              </p>
+            </section>
+          )}
+          {tab === "cards" && !editingCard && (
             <section className="editor-empty">
               <p className="eyebrow quiet">
                 <T>Cards</T>
@@ -377,17 +466,33 @@ export function Workspace({ name }: { name: string }) {
                   stories you start afterwards.
                 </T>
               </p>
-              {tab !== "cards" && (
-                <button type="button" onClick={() => setTab("cards")}>
-                  <T>Go to the cards</T>
-                </button>
-              )}
+            </section>
+          )}
+          {tab !== "cards" && tab !== "chapters" && tab !== "drafts" && (
+            <section className="editor-empty">
+              <p className="eyebrow quiet">
+                <T>Cards</T>
+              </p>
+              <p>
+                <T>Choose a card to read or change it, or make a new one.</T>
+              </p>
+              <button type="button" onClick={() => setTab("cards")}>
+                <T>Go to the cards</T>
+              </button>
             </section>
           )}
         </section>
       </div>
 
       {reading && <Reader book={reading} onClose={() => setReading(undefined)} />}
+      {playingVn && (
+        <VnPlayer
+          world={{ name, title: world.title }}
+          manifest={playingVn.manifest}
+          slides={playingVn.slides}
+          onClose={() => setPlayingVn(null)}
+        />
+      )}
       {dialog?.is === "text" && (
         <CardTextDialog
           world={name}

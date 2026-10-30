@@ -244,6 +244,14 @@ export const HI_TEXT: Record<string, string> = {
   "Turn the page with the arrow keys, or swipe": "पृष्ठ पलटने के लिए तीर-कुंजियाँ दबाएँ, या उँगली फिराएँ",
 
   // visual novels
+  "Visual novel": "दृश्य-उपन्यास",
+  Slides: "स्लाइडें",
+  Mode: "मोड",
+  Protagonist: "मुख्य पात्र",
+  Routes: "मार्ग",
+  Preview: "पूर्वावलोकन",
+  "Choose a writing to read or inspect": "पढ़ने या जाँचने के लिए कोई रचना चुनें",
+  "Loading preview…": "पूर्वावलोकन लोड हो रहा है…",
   "Adapt to VN": "दृश्य-उपन्यास बनाएँ",
   "Adapt this prose into an interactive visual novel":
     "इस गद्य को एक संवादात्मक दृश्य-उपन्यास में रूपांतरित करें",

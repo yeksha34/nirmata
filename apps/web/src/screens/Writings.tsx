@@ -1,78 +1,37 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAct } from "../app-context";
 import { Tip } from "../controls";
 import { T } from "../i18n";
-import { type Book, bookFromWriting, bookFromWritings } from "../reader/book";
-import { Reader } from "../reader/Reader";
-import type { VnManifest, VnSlideDeck, VnSummary, WritingSummary } from "../types";
-import { VnPlayer } from "../vn/VnPlayer";
+import type { VnSummary, WritingSummary } from "../types";
 import { Ago } from "./world-parts";
 
 /** A size in kilobytes, to the nearest one (a short file is "1"). */
-const kb = (bytes: number): number => Math.max(1, Math.round(bytes / 1024));
+export const kb = (bytes: number): number => Math.max(1, Math.round(bytes / 1024));
 
 /**
- * A world's chapters or its drafts: the prose that sits in the world's folder beside the cards.
- * Each can be read as a book; the chapters can also be read together, one after the other.
+ * List of a world's chapters or drafts for the navigation column.
+ * Cards are clickable to select and view details in the editor pane.
  */
-export function Writings({
-  world,
+export function WritingsList({
   title,
   kind,
   items,
   vns,
-  onVnChange,
+  selected,
+  onSelect,
+  onReadAll,
+  busy,
 }: {
-  /** The world's folder name, and its title for the cover. */
-  world: { name: string; title: string };
   title: string;
   kind: "chapters" | "drafts";
   items: WritingSummary[];
   vns?: VnSummary[];
-  onVnChange?: () => void;
+  selected?: string;
+  onSelect: (path: string) => void;
+  onReadAll?: () => void;
+  busy?: boolean;
 }) {
-  const { act, busy } = useAct();
-  const [reading, setReading] = useState<Book>();
-  const [playingVn, setPlayingVn] = useState<{
-    manifest: VnManifest;
-    slides: VnSlideDeck;
-  } | null>(null);
-
-  const readOne = async (item: WritingSummary) => {
-    const writing = await act(() => api.writing(world.name, item.path));
-    if (writing)
-      setReading(bookFromWriting(world, writing, kind === "chapters" ? "chapter" : "draft"));
-  };
-  const readAll = async () => {
-    const all = await act(() => Promise.all(items.map((i) => api.writing(world.name, i.path))));
-    if (all) setReading(bookFromWritings(world, all));
-  };
-
-  const playOne = async (slug: string) => {
-    const res = await act(() => api.vn(world.name, slug));
-    if (res?.slides) {
-      setPlayingVn({ manifest: res.manifest, slides: res.slides });
-    }
-  };
-
-  const adaptOne = async (item: WritingSummary) => {
-    const slug = item.path.replace(/\.md$/, "").replace(/[^a-zA-Z0-9_-]+/g, "-");
-    const res = await act(() =>
-      api.scaffoldVn(world.name, {
-        slug,
-        title: item.title,
-        source: item.path,
-      }),
-    );
-    if (res && onVnChange) onVnChange();
-  };
-
-  const compileOne = async (slug: string) => {
-    const res = await act(() => api.compileVn(world.name, slug));
-    if (res && onVnChange) onVnChange();
-  };
-
   return (
     <section className="writings" aria-label={title}>
       {items.length === 0 ? (
@@ -85,72 +44,189 @@ export function Writings({
         </p>
       ) : (
         <>
-          {kind === "chapters" && items.length > 1 && (
-            <button type="button" className="primary read-all" disabled={busy} onClick={readAll}>
+          {kind === "chapters" && items.length > 1 && onReadAll && (
+            <button type="button" className="primary read-all" disabled={busy} onClick={onReadAll}>
               <T>Read all the chapters</T>
             </button>
           )}
           <ul className="writing-rows">
             {items.map((item) => {
               const vn = vns?.find((v) => v.source === item.path);
+              const isSelected = selected === item.path;
               return (
-                <li key={item.path} className="writing-row">
-                  <strong>{item.title}</strong>
-                  <small className="muted">
-                    <Ago iso={item.updatedAt} /> · <T with={{ n: kb(item.size) }}>{"{n} KB"}</T>
-                  </small>
-                  {vn && (
-                    <>
-                      <Tip text="Visual novel adaptation with slides ready">
+                <li key={item.path}>
+                  <button
+                    type="button"
+                    className={`writing-row ${isSelected ? "selected" : ""}`}
+                    aria-current={isSelected ? "true" : undefined}
+                    onClick={() => onSelect(item.path)}
+                  >
+                    <header className="writing-row-head">
+                      <strong>{item.title}</strong>
+                      {vn && (
                         <data value={vn.slideCount ?? 0} className="tag vn-badge">
                           <T with={{ count: vn.slideCount ?? 0 }}>{"VN: {count} slides"}</T>
                         </data>
-                      </Tip>
-                      <Tip text="Play this visual novel in the browser">
-                        <button
-                          type="button"
-                          className="primary"
-                          disabled={busy}
-                          onClick={() => playOne(vn.slug)}
-                        >
-                          <T>Play VN</T>
-                        </button>
-                      </Tip>
-                    </>
-                  )}
-                  <Tip text="Read it as a book">
-                    <button type="button" disabled={busy} onClick={() => readOne(item)}>
-                      <T>Read</T>
-                    </button>
-                  </Tip>
-                  {vn ? (
-                    <Tip text="Compile visual novel slides">
-                      <button type="button" disabled={busy} onClick={() => compileOne(vn.slug)}>
-                        <T>Recompile VN</T>
-                      </button>
-                    </Tip>
-                  ) : (
-                    <Tip text="Adapt this prose into an interactive visual novel">
-                      <button type="button" disabled={busy} onClick={() => adaptOne(item)}>
-                        <T>Adapt to VN</T>
-                      </button>
-                    </Tip>
-                  )}
+                      )}
+                    </header>
+                    <small className="muted">
+                      <Ago iso={item.updatedAt} /> · <T with={{ n: kb(item.size) }}>{"{n} KB"}</T>
+                    </small>
+                  </button>
                 </li>
               );
             })}
           </ul>
         </>
       )}
-      {reading && <Reader book={reading} onClose={() => setReading(undefined)} />}
-      {playingVn && (
-        <VnPlayer
-          world={world}
-          manifest={playingVn.manifest}
-          slides={playingVn.slides}
-          onClose={() => setPlayingVn(null)}
-        />
-      )}
     </section>
+  );
+}
+
+/**
+ * Details and action panel for the chosen chapter or draft, displayed in the right editor column.
+ */
+export function WritingDetail({
+  world,
+  kind,
+  item,
+  vn,
+  busy,
+  onPlayVn,
+  onRead,
+  onAdaptVn,
+  onCompileVn,
+}: {
+  world: { name: string; title: string };
+  kind: "chapters" | "drafts";
+  item: WritingSummary;
+  vn?: VnSummary;
+  busy?: boolean;
+  onPlayVn: (slug: string) => void;
+  onRead: (item: WritingSummary) => void;
+  onAdaptVn: (item: WritingSummary) => void;
+  onCompileVn: (slug: string) => void;
+}) {
+  const { act } = useAct();
+  const [content, setContent] = useState<string>();
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    void act(() => api.writing(world.name, item.path)).then((res) => {
+      if (!cancelled) {
+        setContent(res?.text);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [world.name, item.path, act]);
+
+  return (
+    <article className="writing-detail">
+      <header className="writing-detail-header">
+        <p className="eyebrow quiet">
+          <T>{kind === "chapters" ? "Chapter" : "Draft"}</T>
+        </p>
+        <h2>{item.title}</h2>
+        <p className="muted">
+          {item.path} · <Ago iso={item.updatedAt} /> · <T with={{ n: kb(item.size) }}>{"{n} KB"}</T>
+        </p>
+      </header>
+
+      <menu className="writing-detail-actions">
+        {vn && (
+          <>
+            <Tip text="Play this visual novel in the browser">
+              <button
+                type="button"
+                className="primary"
+                disabled={busy}
+                onClick={() => onPlayVn(vn.slug)}
+              >
+                <T>Play VN</T>
+              </button>
+            </Tip>
+            <Tip text="Compile visual novel slides">
+              <button type="button" disabled={busy} onClick={() => onCompileVn(vn.slug)}>
+                <T>Recompile VN</T>
+              </button>
+            </Tip>
+          </>
+        )}
+        {!vn && (
+          <Tip text="Adapt this prose into an interactive visual novel">
+            <button
+              type="button"
+              className="primary"
+              disabled={busy}
+              onClick={() => onAdaptVn(item)}
+            >
+              <T>Adapt to VN</T>
+            </button>
+          </Tip>
+        )}
+        <Tip text="Read it as a book">
+          <button type="button" disabled={busy} onClick={() => onRead(item)}>
+            <T>Read</T>
+          </button>
+        </Tip>
+      </menu>
+
+      {vn && (
+        <section className="writing-vn-box">
+          <header className="vn-box-header">
+            <strong>
+              <T>Visual novel</T>
+            </strong>
+            : {vn.title || vn.slug}
+          </header>
+          <ul className="vn-meta-list">
+            <li>
+              <strong>
+                <T>Slides</T>:
+              </strong>{" "}
+              {vn.slideCount ?? 0}
+            </li>
+            <li>
+              <strong>
+                <T>Mode</T>:
+              </strong>{" "}
+              {vn.mode ?? "mode_1"}
+            </li>
+            <li>
+              <strong>
+                <T>Protagonist</T>:
+              </strong>{" "}
+              {vn.mc ?? "Protagonist"}
+            </li>
+            <li>
+              <strong>
+                <T>Routes</T>:
+              </strong>{" "}
+              {vn.routes?.join(", ") ?? "common"}
+            </li>
+          </ul>
+        </section>
+      )}
+
+      <section className="writing-preview-box">
+        <header className="preview-header">
+          <strong>
+            <T>Preview</T>
+          </strong>
+        </header>
+        {loading ? (
+          <p className="quiet">
+            <T>Loading preview…</T>
+          </p>
+        ) : (
+          <pre className="writing-preview-text">{content || ""}</pre>
+        )}
+      </section>
+    </article>
   );
 }
