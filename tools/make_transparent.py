@@ -1,32 +1,60 @@
 #!/usr/bin/env python3
 """
 Utility to convert raw generated character sprites with solid/white studio backgrounds
-into PNG images with true alpha transparency and anti-aliased edge defringing.
+into PNG images with true alpha transparency, preserving internal light/white colors
+and applying anti-aliased edge defringing.
 """
 
 import sys
 from pathlib import Path
 import numpy as np
+import scipy.ndimage as ndimage
 from PIL import Image
 
-def make_transparent(input_path: Path, output_path: Path | None = None, threshold_low: float = 8.0, threshold_high: float = 32.0):
+def make_transparent(input_path: Path, output_path: Path | None = None, color_tolerance: float = 35.0):
     if output_path is None:
         output_path = input_path.with_suffix(".png")
 
     im = Image.open(input_path).convert("RGB")
     arr = np.array(im, dtype=np.float32)
 
-    # Estimate background color from border margins (corners + top edge)
-    top_margin = arr[:15, :, :]
-    bg_color = np.median(top_margin, axis=(0, 1))
+    # Sample corners to determine background color
+    h, w, _ = arr.shape
+    corners = np.vstack([
+        arr[:10, :10, :].reshape(-1, 3),
+        arr[:10, -10:, :].reshape(-1, 3),
+        arr[-10:, :10, :].reshape(-1, 3),
+        arr[-10:, -10:, :].reshape(-1, 3),
+        arr[:10, :, :].reshape(-1, 3)
+    ])
+    bg_color = np.median(corners, axis=0)
 
-    # Euclidean color distance from estimated background
+    # Euclidean color distance from background
     diff = np.sqrt(np.sum((arr - bg_color) ** 2, axis=-1))
+    is_candidate_bg = diff < color_tolerance
 
-    # Soft alpha ramp for smooth anti-aliasing
-    alpha = np.clip((diff - threshold_low) / (threshold_high - threshold_low), 0.0, 1.0)
+    # Connected component labeling to only remove background connected to outer borders
+    labeled, _ = ndimage.label(is_candidate_bg)
+    border_mask = np.zeros((h, w), dtype=bool)
+    border_mask[0, :] = True
+    border_mask[-1, :] = True
+    border_mask[:, 0] = True
+    border_mask[:, -1] = True
 
-    # Defringe RGB against background color
+    border_labels = np.unique(labeled[border_mask])
+    border_labels = border_labels[border_labels > 0]
+    is_true_bg = np.isin(labeled, border_labels)
+
+    # Create raw foreground mask (0 for true bg, 1 for foreground)
+    fg_mask = (~is_true_bg).astype(np.float32)
+
+    # Soft anti-aliased edge ramp (0.8 sigma gaussian filter)
+    alpha = ndimage.gaussian_filter(fg_mask, sigma=0.8)
+    alpha = np.clip(alpha, 0.0, 1.0)
+    # Clamp extreme background to absolute 0
+    alpha[is_true_bg & (diff < (color_tolerance * 0.7))] = 0.0
+
+    # Defringe RGB against background color for smooth boundary blending
     eps = 1e-3
     alpha_safe = np.maximum(alpha, eps)
     rgb_defringed = (arr - (1.0 - alpha[:, :, None]) * bg_color[None, None, :]) / alpha_safe[:, :, None]
