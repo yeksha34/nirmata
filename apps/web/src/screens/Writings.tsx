@@ -5,7 +5,7 @@ import { Tip } from "../controls";
 import { T } from "../i18n";
 import { type Book, bookFromWriting, bookFromWritings } from "../reader/book";
 import { Reader } from "../reader/Reader";
-import type { WritingSummary } from "../types";
+import type { VnSummary, WritingSummary } from "../types";
 import { Ago } from "./world-parts";
 
 /** A size in kilobytes, to the nearest one (a short file is "1"). */
@@ -20,12 +20,16 @@ export function Writings({
   title,
   kind,
   items,
+  vns,
+  onVnChange,
 }: {
   /** The world's folder name, and its title for the cover. */
   world: { name: string; title: string };
   title: string;
   kind: "chapters" | "drafts";
   items: WritingSummary[];
+  vns?: VnSummary[];
+  onVnChange?: () => void;
 }) {
   const { act, busy } = useAct();
   const [reading, setReading] = useState<Book>();
@@ -38,6 +42,23 @@ export function Writings({
   const readAll = async () => {
     const all = await act(() => Promise.all(items.map((i) => api.writing(world.name, i.path))));
     if (all) setReading(bookFromWritings(world, all));
+  };
+
+  const adaptOne = async (item: WritingSummary) => {
+    const slug = item.path.replace(/\.md$/, "").replace(/[^a-zA-Z0-9_-]+/g, "-");
+    const res = await act(() =>
+      api.scaffoldVn(world.name, {
+        slug,
+        title: item.title,
+        source: item.path,
+      }),
+    );
+    if (res && onVnChange) onVnChange();
+  };
+
+  const compileOne = async (slug: string) => {
+    const res = await act(() => api.compileVn(world.name, slug));
+    if (res && onVnChange) onVnChange();
   };
 
   return (
@@ -58,19 +79,42 @@ export function Writings({
             </button>
           )}
           <ul className="writing-rows">
-            {items.map((item) => (
-              <li key={item.path} className="writing-row">
-                <strong>{item.title}</strong>
-                <small className="muted">
-                  <Ago iso={item.updatedAt} /> · <T with={{ n: kb(item.size) }}>{"{n} KB"}</T>
-                </small>
-                <Tip text="Read it as a book">
-                  <button type="button" disabled={busy} onClick={() => readOne(item)}>
-                    <T>Read</T>
-                  </button>
-                </Tip>
-              </li>
-            ))}
+            {items.map((item) => {
+              const vn = vns?.find((v) => v.source === item.path);
+              return (
+                <li key={item.path} className="writing-row">
+                  <strong>{item.title}</strong>
+                  <small className="muted">
+                    <Ago iso={item.updatedAt} /> · <T with={{ n: kb(item.size) }}>{"{n} KB"}</T>
+                  </small>
+                  {vn && (
+                    <Tip text="Visual novel adaptation with slides ready">
+                      <span className="tag vn-badge">
+                        <T with={{ count: vn.slideCount ?? 0 }}>{"VN: {count} slides"}</T>
+                      </span>
+                    </Tip>
+                  )}
+                  <Tip text="Read it as a book">
+                    <button type="button" disabled={busy} onClick={() => readOne(item)}>
+                      <T>Read</T>
+                    </button>
+                  </Tip>
+                  {vn ? (
+                    <Tip text="Compile visual novel slides">
+                      <button type="button" disabled={busy} onClick={() => compileOne(vn.slug)}>
+                        <T>Recompile VN</T>
+                      </button>
+                    </Tip>
+                  ) : (
+                    <Tip text="Adapt this prose into an interactive visual novel">
+                      <button type="button" disabled={busy} onClick={() => adaptOne(item)}>
+                        <T>Adapt to VN</T>
+                      </button>
+                    </Tip>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </>
       )}
