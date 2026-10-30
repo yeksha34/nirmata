@@ -25,4 +25,5 @@ Nirmata: build worlds, then host stories in them. Start at [docs/README.md](docs
 | `track-feature` | Feature lifecycle and status board |
 | `record-decision` | ADRs |
 | `log-bug` | Bug and tech-debt register |
+| `native-html-first` | Check for built-in HTML elements/attributes before writing custom JS components |
 | `release-tag` | Cut a tagged release |
