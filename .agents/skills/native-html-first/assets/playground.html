@@ -1,0 +1,821 @@
+<title>Native HTML Playground</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column of section headings, each followed by a responsive grid of live-example cards (live area on top, markup below). */
+:root {
+  --bg: #f2f6f8;
+  --surface: #ffffff;
+  --surface-2: #e8eef2;
+  --fg: #15222e;
+  --muted: #546572;
+  --line: #d5dee5;
+  --line-strong: #aebcc7;
+  --accent: #0a7c6e;
+  --accent-fg: #ffffff;
+  --accent-soft: #d8f0ec;
+  --code-bg: #eaf0f4;
+  --ok: #17794a;
+  --no: #b0402c;
+  --warn-bg: #fdf0d5;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d151c; --surface: #141f28; --surface-2: #1d2b36; --fg: #e5edf2; --muted: #93a5b2;
+    --line: #263743; --line-strong: #3c5261; --accent: #4fd1be; --accent-fg: #04201c;
+    --accent-soft: #123530; --code-bg: #0a1117; --ok: #52c58b; --no: #f0846e; --warn-bg: #3a2f14;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d151c; --surface: #141f28; --surface-2: #1d2b36; --fg: #e5edf2; --muted: #93a5b2;
+  --line: #263743; --line-strong: #3c5261; --accent: #4fd1be; --accent-fg: #04201c;
+  --accent-soft: #123530; --code-bg: #0a1117; --ok: #52c58b; --no: #f0846e; --warn-bg: #3a2f14;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 400 16px/1.55 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 4rem;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 72rem; margin-inline: auto; }
+h1, h2, h3, h4 { font-family: var(--font-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+code, pre, kbd { font-family: var(--font-mono); }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* header */
+header.top { padding-block: 2.5rem 1.25rem; display: grid; gap: .9rem; }
+header.top h1 { font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 700; letter-spacing: -.02em; }
+header.top p { margin: 0; max-width: 46rem; color: var(--muted); font-size: 1.05rem; }
+.support { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .4rem; }
+.support b { font: 600 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: .3rem; }
+.chip { font: 500 .78rem var(--font-mono); padding: .15rem .55rem; border-radius: 99px; border: 1px solid var(--line-strong); background: var(--surface); }
+.chip.yes::before { content: "\2713  "; color: var(--ok); }
+.chip.no::before { content: "\2717  "; color: var(--no); }
+
+/* section nav */
+.jump { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); display: flex; gap: .4rem; overflow-x: auto; padding-block: .6rem; margin-bottom: 1rem; }
+.jump a { white-space: nowrap; text-decoration: none; color: var(--fg); font-weight: 500; font-size: .92rem; padding: .3rem .75rem; border-radius: 6px; }
+.jump a:hover { background: var(--accent-soft); color: var(--accent); }
+
+/* sections and cards */
+section.group { padding-top: 2.2rem; }
+section.group > h2 { font-size: 1.7rem; font-weight: 700; letter-spacing: -.01em; }
+section.group > p.lede { color: var(--muted); margin: .35rem 0 1.2rem; max-width: 44rem; }
+.cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); align-items: start; }
+.ex { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; display: grid; gap: .8rem; min-width: 0; }
+.ex > header h3 { font-size: 1.05rem; font-weight: 600; }
+.ex > header h3 code { font-weight: 500; color: var(--accent); }
+.ex > header p { margin: .2rem 0 0; font-size: .88rem; color: var(--muted); }
+.live { background: var(--bg); border: 1px dashed var(--line-strong); border-radius: 8px; padding: .9rem; min-width: 0; overflow-x: auto; display: grid; gap: .6rem; justify-items: start; }
+.controls { display: flex; gap: .8rem; flex-wrap: wrap; align-items: center; font-size: .9rem; }
+.note { font-size: .85rem; color: var(--muted); margin: 0; }
+.note.warn { background: var(--warn-bg); padding: .45rem .65rem; border-radius: 6px; color: var(--fg); }
+pre.code { margin: 0; background: var(--code-bg); border-radius: 8px; padding: .75rem .9rem; overflow-x: auto; font-size: .78rem; line-height: 1.55; min-width: 0; max-width: 100%; }
+pre.code code { font-size: inherit; white-space: pre; }
+.readout { font-size: .88rem; margin: 0; color: var(--muted); }
+.readout code { color: var(--fg); background: var(--surface-2); padding: .05rem .35rem; border-radius: 4px; }
+.row { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+/* controls inside live areas */
+.live button, .controls button {
+  font: 500 .92rem var(--font-body); padding: .42rem .85rem; border: 1px solid var(--line-strong);
+  background: var(--surface); color: var(--fg); border-radius: 6px; cursor: pointer;
+}
+.live button:hover, .controls button:hover { border-color: var(--accent); }
+.live button.danger { background: var(--no); border-color: var(--no); color: #fff; }
+.live input:not([type=checkbox], [type=radio], [type=range], [type=color]), .live select {
+  font: inherit; padding: .4rem .6rem; border: 1px solid var(--line-strong); border-radius: 6px;
+  background: var(--surface); color: var(--fg); max-width: 100%; min-width: 0;
+}
+.live label { font-size: .85rem; color: var(--muted); display: block; }
+.live label.inline { display: inline-flex; align-items: center; gap: .5rem; }
+.live .field { display: grid; gap: .2rem; justify-items: start; }
+.live fieldset { border: 1px solid var(--line-strong); border-radius: 8px; padding: .6rem .8rem .8rem; display: grid; gap: .5rem; margin: 0; }
+.live fieldset:disabled { opacity: .55; }
+.live legend { font-weight: 600; padding-inline: .3rem; }
+.live hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: .2rem 0; }
+
+/* dialog, popover */
+dialog { border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--fg); padding: 1.2rem 1.3rem; max-width: min(92vw, 22rem); }
+dialog::backdrop { background: rgb(6 14 20 / .6); }
+dialog p { margin: 0 0 1rem; font-weight: 500; }
+[popover] { border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--fg); padding: .35rem; }
+[popover]:not([popover=manual]) { display: none; }
+[popover]:popover-open { display: grid; gap: .15rem; }
+[popover=manual] { display: block; }
+[popover=manual]:not(:popover-open) { display: none; }
+[popover] button { text-align: left; border-color: transparent !important; background: transparent !important; }
+[popover] button:hover { background: var(--surface-2) !important; }
+[popover=manual] { inset: auto max(1rem, env(safe-area-inset-right, 0px)) max(1rem, env(safe-area-inset-bottom, 0px)) auto; margin: 0; padding: .7rem 1rem; background: var(--accent); color: var(--accent-fg); border-color: var(--accent); max-width: 18rem; font-size: .9rem; }
+@supports (anchor-name: --a) {
+  button[popovertarget="menu-1"] { anchor-name: --menu-btn; }
+  #menu-1 { position-anchor: --menu-btn; position-area: bottom span-right; inset: auto; margin: .35rem 0 0; min-width: 9rem; }
+}
+
+/* details accordion */
+.live details { width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); }
+.live summary { cursor: pointer; padding: .55rem .8rem; font-weight: 500; }
+.live details[open] summary { border-bottom: 1px solid var(--line); }
+.live details p { margin: 0; padding: .6rem .8rem; font-size: .92rem; color: var(--muted); }
+
+/* specific demos */
+.faq h4 { font-size: 1rem; font-family: var(--font-body); font-weight: 600; }
+.faq p { margin: .3rem 0 0; font-size: .92rem; }
+#panel { display: grid; gap: .5rem; justify-items: start; padding: .8rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); width: 100%; }
+#panel[inert] { opacity: .45; background: var(--surface-2); }
+.card-ui { display: block; }
+.rows { margin: 0; padding: 0; list-style: none; display: grid; gap: .3rem; width: 100%; }
+.rows li { display: flex; justify-content: space-between; align-items: center; gap: .5rem; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .3rem .3rem .3rem .7rem; font-size: .9rem; }
+.narrow { width: 11rem; border: 1px dashed var(--line-strong); padding: .35rem .5rem; font: .8rem var(--font-mono); overflow: hidden; background: var(--surface); }
+.compare { display: grid; gap: .5rem; width: 100%; }
+.compare span.tag { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; display: block; }
+.live blockquote { margin: 0; padding: .1rem 0 .1rem .8rem; border-left: 3px solid var(--accent); }
+.live blockquote p { margin: 0 0 .2rem; }
+.live blockquote footer { font-size: .85rem; color: var(--muted); }
+.live p { margin: 0; }
+.live ruby { font-size: 1.6rem; }
+.live rt { font-size: .55em; color: var(--accent); }
+.live hgroup h4 { font-size: 1.25rem; }
+.live hgroup p { color: var(--muted); font-size: .92rem; }
+.live search { display: block; }
+.live search form { display: flex; gap: .4rem; flex-wrap: wrap; }
+.live meter, .live progress { width: 100%; max-width: 16rem; }
+.mapbox { max-width: none; }
+.mapbox img { max-width: none; display: block; border-radius: 6px; }
+.zone { display: none; margin: 0; font-size: .9rem; }
+.zone:target { display: block; background: var(--accent-soft); padding: .4rem .6rem; border-radius: 6px; }
+.live img { max-width: 100%; height: auto; display: block; border-radius: 6px; }
+.out { font-family: var(--font-mono); font-size: .85rem; background: var(--surface-2); padding: .1rem .4rem; border-radius: 4px; }
+
+/* table */
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+th, td { text-align: left; padding: .6rem .9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 .72rem var(--font-body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 500; }
+td code { color: var(--accent); font-size: .85rem; }
+.closing { max-width: 46rem; margin: 1.2rem 0 0; }
+footer.end { margin-top: 3rem; color: var(--muted); font-size: .88rem; }
+
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+<header class="top">
+  <h1>Native HTML Playground</h1>
+  <p>Every card runs the real element on this page, with the markup underneath. Most of it needs no JavaScript. Where a few lines of script wire up the demo, the card says so.</p>
+  <div class="support" id="support" aria-label="Support in your browser"><b>Your browser</b></div>
+</header>
+
+<nav class="jump" aria-label="Sections">
+  <a href="#behavior">Built-in behavior</a>
+  <a href="#state">Visibility and state</a>
+  <a href="#media">Media and loading</a>
+  <a href="#text">Typography and semantics</a>
+  <a href="#input">Input experience</a>
+  <a href="#safety">Navigation and safety</a>
+  <a href="#heuristic">Heuristic</a>
+</nav>
+
+<!-- ============ 1. BUILT-IN BEHAVIOR ============ -->
+<section class="group" id="behavior">
+  <h2>Built-in behavior that replaces JavaScript</h2>
+  <p class="lede">Modals, overlays, accordions, autocomplete and calculated results all have native versions.</p>
+  <div class="cards">
+
+    <article class="ex" id="ex-dialog">
+      <header>
+        <h3><code>&lt;dialog&gt;</code> + <code>method="dialog"</code></h3>
+        <p>Replaces a modal component with a focus trap. Escape closes it, the background goes inert, and the backdrop is a pseudo-element.</p>
+      </header>
+      <div class="live">
+        <button id="open-confirm">Delete item&hellip;</button>
+        <p class="readout">returnValue: <code id="dlg-result">not opened yet</code></p>
+        <dialog id="confirm">
+          <form method="dialog">
+            <p>Delete this item?</p>
+            <div class="row">
+              <button value="cancel">Cancel</button>
+              <button value="ok" class="danger">Delete</button>
+            </div>
+          </form>
+        </dialog>
+      </div>
+      <pre class="code"><code>&lt;dialog id="confirm"&gt;
+  &lt;form method="dialog"&gt;
+    &lt;p&gt;Delete this item?&lt;/p&gt;
+    &lt;button value="cancel"&gt;Cancel&lt;/button&gt;
+    &lt;button value="ok"&gt;Delete&lt;/button&gt;
+  &lt;/form&gt;
+&lt;/dialog&gt;
+&lt;script&gt;
+  confirm.showModal();   // the only script line
+&lt;/script&gt;
+/* Submitting closes it and sets dialog.returnValue. */</code></pre>
+    </article>
+
+    <article class="ex" id="ex-popover">
+      <header>
+        <h3><code>popover</code> + <code>popovertarget</code></h3>
+        <p>Light-dismissible overlays in the top layer. No <code>z-index</code> fights. Click outside or press Escape to close the menu.</p>
+      </header>
+      <div class="live">
+        <div class="row">
+          <button popovertarget="menu-1">Options</button>
+          <button popovertarget="toast-1" popovertargetaction="toggle">Toggle toast</button>
+        </div>
+        <div id="menu-1" popover>
+          <button>Rename</button>
+          <button>Duplicate</button>
+          <button>Archive</button>
+        </div>
+        <div id="toast-1" popover="manual" role="status">Saved. A manual popover stays until you toggle it.</div>
+      </div>
+      <p class="note">The menu is placed under its button with CSS anchor positioning where supported, and centred otherwise.</p>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-details">
+      <header>
+        <h3><code>&lt;details name="..."&gt;</code></h3>
+        <p>Give several <code>&lt;details&gt;</code> the same <code>name</code> and opening one closes the others.</p>
+      </header>
+      <div class="live">
+        <details name="faq" open>
+          <summary>What counts as exclusive?</summary>
+          <p>Only one member of the group stays open. The browser enforces it.</p>
+        </details>
+        <details name="faq">
+          <summary>Does it need a script?</summary>
+          <p>No. The shared name attribute is the whole mechanism.</p>
+        </details>
+        <details name="faq">
+          <summary>What about older browsers?</summary>
+          <p>They show independent disclosure widgets, which still work.</p>
+        </details>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-datalist">
+      <header>
+        <h3><code>&lt;datalist&gt;</code></h3>
+        <p>Autocomplete suggestions on any input, while free text stays allowed. Try typing a city that is not listed.</p>
+      </header>
+      <div class="live">
+        <div class="field">
+          <label for="city">Ship to</label>
+          <input id="city" list="cities" placeholder="Type or pick a city">
+          <datalist id="cities">
+            <option value="Pune"></option>
+            <option value="Mumbai"></option>
+            <option value="Bengaluru"></option>
+            <option value="Hyderabad"></option>
+            <option value="Chennai"></option>
+          </datalist>
+        </div>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-output">
+      <header>
+        <h3><code>&lt;output for="..."&gt;</code></h3>
+        <p>A semantic home for a calculated result tied to its inputs. Screen readers can announce it as it changes.</p>
+      </header>
+      <div class="live">
+        <form id="calc">
+          <div class="row">
+            <div class="field"><label for="qty">Quantity</label><input id="qty" name="qty" type="number" value="3" min="1" style="width:6rem"></div>
+            <div class="field"><label for="price">Unit price</label><input id="price" name="price" type="number" value="4.5" step="0.5" min="0" style="width:6rem"></div>
+          </div>
+          <p>Total: <output name="total" for="qty price" class="out">13.50</output></p>
+        </form>
+      </div>
+      <p class="note">Demo wiring: one input listener computes the number. The element supplies the semantics.</p>
+      <pre class="code"><code></code></pre>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 2. VISIBILITY AND STATE ============ -->
+<section class="group" id="state">
+  <h2>Visibility and interaction state</h2>
+  <p class="lede">One attribute decides whether a whole subtree is findable, clickable or enabled.</p>
+  <div class="cards">
+
+    <article class="ex" id="ex-found">
+      <header>
+        <h3><code>hidden="until-found"</code></h3>
+        <p>Content stays collapsed but find-in-page can reveal it. Press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>F</kbd> and search for <b>refund window</b>.</p>
+      </header>
+      <div class="live">
+        <div class="faq">
+          <h4>Can I return a kettle?</h4>
+          <p hidden="until-found" id="found-p">Yes. The refund window is 30 days from delivery, and unused gear goes back free.</p>
+        </div>
+        <p class="readout" id="found-status">Status: collapsed</p>
+      </div>
+      <p class="note warn" id="found-warn" hidden>This browser does not support <code>until-found</code>, so the text is shown outright.</p>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-inert">
+      <header>
+        <h3><code>inert</code></h3>
+        <p>Makes a subtree unclickable, unfocusable and hidden from assistive tech. Try clicking or tabbing into the panel.</p>
+      </header>
+      <div class="controls"><label class="inline"><input type="checkbox" id="inert-toggle" checked> Panel is inert</label></div>
+      <div class="live">
+        <div id="panel" inert>
+          <button id="clicker">Clicked: 0</button>
+          <input id="panel-name" placeholder="Name" aria-label="Name">
+          <a href="#ex-inert">A link</a>
+        </div>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-fieldset">
+      <header>
+        <h3><code>&lt;fieldset disabled&gt;</code> + <code>&lt;legend&gt;</code></h3>
+        <p>One attribute disables every control inside. The legend names the group for assistive tech.</p>
+      </header>
+      <div class="controls"><label class="inline"><input type="checkbox" id="fs-toggle" checked> Group is disabled</label></div>
+      <div class="live">
+        <fieldset id="ship" disabled>
+          <legend>Shipping address</legend>
+          <div class="field"><label for="street">Street</label><input id="street" value="14 Hill Road"></div>
+          <div class="field"><label for="zip">PIN code</label><input id="zip" value="411001" inputmode="numeric"></div>
+        </fieldset>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-template">
+      <header>
+        <h3><code>&lt;template&gt;</code> + <code>&lt;slot&gt;</code></h3>
+        <p>Inert markup you clone later, and the base of most web components. The first demo clones a row. The second puts a template in shadow DOM and fills it through slots.</p>
+      </header>
+      <div class="live">
+        <ul class="rows" id="rows"></ul>
+        <button id="add-row">Add row from template</button>
+        <hr>
+        <user-card><span slot="name">Asha Rao</span>Maintains the trail map.</user-card>
+        <user-card><span slot="name">Leo Park</span></user-card>
+        <template id="row-tpl"><li><span class="row-label"></span><button class="remove">Remove</button></li></template>
+        <template id="card-tpl">
+          <style>
+            .c { border: 1px solid var(--line-strong); border-radius: 8px; padding: .5rem .8rem; background: var(--surface); min-width: 14rem; }
+            p { margin: .15rem 0 0; color: var(--muted); font-size: .88rem; }
+          </style>
+          <div class="c"><strong><slot name="name">Unnamed</slot></strong><p><slot>No bio yet.</slot></p></div>
+        </template>
+      </div>
+      <p class="note">Demo wiring: a few lines of script clone the row template and register <code>&lt;user-card&gt;</code>.</p>
+      <pre class="code"><code>&lt;template id="row-tpl"&gt;
+  &lt;li&gt;&lt;span class="row-label"&gt;&lt;/span&gt; &lt;button&gt;Remove&lt;/button&gt;&lt;/li&gt;
+&lt;/template&gt;
+&lt;script&gt;
+  const row = rowTpl.content.cloneNode(true);
+  rows.append(row);
+&lt;/script&gt;
+
+&lt;template id="card-tpl"&gt;
+  &lt;strong&gt;&lt;slot name="name"&gt;Unnamed&lt;/slot&gt;&lt;/strong&gt;
+  &lt;p&gt;&lt;slot&gt;No bio yet.&lt;/slot&gt;&lt;/p&gt;
+&lt;/template&gt;
+&lt;user-card&gt;&lt;span slot="name"&gt;Asha Rao&lt;/span&gt;Maintains the trail map.&lt;/user-card&gt;
+&lt;script&gt;
+  customElements.define('user-card', class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: 'open' })
+          .append(cardTpl.content.cloneNode(true));
+    }
+  });
+&lt;/script&gt;</code></pre>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 3. MEDIA AND LOADING ============ -->
+<section class="group" id="media">
+  <h2>Media and loading</h2>
+  <p class="lede">Format choice, cropping and load priority are declared in markup. The browser decides the rest.</p>
+  <div class="cards">
+
+    <article class="ex" id="ex-picture">
+      <header>
+        <h3><code>&lt;picture&gt;</code> + <code>&lt;source&gt;</code></h3>
+        <p>Art direction without JavaScript. Resize the window across 700px and the crop switches between wide and square.</p>
+      </header>
+      <div class="live">
+        <picture>
+          <source media="(min-width: 700px)" srcset="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA3MjAgMjQwJz48cmVjdCB3aWR0aD0nNzIwJyBoZWlnaHQ9JzI0MCcgZmlsbD0nIzBhN2M2ZScvPjxjaXJjbGUgY3g9JzU5MCcgY3k9JzcwJyByPSc0MCcgZmlsbD0nI2YyYzE0ZScvPjxwYXRoIGQ9J00wIDI0MCBMMTcwIDgwIEwyOTAgMTkwIEw0MTAgNTAgTDU4MCAyNDBaJyBmaWxsPScjMDY0ODNmJy8+PHBhdGggZD0nTTMyMCAyNDAgTDUwMCAxMjAgTDcyMCAyNDBaJyBmaWxsPScjMGQ5YTg5Jy8+PHRleHQgeD0nMjInIHk9JzM4JyBmb250LWZhbWlseT0nc2Fucy1zZXJpZicgZm9udC1zaXplPScyMCcgZm9udC13ZWlnaHQ9JzcwMCcgZmlsbD0nI2ZmZmZmZic+V0lERSBDUk9QICg3MDBweCBhbmQgdXApPC90ZXh0Pjwvc3ZnPg==">
+          <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAzMDAgMzAwJz48cmVjdCB3aWR0aD0nMzAwJyBoZWlnaHQ9JzMwMCcgZmlsbD0nIzBhN2M2ZScvPjxjaXJjbGUgY3g9JzIyMCcgY3k9JzkwJyByPSc0MicgZmlsbD0nI2YyYzE0ZScvPjxwYXRoIGQ9J00wIDMwMCBMMTIwIDExMCBMMjAwIDIyMCBMMjYwIDE1MCBMMzAwIDIwMCBMMzAwIDMwMFonIGZpbGw9JyMwNjQ4M2YnLz48cGF0aCBkPSdNMCAzMDAgTDkwIDIyMCBMMTkwIDMwMFonIGZpbGw9JyMwZDlhODknLz48dGV4dCB4PScxOCcgeT0nMzYnIGZvbnQtZmFtaWx5PSdzYW5zLXNlcmlmJyBmb250LXNpemU9JzIwJyBmb250LXdlaWdodD0nNzAwJyBmaWxsPScjZmZmZmZmJz5TUVVBUkUgQ1JPUCAodW5kZXIgNzAwcHgpPC90ZXh0Pjwvc3ZnPg==" alt="Teal mountain ridge under a yellow sun, cropped to match the viewport" width="300" height="300">
+        </picture>
+      </div>
+      <pre class="code"><code>&lt;picture&gt;
+  &lt;!-- format negotiation: first supported type wins --&gt;
+  &lt;source type="image/avif" srcset="ridge.avif"&gt;
+  &lt;source type="image/webp" srcset="ridge.webp"&gt;
+  &lt;!-- art direction: a different crop at a breakpoint --&gt;
+  &lt;source media="(min-width: 700px)" srcset="ridge-wide.jpg"&gt;
+  &lt;img src="ridge-square.jpg" alt="Teal mountain ridge" width="300" height="300"&gt;
+&lt;/picture&gt;
+/* The live demo above uses only the media source with inline SVG crops. */</code></pre>
+    </article>
+
+    <article class="ex" id="ex-img-hints">
+      <header>
+        <h3><code>loading</code>, <code>decoding</code>, <code>fetchpriority</code></h3>
+        <p>Tell the browser what matters. The hero is urgent, everything below the fold can wait.</p>
+      </header>
+      <p class="note warn">Reference only. This page's sandbox blocks external images, so there is nothing to watch loading here.</p>
+      <pre class="code"><code>&lt;img src="hero.jpg" alt="..." fetchpriority="high"&gt;
+
+&lt;img src="gallery-1.jpg" alt="..."
+     loading="lazy" decoding="async"
+     width="640" height="400"&gt;</code></pre>
+    </article>
+
+    <article class="ex" id="ex-link-hints">
+      <header>
+        <h3><code>rel="preconnect | preload | modulepreload | prefetch"</code></h3>
+        <p>Warm a connection, fetch a critical asset now, or fetch something for the next navigation.</p>
+      </header>
+      <p class="note warn">Reference only. This page already uses one: <code>preconnect</code> to the font host.</p>
+      <pre class="code"><code>&lt;link rel="preconnect" href="https://fonts.gstatic.com" crossorigin&gt;
+&lt;link rel="preload" href="/fonts/display.woff2" as="font"
+      type="font/woff2" crossorigin&gt;
+&lt;link rel="modulepreload" href="/app/main.js"&gt;
+&lt;link rel="prefetch" href="/checkout"&gt;</code></pre>
+    </article>
+
+    <article class="ex" id="ex-track">
+      <header>
+        <h3><code>&lt;video&gt;</code> / <code>&lt;audio&gt;</code> + <code>&lt;track&gt;</code></h3>
+        <p>Captions, buffering control and fallback text for old browsers.</p>
+      </header>
+      <p class="note warn">Reference only. No media file is bundled with this page.</p>
+      <pre class="code"><code>&lt;video controls preload="metadata" poster="cover.jpg"&gt;
+  &lt;source src="trail.mp4" type="video/mp4"&gt;
+  &lt;track kind="captions" src="trail.en.vtt"
+         srclang="en" label="English" default&gt;
+  Your browser cannot play this video.
+  &lt;a href="trail.mp4"&gt;Download it instead&lt;/a&gt;.
+&lt;/video&gt;</code></pre>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 4. TYPOGRAPHY AND SEMANTICS ============ -->
+<section class="group" id="text">
+  <h2>Typography and semantics</h2>
+  <p class="lede">Meaning that CSS cannot express, in markup that search engines, translators and screen readers all read.</p>
+  <div class="cards">
+
+    <article class="ex" id="ex-time">
+      <header>
+        <h3><code>&lt;time&gt;</code> and <code>&lt;data&gt;</code></h3>
+        <p>Machine-readable dates and values. Hover is not needed, the attribute carries the real value.</p>
+      </header>
+      <div class="live">
+        <p>Published <time datetime="2026-10-26">26 October 2026</time> at <time datetime="2026-10-26T09:30+05:30">9:30 am IST</time>.</p>
+        <p>Read time: <time datetime="PT4M">4 min</time></p>
+        <p>Product: <data value="SKU-4471">Trail kettle</data></p>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-inline">
+      <header>
+        <h3><code>abbr</code>, <code>q</code>, <code>blockquote</code>, <code>cite</code>, <code>ins</code>, <code>del</code></h3>
+        <p>Hover the dotted abbreviation. The edit pair carries a timestamp in <code>datetime</code>.</p>
+      </header>
+      <div class="live">
+        <p><abbr title="HyperText Markup Language">HTML</abbr> already has an element for it. As the saying goes, <q>check the platform first</q>.</p>
+        <blockquote cite="#heuristic">
+          <p>Use the native element as the baseline, then enhance.</p>
+          <footer>From the <cite>heuristic</cite> at the end of this page</footer>
+        </blockquote>
+        <p>Ship by <del datetime="2026-10-20">Friday</del> <ins datetime="2026-10-26">Monday</ins>.</p>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-ruby">
+      <header>
+        <h3><code>&lt;ruby&gt;</code>, <code>&lt;rt&gt;</code>, <code>&lt;rp&gt;</code></h3>
+        <p>Pronunciation or gloss above the base text. <code>&lt;rp&gt;</code> adds parentheses only where ruby is unsupported.</p>
+      </header>
+      <div class="live">
+        <p lang="ja"><ruby>漢<rp>(</rp><rt>kan</rt><rp>)</rp>字<rp>(</rp><rt>ji</rt><rp>)</rp></ruby></p>
+        <p lang="zh-Hans"><ruby>北京<rp>(</rp><rt>Běijīng</rt><rp>)</rp></ruby></p>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-bidi">
+      <header>
+        <h3><code>&lt;bdi&gt;</code>, <code>&lt;bdo&gt;</code>, <code>&lt;wbr&gt;</code></h3>
+        <p><code>&lt;bdi&gt;</code> isolates a username so it cannot scramble the line. <code>&lt;wbr&gt;</code> offers a break point inside a long identifier.</p>
+      </header>
+      <div class="live">
+        <div class="compare">
+          <div><span class="tag">Without bdi</span><p>User <span>إيان</span>: 4 posts</p></div>
+          <div><span class="tag">With bdi</span><p>User <bdi>إيان</bdi>: 4 posts</p></div>
+          <div><span class="tag">bdo dir="rtl"</span><p><bdo dir="rtl">forced right to left</bdo></p></div>
+          <div><span class="tag">Without wbr (clipped)</span><div class="narrow">com.example.billing.InvoiceLineItemRepositoryImpl</div></div>
+          <div><span class="tag">With wbr</span><div class="narrow">com.example.billing.<wbr>InvoiceLineItem<wbr>RepositoryImpl</div></div>
+        </div>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-hgroup">
+      <header>
+        <h3><code>&lt;hgroup&gt;</code> and <code>&lt;search&gt;</code></h3>
+        <p>A heading with its subtitle stays one outline entry. <code>&lt;search&gt;</code> is a landmark screen readers can jump to.</p>
+      </header>
+      <div class="live">
+        <hgroup>
+          <h4>Trail Kettle Review</h4>
+          <p>Eight weeks above the tree line</p>
+        </hgroup>
+        <search>
+          <form>
+            <label for="site-q" class="inline" style="display:none">Search</label>
+            <input id="site-q" type="search" placeholder="Search reviews" aria-label="Search reviews">
+            <button>Search</button>
+          </form>
+        </search>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-translate">
+      <header>
+        <h3><code>translate="no"</code></h3>
+        <p>Keeps translation tools away from brand names, code and transliterated terms.</p>
+      </header>
+      <div class="live">
+        <p>Open <span translate="no">Quillfeather</span> and run <code translate="no">npm install</code> before you start.</p>
+      </div>
+      <p class="note">Try your browser's Translate. The marked words stay as they are.</p>
+      <pre class="code"><code></code></pre>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 5. INPUT EXPERIENCE ============ -->
+<section class="group" id="input">
+  <h2>Input experience on mobile and desktop</h2>
+  <p class="lede">A few attributes do a lot of UX work. The keyboard attributes show their effect on a phone.</p>
+  <div class="cards">
+
+    <article class="ex" id="ex-mobile">
+      <header>
+        <h3>Keyboard and autofill attributes</h3>
+        <p><code>autocomplete</code>, <code>inputmode</code>, <code>enterkeyhint</code>, <code>autocapitalize</code>, <code>autocorrect</code>.</p>
+      </header>
+      <div class="live">
+        <form>
+          <div class="field"><label for="otp">SMS code (one-time-code, numeric keypad)</label>
+            <input id="otp" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="123456"></div>
+          <div class="field"><label for="amt">Amount (decimal keypad)</label>
+            <input id="amt" inputmode="decimal" placeholder="0.00"></div>
+          <div class="field"><label for="handle">Handle (no capitals, no autocorrect)</label>
+            <input id="handle" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="trail_walker"></div>
+          <div class="field"><label for="sq">Search (return key says Search)</label>
+            <input id="sq" type="search" enterkeyhint="search" placeholder="Search kettles"></div>
+        </form>
+      </div>
+      <p class="note">On desktop these look identical. Open this page on a phone to see the keypad and return key change.</p>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-pickers">
+      <header>
+        <h3>Native pickers</h3>
+        <p><code>type="color"</code>, <code>"range"</code>, <code>"date"</code>, <code>"datetime-local"</code>. No picker library.</p>
+      </header>
+      <div class="live">
+        <form id="pickers">
+          <div class="field"><label for="pc">Colour</label><input id="pc" name="pc" type="color" value="#0a7c6e"></div>
+          <div class="field"><label for="pr">Volume</label><input id="pr" name="pr" type="range" min="0" max="100" value="40"></div>
+          <div class="field"><label for="pd">Date</label><input id="pd" name="pd" type="date" value="2026-10-26"></div>
+          <div class="field"><label for="pt">Date and time</label><input id="pt" name="pt" type="datetime-local" value="2026-10-26T09:30"></div>
+          <p class="readout">Values: <code id="pickers-out"></code></p>
+        </form>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+    <article class="ex" id="ex-gauges">
+      <header>
+        <h3><code>&lt;meter&gt;</code> and <code>&lt;progress&gt;</code></h3>
+        <p><code>low</code>, <code>high</code> and <code>optimum</code> colour the meter. A <code>&lt;progress&gt;</code> with no value is indeterminate.</p>
+      </header>
+      <div class="live">
+        <label>Disk, 42% <meter min="0" max="100" low="60" high="85" optimum="20" value="42">42%</meter></label>
+        <label>Disk, 72% <meter min="0" max="100" low="60" high="85" optimum="20" value="72">72%</meter></label>
+        <label>Disk, 93% <meter min="0" max="100" low="60" high="85" optimum="20" value="93">93%</meter></label>
+        <label>Upload, 68% <progress max="100" value="68">68%</progress></label>
+        <label>Loading <progress>Loading&hellip;</progress></label>
+      </div>
+      <pre class="code"><code></code></pre>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ 6. NAVIGATION AND SAFETY ============ -->
+<section class="group" id="safety">
+  <h2>Navigation and safety</h2>
+  <p class="lede">Links, embeds and clickable regions. Only the image map can run inside this page.</p>
+  <div class="cards">
+
+    <article class="ex" id="ex-map">
+      <header>
+        <h3><code>&lt;map&gt;</code> and <code>&lt;area&gt;</code></h3>
+        <p>Clickable image regions. Click a zone. The highlighted text is shown with the CSS <code>:target</code> selector, no script.</p>
+      </header>
+      <div class="live">
+        <div class="mapbox">
+          <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyODAgMTcwJz48cmVjdCB3aWR0aD0nMjgwJyBoZWlnaHQ9JzE3MCcgZmlsbD0nI2Q4ZTRkMCcvPjxjaXJjbGUgY3g9JzYwJyBjeT0nMTEwJyByPSczNCcgZmlsbD0nIzhmYjU4YScvPjxwb2x5Z29uIHBvaW50cz0nMTQwLDIwIDE5MCwxMDAgOTAsMTAwJyBmaWxsPScjN2E4NzkzJy8+PHJlY3QgeD0nMjAwJyB5PScxMDAnIHdpZHRoPSc3MCcgaGVpZ2h0PSc2MCcgcng9JzgnIGZpbGw9JyM2YWE3ZDYnLz48ZyBmb250LWZhbWlseT0nc2Fucy1zZXJpZicgZm9udC1zaXplPScxMicgZm9udC13ZWlnaHQ9JzcwMCcgZmlsbD0nIzEwMjAyYycgdGV4dC1hbmNob3I9J21pZGRsZSc+PHRleHQgeD0nNjAnIHk9JzExNCc+Q0FNUDwvdGV4dD48dGV4dCB4PScxNDAnIHk9JzkwJz5TVU1NSVQ8L3RleHQ+PHRleHQgeD0nMjM1JyB5PScxMzQnPkxBS0U8L3RleHQ+PC9nPjwvc3ZnPg==" width="280" height="170" usemap="#trail" alt="Trail map with a camp, a summit and a lake">
+          <map name="trail">
+            <area shape="circle" coords="60,110,34" href="#zone-camp" alt="Base camp">
+            <area shape="poly" coords="140,20,190,100,90,100" href="#zone-summit" alt="Summit">
+            <area shape="rect" coords="200,100,270,160" href="#zone-lake" alt="Lake">
+          </map>
+        </div>
+        <p class="zone" id="zone-camp">Base camp: water, tents, 3,100 m.</p>
+        <p class="zone" id="zone-summit">Summit: 4 hour climb, 4,250 m.</p>
+        <p class="zone" id="zone-lake">Lake: calm water, no swimming.</p>
+      </div>
+      <pre class="code"><code>&lt;img src="trail.png" width="280" height="170"
+     usemap="#trail" alt="Trail map"&gt;
+&lt;map name="trail"&gt;
+  &lt;area shape="circle" coords="60,110,34"
+        href="#zone-camp" alt="Base camp"&gt;
+  &lt;area shape="poly" coords="140,20,190,100,90,100"
+        href="#zone-summit" alt="Summit"&gt;
+  &lt;area shape="rect" coords="200,100,270,160"
+        href="#zone-lake" alt="Lake"&gt;
+&lt;/map&gt;
+/* Coordinates are in image pixels, so keep the image at a fixed size. */</code></pre>
+    </article>
+
+    <article class="ex" id="ex-iframe">
+      <header>
+        <h3><code>&lt;iframe loading="lazy" sandbox&gt;</code></h3>
+        <p><code>loading="lazy"</code> defers off-screen embeds. <code>sandbox</code> restricts what the embedded page can do, and you re-grant only what you need.</p>
+      </header>
+      <p class="note warn">Reference only. Third-party embeds cannot load inside this page.</p>
+      <pre class="code"><code>&lt;iframe src="https://widgets.example.com/map"
+        loading="lazy"
+        sandbox="allow-scripts allow-same-origin"
+        referrerpolicy="no-referrer"
+        title="Trail map"&gt;&lt;/iframe&gt;</code></pre>
+    </article>
+
+    <article class="ex" id="ex-links">
+      <header>
+        <h3><code>&lt;a download&gt;</code>, <code>ping</code>, <code>&lt;base target&gt;</code></h3>
+        <p><code>download</code> suggests a filename. <code>base target</code> sets a default target for the page. <code>ping</code> sends a tracking request, so use it sparingly.</p>
+      </header>
+      <p class="note warn">Reference only. This page's frame blocks downloads, and a <code>base target</code> would change every link here.</p>
+      <pre class="code"><code>&lt;base target="_blank"&gt;
+
+&lt;a href="/files/q3.pdf" download="Q3-report.pdf"&gt;Download report&lt;/a&gt;
+
+&lt;a href="/pricing" ping="/analytics/click"&gt;Pricing&lt;/a&gt;</code></pre>
+    </article>
+
+  </div>
+</section>
+
+<!-- ============ HEURISTIC ============ -->
+<section class="group" id="heuristic">
+  <h2>Before writing a custom component</h2>
+  <p class="lede">Ask whether the browser already has a primitive for it.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>You need</th><th>Reach for</th></tr></thead>
+      <tbody>
+        <tr><td>A modal with focus trap</td><td><code>&lt;dialog&gt;</code> and <code>showModal()</code></td></tr>
+        <tr><td>Menu, tooltip or toast</td><td><code>popover</code> with <code>popovertarget</code></td></tr>
+        <tr><td>An accordion</td><td><code>&lt;details name&gt;</code></td></tr>
+        <tr><td>Autocomplete that allows free text</td><td><code>&lt;datalist&gt;</code></td></tr>
+        <tr><td>A calculated result</td><td><code>&lt;output for&gt;</code></td></tr>
+        <tr><td>Collapsed content that find-in-page still sees</td><td><code>hidden="until-found"</code></td></tr>
+        <tr><td>Disable everything behind a custom modal</td><td><code>inert</code></td></tr>
+        <tr><td>Disable a block of form controls</td><td><code>&lt;fieldset disabled&gt;</code></td></tr>
+        <tr><td>Right image format and crop</td><td><code>&lt;picture&gt;</code>, <code>loading</code>, <code>fetchpriority</code></td></tr>
+        <tr><td>The right mobile keyboard</td><td><code>inputmode</code>, <code>enterkeyhint</code>, <code>autocomplete</code></td></tr>
+        <tr><td>A gauge or a loading state</td><td><code>&lt;meter&gt;</code>, <code>&lt;progress&gt;</code></td></tr>
+        <tr><td>Clickable image regions</td><td><code>&lt;map&gt;</code> and <code>&lt;area&gt;</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="closing">Native versions usually come with better keyboard handling and screen reader support than a hand-rolled one. Where support is patchy, use the native element as the baseline and enhance it with JavaScript. The chips at the top of the page show what your browser supports today.</p>
+  <footer class="end">Check current support on MDN before relying on <code>hidden="until-found"</code> or CSS anchor positioning.</footer>
+</section>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+
+  // Support strip
+  const checks = [
+    ['dialog', typeof HTMLDialogElement === 'function'],
+    ['popover', 'popover' in HTMLElement.prototype],
+    ['details[name]', 'name' in HTMLDetailsElement.prototype],
+    ['until-found', 'onbeforematch' in document.body],
+    ['inert', 'inert' in HTMLElement.prototype],
+    ['search', Object.prototype.toString.call(document.createElement('search')) !== '[object HTMLUnknownElement]'],
+    ['anchor positioning', !!(window.CSS && CSS.supports('anchor-name', '--a'))],
+  ];
+  const strip = $('#support');
+  checks.forEach(([name, ok]) => {
+    const s = document.createElement('span');
+    s.className = 'chip ' + (ok ? 'yes' : 'no');
+    s.textContent = name;
+    strip.append(s);
+  });
+
+  // Fill each empty code block with the markup of its live area, dedented
+  document.querySelectorAll('.ex').forEach(ex => {
+    const code = ex.querySelector('pre.code code');
+    const live = ex.querySelector('.live');
+    if (!code || !live || code.textContent.trim()) return;
+    const lines = live.innerHTML.replace(/^\s*\n/, '').replace(/\s+$/, '').split('\n');
+    const indent = Math.min(...lines.filter(l => l.trim()).map(l => l.match(/^ */)[0].length));
+    code.textContent = lines.map(l => l.slice(indent)).join('\n');
+  });
+
+  // Demo forms never submit anywhere
+  document.addEventListener('submit', e => { if (e.target.method !== 'dialog') e.preventDefault(); });
+
+  // dialog
+  const dlg = $('#confirm'), res = $('#dlg-result');
+  $('#open-confirm').addEventListener('click', () => { dlg.returnValue = ''; dlg.showModal(); });
+  dlg.addEventListener('close', () => { res.textContent = dlg.returnValue ? '"' + dlg.returnValue + '"' : 'empty (closed with Escape)'; });
+
+  // output
+  const calc = $('#calc'), total = calc.elements.total;
+  const recalc = () => { const v = calc.elements.qty.valueAsNumber * calc.elements.price.valueAsNumber; total.value = isNaN(v) ? '' : v.toFixed(2); };
+  calc.addEventListener('input', recalc); recalc();
+
+  // hidden=until-found
+  const fp = $('#found-p');
+  if (!('onbeforematch' in document.body)) { fp.hidden = false; $('#found-warn').hidden = false; $('#found-status').textContent = 'Status: shown (no until-found support)'; }
+  fp.addEventListener('beforematch', () => { $('#found-status').textContent = 'Status: revealed by find-in-page'; });
+
+  // inert
+  const panel = $('#panel'), clicker = $('#clicker'); let n = 0;
+  $('#inert-toggle').addEventListener('change', e => { panel.inert = e.target.checked; });
+  clicker.addEventListener('click', () => { clicker.textContent = 'Clicked: ' + (++n); });
+
+  // fieldset
+  $('#fs-toggle').addEventListener('change', e => { $('#ship').disabled = e.target.checked; });
+
+  // template
+  const rows = $('#rows'), rowTpl = $('#row-tpl'); let r = 0;
+  const addRow = () => { const f = rowTpl.content.cloneNode(true); f.querySelector('.row-label').textContent = 'Row ' + (++r); rows.append(f); };
+  addRow(); addRow();
+  $('#add-row').addEventListener('click', addRow);
+  rows.addEventListener('click', e => { if (e.target.closest('.remove')) e.target.closest('li').remove(); });
+  if (!customElements.get('user-card')) {
+    const cardTpl = $('#card-tpl');
+    customElements.define('user-card', class extends HTMLElement {
+      constructor() { super(); this.attachShadow({ mode: 'open' }).append(cardTpl.content.cloneNode(true)); }
+    });
+  }
+
+  // pickers readout
+  const pk = $('#pickers'), out = $('#pickers-out');
+  const show = () => { out.textContent = ['pc', 'pr', 'pd', 'pt'].map(k => pk.elements[k].value).join('  '); };
+  pk.addEventListener('input', show); show();
+})();
+</script>
