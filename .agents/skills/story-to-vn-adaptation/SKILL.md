@@ -110,6 +110,12 @@ Then make an **Asset List** and check it against the budget:
 
 When the list is over budget, merge locations and drop expressions before cutting must-keep CGs.
 
+### Asset storage, JIT promotion, and deduplication
+Adapting is an incremental decision; you cannot anticipate upfront whether an asset will be shared across future chapters or remain unique to one:
+1. **Initial Placement:** New assets start inside the adaptation folder: `worlds/<world>/vns/<slug>/assets/`.
+2. **Just-In-Time (JIT) Promotion:** When adapting a new slug, check existing visual novel adaptations in `worlds/<world>/vns/`. If an asset (character sprite, background, BGM, or SFX) is already present in an earlier slug and needed again, **move/promote that asset to `worlds/<world>/vns/_shared/assets/`**. Do not duplicate existing files. Both earlier and later adaptations will resolve it from `_shared/assets/`.
+3. **Expression Fallback (No Duplicate Sprites):** Never copy base portraits to simulate expression variants (e.g. duplicating `hero.png` into `hero_smile.png`, `hero_angry.png`). The presentation engine and server asset resolver automatically resolve requests for `<character>_<expression>.<ext>` to the base portrait `<character>.<ext>` (or `<character>_neutral.<ext>`) in either the local scene or `_shared/assets/sprites/`. Only add separate expression files when distinct artwork exists.
+
 ## Step 7 — Scene list
 
 Before writing the script, list every scene: ID, route, location (background), characters present, purpose (the beat it delivers), choices or variable changes, CG if any, and approximate word count. The word counts should add up to the tier's budget. Every scene must do a job; a scene that delivers no beat, character development or choice gets merged or cut.
@@ -199,6 +205,32 @@ For Mid and Large tiers, build in stages. Send the Story Core, Adaptation Notes,
 ## Delivery
 
 Deliver a document the user can keep and edit: a doc artifact by default, or the format they ask for (.md, .docx, .rpy). Close with one line on what was produced and one natural next step, such as "write the next route?", "add a true route?" or "export to Ren'Py?".
+
+### Scaffolding layout on disk
+When scaffolding or writing visual novel adaptations into a world, follow this structure with generic nondescript naming:
+
+```text
+worlds/<world>/vns/
+├── _shared/
+│   └── assets/
+│       ├── backgrounds/       # Promoted when used by 2+ adaptations
+│       ├── sprites/           # Base character portraits (protagonist.png, etc.)
+│       ├── music/
+│       └── sfx/
+├── ch01-awakening/
+│   ├── manifest.json
+│   ├── adaptation.md
+│   ├── slides.json
+│   └── assets/
+│       ├── backgrounds/       # Assets unique to this adaptation
+│       └── cgs/               # Scene-specific event CGs
+└── ch02-arrival/
+    ├── manifest.json
+    ├── adaptation.md
+    ├── slides.json
+    └── assets/
+        └── cgs/
+```
 
 ## Checks before delivering
 
