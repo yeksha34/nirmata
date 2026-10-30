@@ -136,6 +136,19 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
   app.get("/api/health", (c) => c.json({ ok: true }));
   app.get("/api/table", async (c) => c.json(await table.info()));
 
+  app.get("/api/worlds/:name/vns/:slug/assets/*", async (c) => {
+    const worldName = c.req.param("name");
+    const slug = c.req.param("slug");
+    const prefix = `/api/worlds/${worldName}/vns/${slug}/assets/`;
+    const assetPath = c.req.path.startsWith(prefix) ? c.req.path.slice(prefix.length) : "";
+    const asset = await table.readWorldVnAsset(worldName, slug, assetPath);
+    if (!asset) throw new HttpError(404, "not_found", "Asset not found.");
+    return c.body(new Uint8Array(asset.data), 200, {
+      "Content-Type": asset.contentType,
+      "Cache-Control": "public, max-age=86400",
+    });
+  });
+
   app.post("/api/join", async (c) => {
     const body = await json(c, Join);
     const seat = table.join(body.nick ?? "", {

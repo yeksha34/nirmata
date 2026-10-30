@@ -319,6 +319,15 @@ export class Table {
     return this.options.library.compileVn(name, slug);
   }
 
+  /** Read a static asset file (image, audio) for a visual novel adaptation. Open to all readers, players, and canvas. */
+  async readWorldVnAsset(
+    name: string,
+    slug: string,
+    subPath: string,
+  ): Promise<{ data: Buffer; contentType: string } | undefined> {
+    return this.options.library.readVnAsset(name, slug, subPath);
+  }
+
   /** Make a new world. It is not opened: the host goes to its page and starts a story there. */
   async createWorld(
     seat: Seat,

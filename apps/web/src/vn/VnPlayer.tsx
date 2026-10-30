@@ -226,7 +226,9 @@ export function VnPlayer({
     <dialog className="vn-player-modal" open aria-label={`${world.title}: ${slides.title}`}>
       <section className="vn-viewport">
         {/* Layer 1-3: Phaser Canvas Stage */}
-        {currentSlide && <VnCanvas stage={currentSlide.stage} />}
+        {currentSlide && (
+          <VnCanvas stage={currentSlide.stage} worldName={world.name} vnSlug={manifest.slug} />
+        )}
 
         {/* Top Header Bar */}
         <header className="vn-header-bar">
