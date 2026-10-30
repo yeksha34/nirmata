@@ -5,6 +5,12 @@ import {
   NoStoryCopyError,
   projectStory,
   sourceOf,
+  type VnDiagnostic,
+  type VnManifest,
+  type VnMode,
+  type VnSlideDeck,
+  type VnSummary,
+  type VnTier,
   worldFromStory,
 } from "@nirmata/core";
 import {
@@ -257,6 +263,60 @@ export class Table {
   ): Promise<{ path: string; title: string; text: string }> {
     requireCan(this.actor(seat), "story.start");
     return this.options.library.writing(name, path);
+  }
+
+  /** Visual novel adaptations in a world. Host only. */
+  async worldVns(seat: Seat, name: string): Promise<VnSummary[]> {
+    requireCan(this.actor(seat), "story.start");
+    return this.options.library.vns(name);
+  }
+
+  /** One visual novel adaptation in full. Host only. */
+  async worldVn(
+    seat: Seat,
+    name: string,
+    slug: string,
+  ): Promise<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck }> {
+    requireCan(this.actor(seat), "story.start");
+    return this.options.library.vn(name, slug);
+  }
+
+  /** Save a visual novel's manifest, adaptation markdown, or slides. Host only. */
+  async saveWorldVn(
+    seat: Seat,
+    name: string,
+    slug: string,
+    data: { manifest?: VnManifest; adaptationMd?: string; slides?: VnSlideDeck },
+  ): Promise<void> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.saveVn(name, slug, data);
+  }
+
+  /** Scaffold a new visual novel adaptation. Host only. */
+  async scaffoldWorldVn(
+    seat: Seat,
+    name: string,
+    options: {
+      slug: string;
+      title: string;
+      source: string;
+      mode?: VnMode;
+      mc?: string;
+      tier?: VnTier;
+    },
+  ): Promise<VnSummary> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.scaffoldVn(name, options);
+  }
+
+  /** Compile a visual novel's adaptation.md into slides.json and save it. Host only. */
+  async compileWorldVn(
+    seat: Seat,
+    name: string,
+    slug: string,
+  ): Promise<{ slides: VnSlideDeck; diagnostics: VnDiagnostic[] }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.compileVn(name, slug);
   }
 
   /** Make a new world. It is not opened: the host goes to its page and starts a story there. */
