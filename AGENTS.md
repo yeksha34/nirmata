@@ -9,6 +9,7 @@ Nirmata: build worlds, then host stories in them. Start at [docs/README.md](docs
 - Never commit secrets, and never copy private story content into this repo ([ADR-0005](docs/decisions/0005-scaffold-content-neutral.md)).
 - Do only what was asked. Never inspect, query git, or explore directories outside this workspace (e.g. external repos) unless explicitly told to do so. Do not invent side tasks or preemptive investigations that waste tokens.
 - Git deliverable workflow: for every deliverable step, create a dedicated branch, commit on that branch, and merge it back into the current working branch. Do this for all deliverables steps.
+- Tagging rule: tag important deliverable milestones with an annotated git tag (e.g. `git tag -a <tag-name> -m "<description>"`). Follow the `release-tag` skill for release milestones.
 - Check a world: `node .agents/skills/world-lint/driver.mjs check`.
 
 | Skill | Use for |
