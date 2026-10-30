@@ -62,7 +62,7 @@ export function WritingsList({
                     onClick={() => onSelect(item.path)}
                   >
                     <header className="writing-row-head">
-                      <strong>{item.title}</strong>
+                      <strong title={item.title}>{item.title}</strong>
                       {vn && (
                         <data value={vn.slideCount ?? 0} className="tag vn-badge">
                           <T with={{ count: vn.slideCount ?? 0 }}>{"VN: {count} slides"}</T>
