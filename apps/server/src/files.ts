@@ -273,6 +273,7 @@ export class WorldFiles implements SourceBackend {
     }
     const summaries: VnSummary[] = [];
     for (const slug of slugs.sort()) {
+      if (slug.startsWith("_")) continue;
       const manifestPath = join(this.vnsDir, slug, "manifest.json");
       const text = await readIfThere(manifestPath);
       if (!text) continue;
@@ -406,31 +407,55 @@ export class WorldFiles implements SourceBackend {
   ): Promise<{ data: Buffer; contentType: string } | undefined> {
     const safeSlug = sanitizeSlug(slug);
     const cleanSub = subPath.replace(/^[/\\]+/, "").replace(/\0/g, "");
-    const full = inside(this.root, `vns/${safeSlug}/assets/${cleanSub}`);
-    try {
-      const data = await readFile(full);
-      const ext = cleanSub.split(".").pop()?.toLowerCase();
-      const contentType =
-        ext === "png"
-          ? "image/png"
-          : ext === "jpg" || ext === "jpeg"
-            ? "image/jpeg"
-            : ext === "webp"
-              ? "image/webp"
-              : ext === "svg"
-                ? "image/svg+xml"
-                : ext === "mp3"
-                  ? "audio/mpeg"
-                  : ext === "ogg"
-                    ? "audio/ogg"
-                    : ext === "wav"
-                      ? "audio/wav"
-                      : "application/octet-stream";
-      return { data, contentType };
-    } catch (e) {
-      if (isMissing(e)) return undefined;
-      throw e;
+
+    // Search priority:
+    // 1. Scene-specific asset: vns/<slug>/assets/<subPath>
+    // 2. Shared VN asset pool: vns/_shared/assets/<subPath>
+    const candidates = [
+      inside(this.root, `vns/${safeSlug}/assets/${cleanSub}`),
+      inside(this.root, `vns/_shared/assets/${cleanSub}`),
+    ];
+
+    // 3. Sprite expression fallback: if <character>_<expression>.<ext> is missing,
+    // fall back to the base <character>.<ext> or <character>_neutral.<ext>
+    const spriteMatch = cleanSub.match(/^sprites\/([^/_]+)_[^/]+\.(png|jpg|jpeg|webp)$/i);
+    if (spriteMatch) {
+      const charName = spriteMatch[1];
+      const ext = spriteMatch[2];
+      candidates.push(
+        inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}.${ext}`),
+        inside(this.root, `vns/_shared/assets/sprites/${charName}.${ext}`),
+        inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}_neutral.${ext}`),
+        inside(this.root, `vns/_shared/assets/sprites/${charName}_neutral.${ext}`),
+      );
     }
+
+    for (const full of candidates) {
+      try {
+        const data = await readFile(full);
+        const ext = full.split(".").pop()?.toLowerCase();
+        const contentType =
+          ext === "png"
+            ? "image/png"
+            : ext === "jpg" || ext === "jpeg"
+              ? "image/jpeg"
+              : ext === "webp"
+                ? "image/webp"
+                : ext === "svg"
+                  ? "image/svg+xml"
+                  : ext === "mp3"
+                    ? "audio/mpeg"
+                    : ext === "ogg"
+                      ? "audio/ogg"
+                      : ext === "wav"
+                        ? "audio/wav"
+                        : "application/octet-stream";
+        return { data, contentType };
+      } catch (e) {
+        if (!isMissing(e)) throw e;
+      }
+    }
+    return undefined;
   }
 
   /** The folder that holds this world and its siblings. */

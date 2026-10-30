@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { WorldFiles } from "../src";
@@ -173,5 +173,58 @@ TARA: Not today.
     expect(compileRes.status).toBe(200);
     const compileResult = (await compileRes.json()) as { slides: { sceneOrder: string[] } };
     expect(compileResult.slides.sceneOrder.length).toBeGreaterThan(0);
+  });
+
+  it("resolves assets across scene-specific, shared pool, and base sprite fallback", async () => {
+    const worldDir = await tempWorld();
+    const world = new WorldFiles(worldDir);
+
+    // Set up directories:
+    // vns/ch01/assets/cgs/cg_scene.png
+    // vns/_shared/assets/backgrounds/hall.jpg
+    // vns/_shared/assets/sprites/hero.png
+    const ch01Cgs = join(worldDir, "vns", "ch01", "assets", "cgs");
+    const sharedBg = join(worldDir, "vns", "_shared", "assets", "backgrounds");
+    const sharedSprites = join(worldDir, "vns", "_shared", "assets", "sprites");
+
+    await mkdir(ch01Cgs, { recursive: true });
+    await mkdir(sharedBg, { recursive: true });
+    await mkdir(sharedSprites, { recursive: true });
+
+    await writeFile(join(ch01Cgs, "cg_scene.png"), Buffer.from("scene_cg_binary"));
+    await writeFile(join(sharedBg, "hall.jpg"), Buffer.from("shared_bg_binary"));
+    await writeFile(join(sharedSprites, "hero.png"), Buffer.from("shared_hero_binary"));
+
+    // 1. Scene-specific asset
+    const sceneCg = await world.readVnAsset("ch01", "cgs/cg_scene.png");
+    expect(sceneCg).toBeDefined();
+    expect(sceneCg?.contentType).toBe("image/png");
+    expect(sceneCg?.data.toString()).toBe("scene_cg_binary");
+
+    // 2. Shared asset resolved from ch01
+    const bg = await world.readVnAsset("ch01", "backgrounds/hall.jpg");
+    expect(bg).toBeDefined();
+    expect(bg?.contentType).toBe("image/jpeg");
+    expect(bg?.data.toString()).toBe("shared_bg_binary");
+
+    // 3. Direct base sprite resolved from _shared
+    const spriteBase = await world.readVnAsset("ch01", "sprites/hero.png");
+    expect(spriteBase).toBeDefined();
+    expect(spriteBase?.contentType).toBe("image/png");
+    expect(spriteBase?.data.toString()).toBe("shared_hero_binary");
+
+    // 4. Expression sprite fallback: hero_confident.png falls back to hero.png
+    const spriteFallback = await world.readVnAsset("ch01", "sprites/hero_confident.png");
+    expect(spriteFallback).toBeDefined();
+    expect(spriteFallback?.contentType).toBe("image/png");
+    expect(spriteFallback?.data.toString()).toBe("shared_hero_binary");
+
+    // 5. Missing asset returns undefined
+    const missing = await world.readVnAsset("ch01", "sprites/unknown_char.png");
+    expect(missing).toBeUndefined();
+
+    // 6. _shared directory is not listed in world.vns()
+    const list = await world.vns();
+    expect(list.some((vn) => vn.slug.startsWith("_"))).toBe(false);
   });
 });
