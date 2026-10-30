@@ -400,6 +400,39 @@ export class WorldFiles implements SourceBackend {
     return { slides: result.deck, diagnostics: result.diagnostics };
   }
 
+  async readVnAsset(
+    slug: string,
+    subPath: string,
+  ): Promise<{ data: Buffer; contentType: string } | undefined> {
+    const safeSlug = sanitizeSlug(slug);
+    const cleanSub = subPath.replace(/^[/\\]+/, "").replace(/\0/g, "");
+    const full = inside(this.root, `vns/${safeSlug}/assets/${cleanSub}`);
+    try {
+      const data = await readFile(full);
+      const ext = cleanSub.split(".").pop()?.toLowerCase();
+      const contentType =
+        ext === "png"
+          ? "image/png"
+          : ext === "jpg" || ext === "jpeg"
+            ? "image/jpeg"
+            : ext === "webp"
+              ? "image/webp"
+              : ext === "svg"
+                ? "image/svg+xml"
+                : ext === "mp3"
+                  ? "audio/mpeg"
+                  : ext === "ogg"
+                    ? "audio/ogg"
+                    : ext === "wav"
+                      ? "audio/wav"
+                      : "application/octet-stream";
+      return { data, contentType };
+    } catch (e) {
+      if (isMissing(e)) return undefined;
+      throw e;
+    }
+  }
+
   /** The folder that holds this world and its siblings. */
   get parent(): string {
     return dirname(this.root);
@@ -935,6 +968,15 @@ export class Library {
     slug: string,
   ): Promise<{ slides: VnSlideDeck; diagnostics: VnDiagnostic[] }> {
     return this.open(name).compileVn(slug);
+  }
+
+  /** Read an asset file belonging to an adapted visual novel. */
+  async readVnAsset(
+    name: string,
+    slug: string,
+    subPath: string,
+  ): Promise<{ data: Buffer; contentType: string } | undefined> {
+    return this.open(name).readVnAsset(slug, subPath);
   }
 
   /** One chapter or draft of a world, in full, for reading. */

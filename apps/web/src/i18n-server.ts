@@ -22,6 +22,7 @@ export const HI_SERVER: Record<string, string> = {
   "Only the host can see the settings.": "केवल यजमान सेटिंग देख सकते हैं।",
   "That is too much to send at once.": "इतना सब एक साथ नहीं भेजा जा सकता।",
   "Choose a world first.": "पहले कोई संसार चुनें।",
+  "Asset not found.": "संसाधन नहीं मिला।",
   "That host key is not right.": "वह यजमान-कुंजी सही नहीं है।",
   "The table is full. Try again later.": "पटल भरा है। बाद में फिर प्रयास करें।",
   "Join the table first.": "पहले पटल पर आएँ।",

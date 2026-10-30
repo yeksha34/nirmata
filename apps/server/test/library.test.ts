@@ -226,6 +226,20 @@ describe("serving the screens", () => {
     expect((await app.request("/missing.js")).status).toBe(404);
   });
 
+  it("serves visual novel static assets without requiring a seat token", async () => {
+    const r = await rig();
+    const assetDir = join(r.library.root, "example-world", "vns", "test-vn", "assets", "sprites");
+    await mkdir(assetDir, { recursive: true });
+    await writeFile(join(assetDir, "hero.png"), "PNG_DATA");
+
+    const res = await r.app.request(
+      "/api/worlds/example-world/vns/test-vn/assets/sprites/hero.png",
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/png");
+    expect(await res.text()).toBe("PNG_DATA");
+  });
+
   it("never lets an address reach outside the folder or hide the API", async () => {
     const app = await withUi({ "index.html": "<h1>x</h1>" });
     expect((await app.request("/..%2f..%2fpackage.json")).status).toBe(404);

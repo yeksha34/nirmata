@@ -24,5 +24,8 @@ Use `.agents/skills/record-decision`.
 | [0017](0017-xml-markdown-cards.md) | A card is XML around markdown | Accepted |
 | [0018](0018-card-parts-and-templates.md) | A card has named parts, and templates say which | Accepted |
 | [0019](0019-vn-adaptation-pipeline-and-player.md) | Adapt a chapter or draft at a time into a VN; compile slides; present in Phaser | Proposed |
+| [0020](0020-server-dotenv-auto-loading.md) | Server automatic environment file loading | Proposed |
+| [0021](0021-workspace-writings-detail-panel.md) | Workspace writings navigation and detail panel split | Proposed |
+| [0022](0022-vn-dynamic-asset-loading-and-artstyle-fallback.md) | Visual novel asset serving and procedural artstyle fallbacks | Proposed |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.
