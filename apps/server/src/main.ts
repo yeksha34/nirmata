@@ -26,6 +26,25 @@ function openBrowser(url: string): void {
 }
 
 async function main(): Promise<void> {
+  const here = dirname(fileURLToPath(import.meta.url));
+  if (typeof process.loadEnvFile === "function") {
+    const candidates = [
+      process.env.INIT_CWD ? join(process.env.INIT_CWD, ".env") : undefined,
+      join(process.cwd(), ".env"),
+      join(here, "..", ".env"),
+      join(here, "..", "..", ".env"),
+    ];
+    for (const file of candidates) {
+      if (file && existsSync(file)) {
+        try {
+          process.loadEnvFile(file);
+        } catch {
+          // ignore unreadable .env
+        }
+      }
+    }
+  }
+
   const config = loadConfig();
   const log = (message: string) => console.error(`[nirmata] ${message}`);
   const library = new Library(config.libraryDir);
@@ -43,7 +62,6 @@ async function main(): Promise<void> {
   const opened = await table.openOnlyWorld();
   const worlds = await library.list();
 
-  const here = dirname(fileURLToPath(import.meta.url));
   const uiDir = join(here, "..", "..", "web", "dist");
   const ui = existsSync(join(uiDir, "index.html")) ? uiDir : undefined;
 
