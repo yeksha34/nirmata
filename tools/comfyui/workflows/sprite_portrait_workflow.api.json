@@ -1,0 +1,280 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "Illustrious-XL-v0.1.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint (SDXL / Illustrious / Pony)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "text": "masterpiece, best quality, visual novel character sprite, full body portrait, crisp line art, smooth digital anime illustration, standing posture, looking at viewer",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Base Prompt"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name, complex background, scenery, dark background",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative Base Prompt"
+    }
+  },
+  "4": {
+    "inputs": {
+      "width": 832,
+      "height": 1216,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent (Portrait 9:16 / 3:4)"
+    }
+  },
+  "5": {
+    "inputs": {
+      "image": "reference_character_anchor.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Character Identity Reference Image"
+    }
+  },
+  "6": {
+    "inputs": {
+      "preset": "PLUS FACE (portraits)",
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "IPAdapterUnifiedLoader",
+    "_meta": {
+      "title": "IP-Adapter Loader (Face/Identity)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "weight": 0.8,
+      "weight_type": "ease in-out",
+      "combine_embeds": "concat",
+      "start_at": 0.0,
+      "end_at": 1.0,
+      "embeds_scaling": "V only",
+      "model": [
+        "6",
+        0
+      ],
+      "ipadapter": [
+        "6",
+        1
+      ],
+      "image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "IPAdapter",
+    "_meta": {
+      "title": "Apply IP-Adapter (Locks Character Identity)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "control_net_name": "controlnet-openpose-sdxl-1.0.safetensors"
+    },
+    "class_type": "ControlNetLoader",
+    "_meta": {
+      "title": "Load OpenPose ControlNet (Humanoid Mode)"
+    }
+  },
+  "9": {
+    "inputs": {
+      "image": "pose_sprite_standing_neutral.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Sprite Standing Pose Guide"
+    }
+  },
+  "10": {
+    "inputs": {
+      "strength": 0.7,
+      "start_percent": 0.0,
+      "end_percent": 0.8,
+      "positive": [
+        "2",
+        0
+      ],
+      "negative": [
+        "3",
+        0
+      ],
+      "control_net": [
+        "8",
+        0
+      ],
+      "image": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "ControlNetApplyAdvanced",
+    "_meta": {
+      "title": "Apply Pose Guidance"
+    }
+  },
+  "11": {
+    "inputs": {
+      "seed": 1024,
+      "steps": 25,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": [
+        "7",
+        0
+      ],
+      "positive": [
+        "10",
+        0
+      ],
+      "negative": [
+        "10",
+        1
+      ],
+      "latent_image": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "Base Character Sampler"
+    }
+  },
+  "12": {
+    "inputs": {
+      "samples": [
+        "11",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "Decode Base Latent"
+    }
+  },
+  "13": {
+    "inputs": {
+      "detector_name": "bbox/face_yolov8m.pt"
+    },
+    "class_type": "UltralyticsDetectorProvider",
+    "_meta": {
+      "title": "Face Bounding Box Detector (Impact Pack)"
+    }
+  },
+  "14": {
+    "inputs": {
+      "guide_size": 512,
+      "guide_size_for": true,
+      "max_size": 768,
+      "seed": 2048,
+      "steps": 20,
+      "cfg": 6.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.45,
+      "feather": 5,
+      "noise_mask": true,
+      "force_inpaint": true,
+      "bbox_threshold": 0.5,
+      "bbox_dilation": 10,
+      "bbox_crop_factor": 3.0,
+      "drop_size": 10,
+      "wildcard": "",
+      "cycle": 1,
+      "inpaint_model": false,
+      "noise_mask_feather": 20,
+      "image": [
+        "12",
+        0
+      ],
+      "model": [
+        "7",
+        0
+      ],
+      "clip": [
+        "1",
+        1
+      ],
+      "vae": [
+        "1",
+        2
+      ],
+      "positive": [
+        "2",
+        0
+      ],
+      "negative": [
+        "3",
+        0
+      ],
+      "bbox_detector": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "FaceDetailer",
+    "_meta": {
+      "title": "FaceDetailer: Expression Inpainting (Bypassed in Monster Mode)"
+    }
+  },
+  "15": {
+    "inputs": {
+      "model": "BiRefNet-general",
+      "image": [
+        "14",
+        0
+      ]
+    },
+    "class_type": "BiRefNet_Ultra",
+    "_meta": {
+      "title": "In-Workflow Transparency Matting (BiRefNet / LayerDiffuse)"
+    }
+  },
+  "16": {
+    "inputs": {
+      "filename_prefix": "sprites/character_sprite_transparent",
+      "images": [
+        "15",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Transparent Sprite (4-Channel RGBA PNG)"
+    }
+  }
+}
