@@ -1,0 +1,38 @@
+# F-60: ComfyUI visual novel asset generation pipeline
+
+| | |
+|---|---|
+| State | Specified |
+| Priority | Should |
+| Owner | agent |
+| Branch | `feat/F-60-comfyui-vn-asset-pipeline-spec` |
+| Target tag | `v0.2.0-comfyui-pipeline` |
+
+## Value
+Empowers world builders and story adaptors to generate production-quality, consistent visual novel assets (character sprite portraits with alpha transparency, narrative event CGs, and geometry-locked environmental backgrounds) locally or via remote ComfyUI endpoints, supporting both humanoid characters and monstrous/visceral subjects through automated CLI commands.
+
+## Acceptance criteria
+- [ ] ComfyUI workflow definitions for consistent sprite portraits, event CGs, and environmental backgrounds are packaged in both UI graph and API JSON formats in `tools/comfyui/workflows/`.
+- [ ] Sprites are generated with native alpha transparency (RGBA 4-channel PNGs) and follow the `<character>_<state>_<expression>.png` naming convention ([ADR-0023](../decisions/0023-vn-character-state-and-costume-sprite-resolution.md)).
+- [ ] Workflows include an adaptive mode for non-human, monstrous, or visceral subjects that bypasses human face detectors and uses geometry-agnostic ControlNets and ClipVision image embeddings.
+- [ ] Background workflow supports prompt-swapped time-of-day variations (day, overcast, dusk, night, rainy) with ControlNet Depth locking to preserve architectural geometry.
+- [ ] Headless Python CLI tools (`tools/comfyui/scripts/`) allow generating sprites, CGs, and backgrounds via command line with support for remote ComfyUI endpoints (`--host`, `--port`, `COMFYUI_HOST`).
+- [ ] `sync_adaptation_assets.py` parses `manifest.json` and `adaptation.md` to identify missing assets and generate them into `worlds/<world>/vns/_shared/assets/`.
+- [ ] Unit tests validate the syntax, schema, and node connectivity of all workflow JSON files.
+
+## Non-goals
+- Bundling heavy model weights or checkpoint safetensors in the git repository.
+- Re-implementing a custom diffusion sampling engine outside ComfyUI.
+- Web UI canvas editor for nodes inside Nirmata (users use ComfyUI's native web interface or Nirmata's CLI).
+
+## Design
+See [ADR-0024](../decisions/0024-comfyui-vn-asset-generation-pipeline.md) for full architectural design and signal flow diagrams.
+
+## Verification log
+| Date | What was run | Result |
+|---|---|---|
+
+## History
+| Date | Change |
+|---|---|
+| 2026-10-31 | Created feature specification and linked ADR-0024 |
