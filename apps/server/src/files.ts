@@ -302,10 +302,32 @@ export class WorldFiles implements SourceBackend {
             slideCount,
             routes: m.routes,
             updatedAt: m.updatedAt,
+            order: m.order,
+            nextSlug: m.nextSlug,
           });
         }
       } catch {}
     }
+
+    // Sort by order ascending if specified, then natural alphanumeric slug order
+    summaries.sort((a, b) => {
+      if (a.order !== undefined && b.order !== undefined) {
+        return a.order - b.order;
+      }
+      if (a.order !== undefined) return -1;
+      if (b.order !== undefined) return 1;
+      return a.slug.localeCompare(b.slug, undefined, { numeric: true, sensitivity: "base" });
+    });
+
+    // Populate sequential nextSlug if not explicitly set
+    for (let i = 0; i < summaries.length; i++) {
+      const cur = summaries[i];
+      const nxt = summaries[i + 1];
+      if (cur && !cur.nextSlug && nxt) {
+        cur.nextSlug = nxt.slug;
+      }
+    }
+
     return summaries;
   }
 
@@ -319,6 +341,18 @@ export class WorldFiles implements SourceBackend {
       throw new HostError("nothing_to_do", `There is no visual novel adaptation "${slug}".`);
     }
     const manifest = VnManifestSchema.parse(JSON.parse(manifestText));
+    if (!manifest.nextSlug || manifest.order === undefined) {
+      const all = await this.vns();
+      const current = all.find((v) => v.slug === safeSlug);
+      if (current) {
+        if (!manifest.nextSlug && current.nextSlug) {
+          manifest.nextSlug = current.nextSlug;
+        }
+        if (manifest.order === undefined && current.order !== undefined) {
+          manifest.order = current.order;
+        }
+      }
+    }
     const adaptationMd = (await readIfThere(join(dir, "adaptation.md"))) || "";
     let slides: VnSlideDeck | undefined;
     const slidesText = await readIfThere(join(dir, "slides.json"));
@@ -355,6 +389,8 @@ export class WorldFiles implements SourceBackend {
     mode?: VnMode;
     mc?: string;
     tier?: VnTier;
+    order?: number;
+    nextSlug?: string;
   }): Promise<VnSummary> {
     const safeSlug = sanitizeSlug(options.slug);
     const dir = inside(this.root, `vns/${safeSlug}`);
@@ -380,6 +416,8 @@ export class WorldFiles implements SourceBackend {
       slideCount: deck.slides.length,
       routes: manifest.routes,
       updatedAt: manifest.updatedAt,
+      order: manifest.order,
+      nextSlug: manifest.nextSlug,
     };
   }
 
@@ -1018,6 +1056,8 @@ export class Library {
       mode?: VnMode;
       mc?: string;
       tier?: VnTier;
+      order?: number;
+      nextSlug?: string;
     },
   ): Promise<VnSummary> {
     return this.open(name).scaffoldVn(options);

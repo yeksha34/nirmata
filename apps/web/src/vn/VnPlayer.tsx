@@ -12,11 +12,20 @@ export function VnPlayer({
   world,
   manifest,
   slides,
+  initialVariables,
+  nextVnTitle,
+  onNextVn,
   onClose,
 }: {
   world: { name: string; title: string };
   manifest: VnManifest;
   slides: VnSlideDeck;
+  initialVariables?: Record<string, number | boolean | string>;
+  nextVnTitle?: string;
+  onNextVn?: (
+    nextSlug: string,
+    currentVariables: Record<string, number | boolean | string>,
+  ) => void;
   onClose: () => void;
 }) {
   const [slideIndex, setSlideIndex] = useState(0);
@@ -25,6 +34,11 @@ export function VnPlayer({
     if (manifest.variables) {
       for (const [key, def] of Object.entries(manifest.variables)) {
         initial[key] = def.initial;
+      }
+    }
+    if (initialVariables) {
+      for (const [key, val] of Object.entries(initialVariables)) {
+        initial[key] = val;
       }
     }
     return initial;
@@ -40,6 +54,7 @@ export function VnPlayer({
   const [history, setHistory] = useState<Array<{ slide: VnSlide; choiceMade?: string }>>([]);
 
   const currentSlide: VnSlide | undefined = slides.slides[slideIndex];
+  const nextSlug = manifest.nextSlug;
   const fullText = currentSlide?.dialogue.text || "";
   const isTypewriterDone = typewriterLen >= fullText.length;
 
@@ -181,12 +196,18 @@ export function VnPlayer({
         else if (variablesOpen) setVariablesOpen(false);
         else onClose();
       } else if (e.key === " " || e.key === "Enter" || e.key === "ArrowRight") {
-        advance();
+        if (ended) {
+          if (nextSlug && onNextVn) {
+            onNextVn(nextSlug, variables);
+          }
+        } else {
+          advance();
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown as unknown as EventListener);
     return () => window.removeEventListener("keydown", onKeyDown as unknown as EventListener);
-  }, [advance, backlogOpen, variablesOpen, onClose]);
+  }, [advance, backlogOpen, variablesOpen, onClose, ended, nextSlug, onNextVn, variables]);
 
   const restart = () => {
     setSlideIndex(0);
@@ -198,6 +219,11 @@ export function VnPlayer({
     if (manifest.variables) {
       for (const [k, d] of Object.entries(manifest.variables)) {
         resetVars[k] = d.initial;
+      }
+    }
+    if (initialVariables) {
+      for (const [k, v] of Object.entries(initialVariables)) {
+        resetVars[k] = v;
       }
     }
     setVariables(resetVars);
@@ -274,6 +300,16 @@ export function VnPlayer({
             >
               <T>Variables</T>
             </button>
+            {nextSlug && onNextVn && (
+              <button
+                type="button"
+                className="vn-btn-tool vn-btn-header-next"
+                onClick={() => onNextVn(nextSlug, variables)}
+                title={nextVnTitle ? `Next: ${nextVnTitle}` : "Next Chapter"}
+              >
+                <T>Next</T> →
+              </button>
+            )}
             <button
               type="button"
               className="vn-btn-close"
@@ -333,8 +369,40 @@ export function VnPlayer({
             <p className="vn-ending-desc">
               <T>You have reached the end of this visual novel adaptation beat.</T>
             </p>
+
+            {Object.keys(variables).length > 0 && (
+              <section className="vn-ending-scores">
+                <h4>
+                  <T>Attributes &amp; Scores</T>
+                </h4>
+                <ol className="vn-ending-scores-grid">
+                  {Object.entries(variables).map(([key, val]) => (
+                    <li key={key} className="vn-ending-score-item">
+                      <strong className="vn-score-label">{key}</strong>
+                      <data className="vn-score-value" value={String(val)}>
+                        {String(val)}
+                      </data>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+
             <menu className="vn-ending-actions">
-              <button type="button" className="vn-btn-tool active" onClick={restart}>
+              {nextSlug && onNextVn && (
+                <button
+                  type="button"
+                  className="vn-btn-tool active vn-btn-next-chapter"
+                  onClick={() => onNextVn(nextSlug, variables)}
+                >
+                  <T>Next Chapter</T> {nextVnTitle ? `(${nextVnTitle})` : ""} →
+                </button>
+              )}
+              <button
+                type="button"
+                className={`vn-btn-tool ${!nextSlug || !onNextVn ? "active" : ""}`}
+                onClick={restart}
+              >
                 <T>Restart</T>
               </button>
               <button type="button" className="vn-btn-tool" onClick={onClose}>

@@ -69,6 +69,7 @@ export function Workspace({ name }: { name: string }) {
   const [playingVn, setPlayingVn] = useState<{
     manifest: VnManifest;
     slides: VnSlideDeck;
+    variables?: Record<string, number | boolean | string>;
   } | null>(null);
 
   const load = useCallback(
@@ -144,11 +145,25 @@ export function Workspace({ name }: { name: string }) {
   const activeWriting =
     currentWritings.find((i) => i.path === selectedWriting) ?? currentWritings[0];
 
-  const playVn = async (slug: string) => {
+  const playVn = async (
+    slug: string,
+    carriedVariables?: Record<string, number | boolean | string>,
+  ) => {
     const res = await act(() => api.vn(name, slug));
     if (res?.slides) {
-      setPlayingVn({ manifest: res.manifest, slides: res.slides });
+      setPlayingVn({
+        manifest: res.manifest,
+        slides: res.slides,
+        variables: carriedVariables,
+      });
     }
+  };
+
+  const handleNextVn = (
+    nextSlug: string,
+    currentVariables: Record<string, number | boolean | string>,
+  ) => {
+    void playVn(nextSlug, currentVariables);
   };
 
   const adaptVn = async (item: WritingSummary) => {
@@ -487,9 +502,17 @@ export function Workspace({ name }: { name: string }) {
       {reading && <Reader book={reading} onClose={() => setReading(undefined)} />}
       {playingVn && (
         <VnPlayer
+          key={playingVn.manifest.slug}
           world={{ name, title: world.title }}
           manifest={playingVn.manifest}
           slides={playingVn.slides}
+          initialVariables={playingVn.variables}
+          nextVnTitle={
+            playingVn.manifest.nextSlug
+              ? detail?.vns?.find((v) => v.slug === playingVn.manifest.nextSlug)?.title
+              : undefined
+          }
+          onNextVn={handleNextVn}
           onClose={() => setPlayingVn(null)}
         />
       )}

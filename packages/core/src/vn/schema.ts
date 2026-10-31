@@ -52,6 +52,8 @@ export const VnManifestSchema = z.object({
   assets: VnAssetsManifestSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
+  order: z.number().int().optional(),
+  nextSlug: z.string().optional(),
 }) satisfies z.ZodType<VnManifest>;
 
 export const VnStageCharacterSchema = z.object({

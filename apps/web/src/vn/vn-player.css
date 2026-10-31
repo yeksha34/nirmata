@@ -266,6 +266,69 @@
   margin-bottom: 24px;
 }
 
+.vn-ending-scores {
+  margin: 0 0 24px 0;
+  width: 100%;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(169, 155, 135, 0.2);
+  border-radius: 8px;
+  padding: 14px 18px;
+}
+
+.vn-ending-scores h4 {
+  margin: 0 0 10px 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #f0c48a;
+}
+
+.vn-ending-scores-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vn-ending-score-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 5px 12px;
+  border-radius: 6px;
+}
+
+.vn-score-label {
+  font-size: 13px;
+  color: #d8cbb6;
+}
+
+.vn-score-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f7ede0;
+}
+
+.vn-btn-next-chapter {
+  font-weight: 600;
+  padding: 8px 16px;
+}
+
+.vn-btn-header-next {
+  border-color: rgba(224, 138, 46, 0.5);
+  color: #f0c48a;
+}
+
+.vn-btn-header-next:hover {
+  background: rgba(224, 138, 46, 0.25);
+  color: #fffdf8;
+}
+
 .vn-ending-actions {
   display: flex;
   gap: 16px;

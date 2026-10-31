@@ -110,5 +110,59 @@ describe("visual novel presentation engine (client)", () => {
         );
       }
     });
+
+    it("transfers variables across chapters without resetting to zero", () => {
+      // Simulating Chapter 1 ending state
+      const ch1ManifestVars = {
+        devotion: { initial: 0 },
+        compliance: { initial: 0 },
+      };
+      let currentVars: Record<string, number | boolean | string> = {};
+      for (const [k, v] of Object.entries(ch1ManifestVars)) {
+        currentVars[k] = v.initial;
+      }
+
+      // Player plays Chapter 1, makes choices that earn devotion and compliance
+      currentVars = applyVarOps(currentVars, [
+        { variable: "devotion", op: "+", value: 3 },
+        { variable: "compliance", op: "+", value: 1 },
+      ]);
+      expect(currentVars).toEqual({ devotion: 3, compliance: 1 });
+
+      // Player transitions to Chapter 2:
+      // Chapter 2 has devotion, compliance, and a new variable 'proactivity'
+      const ch2ManifestVars = {
+        devotion: { initial: 0 },
+        compliance: { initial: 0 },
+        proactivity: { initial: 0 },
+      };
+
+      // Chapter 2 initializes merging its manifest defaults with carried-over initialVariables
+      const ch2InitialVars: Record<string, number | boolean | string> = {};
+      for (const [k, v] of Object.entries(ch2ManifestVars)) {
+        ch2InitialVars[k] = v.initial;
+      }
+      for (const [k, v] of Object.entries(currentVars)) {
+        ch2InitialVars[k] = v;
+      }
+
+      // Verify devotion and compliance did not reset to zero!
+      expect(ch2InitialVars).toEqual({
+        devotion: 3,
+        compliance: 1,
+        proactivity: 0,
+      });
+
+      // Chapter 2 gameplay accumulates more stats
+      currentVars = applyVarOps(ch2InitialVars, [
+        { variable: "devotion", op: "+", value: 2 },
+        { variable: "proactivity", op: "+", value: 4 },
+      ]);
+      expect(currentVars).toEqual({
+        devotion: 5,
+        compliance: 1,
+        proactivity: 4,
+      });
+    });
   });
 });

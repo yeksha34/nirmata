@@ -243,4 +243,52 @@ TARA: Not today.
     const list = await world.vns();
     expect(list.some((vn) => vn.slug.startsWith("_"))).toBe(false);
   });
+
+  it("orders visual novels by order / natural slug and populates nextSlug sequentially", async () => {
+    const worldDir = await tempWorld();
+    const world = new WorldFiles(worldDir);
+
+    // Scaffold 3 VNs out of natural ASCII sort order: ch11, ch01, ch05
+    await world.scaffoldVn({
+      slug: "ch11-climax",
+      title: "Chapter 11",
+      source: "chapters/11.md",
+      order: 3,
+    });
+
+    await world.scaffoldVn({
+      slug: "ch01-intro",
+      title: "Chapter 1",
+      source: "chapters/01.md",
+      order: 1,
+    });
+
+    await world.scaffoldVn({
+      slug: "ch05-middle",
+      title: "Chapter 5",
+      source: "chapters/05.md",
+      order: 2,
+    });
+
+    const vns = await world.vns();
+    expect(vns.map((v) => v.slug)).toEqual(["ch01-intro", "ch05-middle", "ch11-climax"]);
+    expect(vns[0]?.nextSlug).toBe("ch05-middle");
+    expect(vns[1]?.nextSlug).toBe("ch11-climax");
+    expect(vns[2]?.nextSlug).toBeUndefined();
+
+    // Reading ch01-intro returns nextSlug in manifest
+    const ch01 = await world.vn("ch01-intro");
+    expect(ch01.manifest.order).toBe(1);
+    expect(ch01.manifest.nextSlug).toBe("ch05-middle");
+
+    // Reading ch05-middle returns nextSlug in manifest
+    const ch05 = await world.vn("ch05-middle");
+    expect(ch05.manifest.order).toBe(2);
+    expect(ch05.manifest.nextSlug).toBe("ch11-climax");
+
+    // Reading final VN has no nextSlug
+    const ch11 = await world.vn("ch11-climax");
+    expect(ch11.manifest.order).toBe(3);
+    expect(ch11.manifest.nextSlug).toBeUndefined();
+  });
 });

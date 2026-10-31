@@ -7,6 +7,8 @@ export interface CreateVnScaffoldOptions {
   mode?: VnMode;
   mc?: string;
   tier?: VnTier;
+  order?: number;
+  nextSlug?: string;
 }
 
 /** Generates a starter manifest object. */
@@ -37,6 +39,8 @@ export function createStarterManifest(options: CreateVnScaffoldOptions): VnManif
     },
     createdAt: now,
     updatedAt: now,
+    ...(options.order !== undefined ? { order: options.order } : {}),
+    ...(options.nextSlug ? { nextSlug: options.nextSlug } : {}),
   };
 }
 

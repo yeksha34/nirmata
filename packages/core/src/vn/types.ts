@@ -34,6 +34,8 @@ export interface VnManifest {
   assets: VnAssetsManifest;
   createdAt: string;
   updatedAt: string;
+  order?: number;
+  nextSlug?: string;
 }
 
 export interface VnStageCharacter {
@@ -117,4 +119,6 @@ export interface VnSummary {
   slideCount?: number;
   routes: string[];
   updatedAt: string;
+  order?: number;
+  nextSlug?: string;
 }
