@@ -1,0 +1,285 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "Illustrious-XL-v0.1.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint (SDXL / Illustrious / Pony)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "text": "masterpiece, best quality, visual novel narrative event CG, 16:9 widescreen, cinematic corporate lighting, detailed interior environment, high production illustration",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Global Environmental Prompt"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "lowres, bad anatomy, bad hands, blurry, signature, watermark, username, deformed limbs, text, error",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Global Negative Prompt"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "1man, mature executive in tailored dark suit, serious expression, sitting at boardroom table, gold ring on left hand",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Region 1 (Character A) Positive"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 672,
+      "height": 768,
+      "x": 0,
+      "y": 0,
+      "strength": 1.0,
+      "conditioning": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "ConditioningSetArea",
+    "_meta": {
+      "title": "Region 1 Area (Left 50%)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "1girl, young clerk in modest blouse and skirt, dark brown bob, gentle bashful expression, sitting opposite across table",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Region 2 (Character B or Creature) Positive"
+    }
+  },
+  "7": {
+    "inputs": {
+      "width": 672,
+      "height": 768,
+      "x": 672,
+      "y": 0,
+      "strength": 1.0,
+      "conditioning": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "ConditioningSetArea",
+    "_meta": {
+      "title": "Region 2 Area (Right 50%)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "conditioning_1": [
+        "5",
+        0
+      ],
+      "conditioning_2": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "ConditioningCombine",
+    "_meta": {
+      "title": "Combine Character Regions"
+    }
+  },
+  "9": {
+    "inputs": {
+      "conditioning_1": [
+        "2",
+        0
+      ],
+      "conditioning_2": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "ConditioningCombine",
+    "_meta": {
+      "title": "Combine Global + Regional Conditioning"
+    }
+  },
+  "10": {
+    "inputs": {
+      "control_net_name": "controlnet-openpose-sdxl-1.0.safetensors"
+    },
+    "class_type": "ControlNetLoader",
+    "_meta": {
+      "title": "Load Staging ControlNet"
+    }
+  },
+  "11": {
+    "inputs": {
+      "image": "cg_staging_pose.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Scene Composition Staging Guide"
+    }
+  },
+  "12": {
+    "inputs": {
+      "strength": 0.65,
+      "start_percent": 0.0,
+      "end_percent": 0.75,
+      "positive": [
+        "9",
+        0
+      ],
+      "negative": [
+        "3",
+        0
+      ],
+      "control_net": [
+        "10",
+        0
+      ],
+      "image": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "ControlNetApplyAdvanced",
+    "_meta": {
+      "title": "Apply Narrative Staging"
+    }
+  },
+  "13": {
+    "inputs": {
+      "width": 1344,
+      "height": 768,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent (16:9 Widescreen)"
+    }
+  },
+  "14": {
+    "inputs": {
+      "seed": 4096,
+      "steps": 28,
+      "cfg": 6.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "12",
+        0
+      ],
+      "negative": [
+        "12",
+        1
+      ],
+      "latent_image": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "Base Event CG Sampler"
+    }
+  },
+  "15": {
+    "inputs": {
+      "samples": [
+        "14",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "Decode Event CG Base"
+    }
+  },
+  "16": {
+    "inputs": {
+      "upscale_model_name": "4x-UltraSharp.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscaler Model"
+    }
+  },
+  "17": {
+    "inputs": {
+      "upscale_model": [
+        "16",
+        0
+      ],
+      "image": [
+        "15",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "High-Res Model Upscale"
+    }
+  },
+  "18": {
+    "inputs": {
+      "width": 1920,
+      "height": 1080,
+      "crop": "disabled",
+      "image": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "ImageScale",
+    "_meta": {
+      "title": "Rescale to 1080p FHD Master"
+    }
+  },
+  "19": {
+    "inputs": {
+      "filename_prefix": "cgs/cg_narrative_event",
+      "images": [
+        "18",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Master Event CG (16:9)"
+    }
+  }
+}
