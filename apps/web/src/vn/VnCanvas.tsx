@@ -101,32 +101,46 @@ class VnStageScene extends Phaser.Scene {
     }
     this.loadingKeys.add(key);
 
-    this.load.image(key, url);
-    this.load.once(`filecomplete-image-${key}`, () => {
+    const onFileComplete = () => {
+      this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, onFileError);
       this.loadingKeys.delete(key);
       onLoad();
-    });
-    this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: { key?: string }) => {
+    };
+
+    const onFileError = (file: { key?: string }) => {
       if (file?.key === key) {
+        this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, onFileError);
+        this.load.off(`filecomplete-image-${key}`, onFileComplete);
+
         if (fallbackUrl) {
-          this.load.image(key, fallbackUrl);
-          this.load.once(`filecomplete-image-${key}`, () => {
+          const onFallbackComplete = () => {
+            this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, onFallbackError);
             this.loadingKeys.delete(key);
             onLoad();
-          });
-          this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, (fallbackFile: { key?: string }) => {
+          };
+          const onFallbackError = (fallbackFile: { key?: string }) => {
             if (fallbackFile?.key === key) {
+              this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, onFallbackError);
+              this.load.off(`filecomplete-image-${key}`, onFallbackComplete);
               this.loadingKeys.delete(key);
               this.failedKeys.add(key);
             }
-          });
+          };
+
+          this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, onFallbackError);
+          this.load.once(`filecomplete-image-${key}`, onFallbackComplete);
+          this.load.image(key, fallbackUrl);
           this.load.start();
         } else {
           this.loadingKeys.delete(key);
           this.failedKeys.add(key);
         }
       }
-    });
+    };
+
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, onFileError);
+    this.load.once(`filecomplete-image-${key}`, onFileComplete);
+    this.load.image(key, url);
     this.load.start();
   }
 

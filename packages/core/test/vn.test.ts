@@ -322,5 +322,54 @@ Elena tries on the new uniform.
         { character: "Elena", state: "uniform", expression: "blushing", slot: "center" },
       ]);
     });
+
+    it("supports hide_cg and auto-dismisses CG on background change", () => {
+      const script = `
+## SC-01 Alcove
+[bg alcove]
+[cg cg_alcove]
+Inside the alcove.
+
+[hide_cg]
+CG dismissed explicitly.
+
+[cg cg_alcove]
+CG back.
+
+## SC-02 Hall
+[bg hall]
+Entering the hall.
+[end]
+`;
+      const { deck } = compileVn(script);
+      expect(deck.slides[0]?.stage.cg?.active).toBe(true);
+      expect(deck.slides[1]?.stage.cg).toBeUndefined();
+      expect(deck.slides[2]?.stage.cg?.active).toBe(true);
+      // Auto-dismissed on background change to 'hall'
+      expect(deck.slides[3]?.stage.cg).toBeUndefined();
+    });
+
+    it("supports clear and hide all to dismiss all characters on stage", () => {
+      const script = `
+## SC-01 Office
+[show Owen flustered left]
+[show Reece panicked right]
+Two boys in alcove.
+
+[clear]
+[show Elena submissive center]
+Elena stands alone.
+
+[hide all]
+Empty stage.
+[end]
+`;
+      const { deck } = compileVn(script);
+      expect(deck.slides[0]?.stage.characters).toHaveLength(2);
+      expect(deck.slides[1]?.stage.characters).toEqual([
+        { character: "Elena", expression: "submissive", slot: "center" },
+      ]);
+      expect(deck.slides[2]?.stage.characters).toEqual([]);
+    });
   });
 });

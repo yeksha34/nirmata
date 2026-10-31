@@ -13,6 +13,7 @@ export type ParsedStageDirective =
   | { type: "sfx"; name: string }
   | { type: "show"; character: string; state?: string; expression: string; slot?: VnSlot }
   | { type: "hide"; character: string }
+  | { type: "hide_all" }
   | { type: "cg"; name: string }
   | { type: "hide_cg" }
   | { type: "transition"; name: string }
@@ -163,12 +164,19 @@ export function parseStageDirectives(text: string): {
       }
 
       directives.push({ type: "show", character, state, expression, slot });
+    } else if (
+      cmd === "hide_cg" ||
+      cmd === "hide-cg" ||
+      (cmd === "hide" && part1?.toLowerCase() === "cg")
+    ) {
+      directives.push({ type: "hide_cg" });
+    } else if (
+      cmd === "clear" ||
+      (cmd === "hide" && (part1?.toLowerCase() === "all" || part1 === "*"))
+    ) {
+      directives.push({ type: "hide_all" });
     } else if (cmd === "hide" && part1) {
-      if (part1.toLowerCase() === "cg") {
-        directives.push({ type: "hide_cg" });
-      } else {
-        directives.push({ type: "hide", character: part1 });
-      }
+      directives.push({ type: "hide", character: part1 });
     } else if (cmd === "cg" && part1) {
       directives.push({ type: "cg", name: parts.slice(1).join(" ") });
     } else if (

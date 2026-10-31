@@ -63,6 +63,9 @@ export function compileVn(markdown: string, options: CompileVnOptions = {}): Com
   const applyDirectives = (directives: ParsedStageDirective[]) => {
     for (const d of directives) {
       if (d.type === "bg") {
+        if (currentBg !== d.name) {
+          currentCg = undefined;
+        }
         currentBg = d.name;
       } else if (d.type === "music") {
         currentMusic = d.stop ? undefined : d.name;
@@ -72,6 +75,8 @@ export function compileVn(markdown: string, options: CompileVnOptions = {}): Com
         currentCg = { name: d.name, active: true };
       } else if (d.type === "hide_cg") {
         currentCg = undefined;
+      } else if (d.type === "hide_all") {
+        charactersOnStage = [];
       } else if (d.type === "transition") {
         pendingTransition = d.name;
       } else if (d.type === "show") {
