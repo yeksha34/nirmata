@@ -66,6 +66,38 @@ describe("Visual Novel adaptation parser & compiler", () => {
       expect(res.remainingText).toBe("VASHA: Watch out!");
     });
 
+    it("parses character show with state/costume variants", () => {
+      // Colon syntax
+      const res1 = parseStageDirectives("[show Elena:uniform blushing center]");
+      expect(res1.directives).toEqual([
+        {
+          type: "show",
+          character: "Elena",
+          state: "uniform",
+          expression: "blushing",
+          slot: "center",
+        },
+      ]);
+
+      // Space syntax
+      const res2 = parseStageDirectives("[show Elena clerk submissive left]");
+      expect(res2.directives).toEqual([
+        { type: "show", character: "Elena", state: "clerk", expression: "submissive", slot: "left" },
+      ]);
+
+      // Underscore syntax
+      const res3 = parseStageDirectives("[show Elena_uniform flustered]");
+      expect(res3.directives).toEqual([
+        {
+          type: "show",
+          character: "Elena",
+          state: "uniform",
+          expression: "flustered",
+          slot: undefined,
+        },
+      ]);
+    });
+
     it("parses hide, stop music and sfx", () => {
       const res = parseStageDirectives("[hide vasha] [stop music] [sfx thunder]");
       expect(res.directives).toEqual([
@@ -261,6 +293,34 @@ This scene is never reached.
       const unreachable = diagnostics.filter((d) => d.code === "unreachable_scene");
       expect(unreachable.length).toBe(1);
       expect(unreachable[0]?.sceneId).toBe("SC-02");
+    });
+
+    it("tracks character state and preserves state across expression updates", () => {
+      const script = `
+## SC-01 Office
+[show Elena:clerk neutral center]
+Elena files papers.
+
+[show Elena flustered]
+Elena drops the folder.
+
+[show Elena:uniform blushing center]
+Elena tries on the new uniform.
+[end]
+`;
+      const { deck } = compileVn(script);
+      const characters = deck.slides.map((s) => s.stage.characters);
+      expect(characters[0]).toEqual([
+        { character: "Elena", state: "clerk", expression: "neutral", slot: "center" },
+      ]);
+      // State persisted when only expression was updated
+      expect(characters[1]).toEqual([
+        { character: "Elena", state: "clerk", expression: "flustered", slot: "center" },
+      ]);
+      // State changed to uniform
+      expect(characters[2]).toEqual([
+        { character: "Elena", state: "uniform", expression: "blushing", slot: "center" },
+      ]);
     });
   });
 });

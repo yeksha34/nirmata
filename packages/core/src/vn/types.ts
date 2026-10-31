@@ -38,6 +38,7 @@ export interface VnManifest {
 
 export interface VnStageCharacter {
   character: string;
+  state?: string;
   expression: string;
   slot: VnSlot;
 }

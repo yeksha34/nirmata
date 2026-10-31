@@ -27,5 +27,6 @@ Use `.agents/skills/record-decision`.
 | [0020](0020-server-dotenv-auto-loading.md) | Server automatic environment file loading | Proposed |
 | [0021](0021-workspace-writings-detail-panel.md) | Workspace writings navigation and detail panel split | Proposed |
 | [0022](0022-vn-dynamic-asset-loading-and-artstyle-fallback.md) | Visual novel asset serving and procedural artstyle fallbacks | Proposed |
+| [0023](0023-vn-character-state-and-costume-sprite-resolution.md) | Visual novel character state, costume, and wardrobe sprite resolution | Proposed |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.

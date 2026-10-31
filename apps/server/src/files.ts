@@ -365,7 +365,7 @@ export class WorldFiles implements SourceBackend {
     const adaptationMd = createStarterAdaptationMd({ ...options, slug: safeSlug });
     const { deck } = compileVn(adaptationMd, { manifest });
 
-    await mkdir(join(dir, "assets"), { recursive: true });
+    await mkdir(join(this.vnsDir, "_shared", "assets"), { recursive: true });
     await writeAtomic(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
     await writeAtomic(join(dir, "adaptation.md"), adaptationMd);
     await writeAtomic(join(dir, "slides.json"), JSON.stringify(deck, null, 2));
@@ -409,28 +409,64 @@ export class WorldFiles implements SourceBackend {
     const cleanSub = subPath.replace(/^[/\\]+/, "").replace(/\0/g, "");
 
     // Search priority:
-    // 1. Scene-specific asset: vns/<slug>/assets/<subPath>
-    // 2. Shared VN asset pool: vns/_shared/assets/<subPath>
+    // 1. Shared VN asset pool: vns/_shared/assets/<subPath>
+    // 2. Legacy scene-specific asset fallback: vns/<slug>/assets/<subPath>
     const candidates = [
-      inside(this.root, `vns/${safeSlug}/assets/${cleanSub}`),
       inside(this.root, `vns/_shared/assets/${cleanSub}`),
+      inside(this.root, `vns/${safeSlug}/assets/${cleanSub}`),
     ];
 
-    // 3. Sprite expression fallback: if <character>_<expression>.<ext> is missing,
-    // fall back to the base <character>.<ext> or <character>_neutral.<ext>
-    const spriteMatch = cleanSub.match(/^sprites\/([^/_]+)_[^/]+\.(png|jpg|jpeg|webp)$/i);
-    if (spriteMatch) {
-      const charName = spriteMatch[1];
+    // 3. Hierarchical sprite state & expression fallback:
+    // Supports <character>_<state>_<expression>.<ext>, <character>_<state>.<ext>, and <character>_<expression>.<ext>
+    const spriteMatch = cleanSub.match(/^sprites\/([^/]+)\.(png|jpg|jpeg|webp)$/i);
+    if (spriteMatch?.[1] && spriteMatch[2]) {
+      const stem = spriteMatch[1];
       const ext = spriteMatch[2];
-      candidates.push(
-        inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}.${ext}`),
-        inside(this.root, `vns/_shared/assets/sprites/${charName}.${ext}`),
-        inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}_neutral.${ext}`),
-        inside(this.root, `vns/_shared/assets/sprites/${charName}_neutral.${ext}`),
-      );
+      const parts = stem.split("_");
+
+      if (parts.length >= 3) {
+        const charName = parts[0];
+        const state = parts[1];
+        const expr = parts.slice(2).join("_");
+        candidates.push(
+          inside(this.root, `vns/_shared/assets/sprites/${charName}_${state}.${ext}`),
+          inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}_${state}.${ext}`),
+          inside(this.root, `vns/_shared/assets/sprites/${charName}_${state}_neutral.${ext}`),
+          inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}_${state}_neutral.${ext}`),
+          inside(this.root, `vns/_shared/assets/sprites/${charName}_${expr}.${ext}`),
+          inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}_${expr}.${ext}`),
+          inside(this.root, `vns/_shared/assets/sprites/${charName}.${ext}`),
+          inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}.${ext}`),
+          inside(this.root, `vns/_shared/assets/sprites/${charName}_neutral.${ext}`),
+          inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}_neutral.${ext}`),
+        );
+      } else if (parts.length === 2) {
+        const charName = parts[0];
+        const modifier = parts[1];
+        candidates.push(
+          inside(this.root, `vns/_shared/assets/sprites/${charName}_${modifier}_neutral.${ext}`),
+          inside(
+            this.root,
+            `vns/${safeSlug}/assets/sprites/${charName}_${modifier}_neutral.${ext}`,
+          ),
+          inside(this.root, `vns/_shared/assets/sprites/${charName}.${ext}`),
+          inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}.${ext}`),
+          inside(this.root, `vns/_shared/assets/sprites/${charName}_neutral.${ext}`),
+          inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}_neutral.${ext}`),
+        );
+      } else if (parts.length === 1) {
+        const charName = parts[0];
+        candidates.push(
+          inside(this.root, `vns/_shared/assets/sprites/${charName}_neutral.${ext}`),
+          inside(this.root, `vns/${safeSlug}/assets/sprites/${charName}_neutral.${ext}`),
+        );
+      }
     }
 
-    for (const full of candidates) {
+    // Deduplicate candidate paths while preserving order
+    const uniqueCandidates = Array.from(new Set(candidates));
+
+    for (const full of uniqueCandidates) {
       try {
         const data = await readFile(full);
         const ext = full.split(".").pop()?.toLowerCase();

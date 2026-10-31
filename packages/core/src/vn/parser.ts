@@ -11,7 +11,7 @@ export type ParsedStageDirective =
   | { type: "bg"; name: string }
   | { type: "music"; name?: string; stop?: boolean }
   | { type: "sfx"; name: string }
-  | { type: "show"; character: string; expression: string; slot?: VnSlot }
+  | { type: "show"; character: string; state?: string; expression: string; slot?: VnSlot }
   | { type: "hide"; character: string }
   | { type: "cg"; name: string }
   | { type: "hide_cg" }
@@ -126,14 +126,43 @@ export function parseStageDirectives(text: string): {
       const name = cmd === "sfx" ? parts.slice(1).join(" ") : parts.slice(2).join(" ");
       directives.push({ type: "sfx", name });
     } else if (cmd === "show" && part1) {
-      const character = part1;
-      const expression = parts[2] || "neutral";
+      let character = part1;
+      let state: string | undefined;
+      let expression = "neutral";
       let slot: VnSlot | undefined;
-      const maybeSlot = parts[3]?.toLowerCase();
-      if (maybeSlot === "left" || maybeSlot === "center" || maybeSlot === "right") {
-        slot = maybeSlot;
+
+      // 1. Colon syntax: [show Character:State ...]
+      if (character.includes(":")) {
+        const [c, s] = character.split(":");
+        if (c) character = c;
+        state = s;
       }
-      directives.push({ type: "show", character, expression, slot });
+
+      const remaining = parts.slice(2);
+      if (remaining.length > 0) {
+        const lastToken = remaining[remaining.length - 1]?.toLowerCase();
+        if (lastToken === "left" || lastToken === "center" || lastToken === "right") {
+          slot = lastToken as VnSlot;
+          remaining.pop();
+        }
+      }
+
+      // If state was not specified via colon, check if 2 tokens remain (state + expression)
+      if (!state && remaining.length >= 2) {
+        state = remaining[0];
+        if (remaining[1]) expression = remaining[1];
+      } else if (remaining[0]) {
+        expression = remaining[0];
+      }
+
+      // 2. Underscore fallback: if character has underscore and no state yet (e.g. Elena_uniform)
+      if (!state && character.includes("_")) {
+        const underIdx = character.indexOf("_");
+        state = character.slice(underIdx + 1);
+        character = character.slice(0, underIdx);
+      }
+
+      directives.push({ type: "show", character, state, expression, slot });
     } else if (cmd === "hide" && part1) {
       if (part1.toLowerCase() === "cg") {
         directives.push({ type: "hide_cg" });

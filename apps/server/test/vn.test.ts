@@ -219,11 +219,27 @@ TARA: Not today.
     expect(spriteFallback?.contentType).toBe("image/png");
     expect(spriteFallback?.data.toString()).toBe("shared_hero_binary");
 
-    // 5. Missing asset returns undefined
+    // 5. Costume / state sprite fallback:
+    // hero_uniform.png and hero_clerk.png co-existing in _shared/assets/sprites/
+    await writeFile(
+      join(sharedSprites, "hero_uniform.png"),
+      Buffer.from("shared_hero_uniform_binary"),
+    );
+    await writeFile(join(sharedSprites, "hero_clerk.png"), Buffer.from("shared_hero_clerk_binary"));
+
+    const uniformFallback = await world.readVnAsset("ch01", "sprites/hero_uniform_blushing.png");
+    expect(uniformFallback).toBeDefined();
+    expect(uniformFallback?.data.toString()).toBe("shared_hero_uniform_binary");
+
+    const clerkFallback = await world.readVnAsset("ch01", "sprites/hero_clerk_submissive.png");
+    expect(clerkFallback).toBeDefined();
+    expect(clerkFallback?.data.toString()).toBe("shared_hero_clerk_binary");
+
+    // 6. Missing asset returns undefined
     const missing = await world.readVnAsset("ch01", "sprites/unknown_char.png");
     expect(missing).toBeUndefined();
 
-    // 6. _shared directory is not listed in world.vns()
+    // 7. _shared directory is not listed in world.vns()
     const list = await world.vns();
     expect(list.some((vn) => vn.slug.startsWith("_"))).toBe(false);
   });

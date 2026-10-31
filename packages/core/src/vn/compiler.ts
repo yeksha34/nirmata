@@ -79,8 +79,11 @@ export function compileVn(markdown: string, options: CompileVnOptions = {}): Com
         const idx = charactersOnStage.findIndex(
           (c) => c.character.toLowerCase() === d.character.toLowerCase(),
         );
+        const existingState = idx >= 0 ? charactersOnStage[idx]?.state : undefined;
+        const state = d.state ?? existingState;
         const updated: VnStageCharacter = {
           character: d.character,
+          ...(state ? { state } : {}),
           expression: d.expression,
           slot,
         };

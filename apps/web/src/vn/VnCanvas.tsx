@@ -223,15 +223,25 @@ class VnStageScene extends Phaser.Scene {
 
       const charLower = char.character.toLowerCase();
       const expLower = char.expression.toLowerCase();
-      const spriteKey = `sprite_${this.worldName}_${this.vnSlug}_${charLower}_${expLower}`;
-      const baseSpriteKey = `sprite_${this.worldName}_${this.vnSlug}_${charLower}`;
+      const stateLower = char.state?.toLowerCase();
+
+      // Priority list of texture keys in Phaser cache (state-specific before base)
+      const candidateKeys: string[] = [];
+      if (stateLower) {
+        candidateKeys.push(
+          `sprite_${this.worldName}_${this.vnSlug}_${charLower}_${stateLower}_${expLower}`,
+        );
+        candidateKeys.push(`sprite_${this.worldName}_${this.vnSlug}_${charLower}_${stateLower}`);
+      }
+      candidateKeys.push(`sprite_${this.worldName}_${this.vnSlug}_${charLower}_${expLower}`);
+      candidateKeys.push(`sprite_${this.worldName}_${this.vnSlug}_${charLower}`);
 
       let renderedTextureKey: string | undefined;
-
-      if (this.textures.exists(spriteKey)) {
-        renderedTextureKey = spriteKey;
-      } else if (this.textures.exists(baseSpriteKey)) {
-        renderedTextureKey = baseSpriteKey;
+      for (const k of candidateKeys) {
+        if (this.textures.exists(k)) {
+          renderedTextureKey = k;
+          break;
+        }
       }
 
       if (renderedTextureKey) {
@@ -274,30 +284,44 @@ class VnStageScene extends Phaser.Scene {
         charGroup.add(proceduralObjects);
 
         if (this.worldName && this.vnSlug) {
-          if (!this.failedKeys.has(spriteKey)) {
-            const pngUrl = `/api/worlds/${encodeURIComponent(this.worldName)}/vns/${encodeURIComponent(this.vnSlug)}/assets/sprites/${encodeURIComponent(charLower)}_${encodeURIComponent(expLower)}.png`;
-            const jpgUrl = `/api/worlds/${encodeURIComponent(this.worldName)}/vns/${encodeURIComponent(this.vnSlug)}/assets/sprites/${encodeURIComponent(charLower)}_${encodeURIComponent(expLower)}.jpg`;
+          const loadKey = stateLower
+            ? `sprite_${this.worldName}_${this.vnSlug}_${charLower}_${stateLower}_${expLower}`
+            : `sprite_${this.worldName}_${this.vnSlug}_${charLower}_${expLower}`;
+          const spriteFileStem = stateLower
+            ? `${charLower}_${stateLower}_${expLower}`
+            : `${charLower}_${expLower}`;
+
+          if (!this.failedKeys.has(loadKey)) {
+            const pngUrl = `/api/worlds/${encodeURIComponent(this.worldName)}/vns/${encodeURIComponent(this.vnSlug)}/assets/sprites/${encodeURIComponent(spriteFileStem)}.png`;
+            const jpgUrl = `/api/worlds/${encodeURIComponent(this.worldName)}/vns/${encodeURIComponent(this.vnSlug)}/assets/sprites/${encodeURIComponent(spriteFileStem)}.jpg`;
 
             this.tryLoadImage(
-              spriteKey,
+              loadKey,
               pngUrl,
               () => {
                 this.renderSprites(this.currentStage?.characters ?? []);
               },
               jpgUrl,
             );
-          } else if (!this.failedKeys.has(baseSpriteKey) && !this.textures.exists(baseSpriteKey)) {
-            const basePng = `/api/worlds/${encodeURIComponent(this.worldName)}/vns/${encodeURIComponent(this.vnSlug)}/assets/sprites/${encodeURIComponent(charLower)}.png`;
-            const baseJpg = `/api/worlds/${encodeURIComponent(this.worldName)}/vns/${encodeURIComponent(this.vnSlug)}/assets/sprites/${encodeURIComponent(charLower)}.jpg`;
+          } else {
+            const fallbackKey = stateLower
+              ? `sprite_${this.worldName}_${this.vnSlug}_${charLower}_${stateLower}`
+              : `sprite_${this.worldName}_${this.vnSlug}_${charLower}`;
+            const fallbackStem = stateLower ? `${charLower}_${stateLower}` : `${charLower}`;
 
-            this.tryLoadImage(
-              baseSpriteKey,
-              basePng,
-              () => {
-                this.renderSprites(this.currentStage?.characters ?? []);
-              },
-              baseJpg,
-            );
+            if (!this.failedKeys.has(fallbackKey) && !this.textures.exists(fallbackKey)) {
+              const basePng = `/api/worlds/${encodeURIComponent(this.worldName)}/vns/${encodeURIComponent(this.vnSlug)}/assets/sprites/${encodeURIComponent(fallbackStem)}.png`;
+              const baseJpg = `/api/worlds/${encodeURIComponent(this.worldName)}/vns/${encodeURIComponent(this.vnSlug)}/assets/sprites/${encodeURIComponent(fallbackStem)}.jpg`;
+
+              this.tryLoadImage(
+                fallbackKey,
+                basePng,
+                () => {
+                  this.renderSprites(this.currentStage?.characters ?? []);
+                },
+                baseJpg,
+              );
+            }
           }
         }
       }
