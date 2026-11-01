@@ -8,6 +8,7 @@ Supports Humanoid Mode (OpenPose + FaceDetailer) and Adaptive Monster/Visceral M
 import os
 import sys
 import json
+import re
 import argparse
 import random
 from pathlib import Path
@@ -140,15 +141,67 @@ def generate_sprites(
     print("\nSprite batch generation complete.")
 
 
+def load_character_prompt_from_world(world: str, character: str) -> str:
+    """
+    Dynamically loads character prompt descriptors from /worlds/<slug>/.
+    Reads character cards from worlds/<slug>/characters/ or prompt specs.
+    """
+    world_path = Path(world) if Path(world).exists() else Path("worlds") / world
+    if not world_path.exists():
+        return ""
+
+    # 1. Check prompt specs in vns/_shared/assets/prompts.json or assets/workflow/prompts.json
+    spec_candidates = [
+        world_path / "vns" / "_shared" / "assets" / "prompts.json",
+        world_path / "assets" / "workflow" / "prompts.json"
+    ]
+    for cand in spec_candidates:
+        if cand.exists():
+            try:
+                with open(cand, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    for k, v in data.items():
+                        if character.lower() in k.lower():
+                            return v.get("positivePrompt", "")
+            except Exception:
+                pass
+
+    # 2. Check character card in worlds/<slug>/characters/
+    char_dir = world_path / "characters"
+    if char_dir.exists():
+        char_norm = re.sub(r"[^a-zA-Z0-9]", "", character.lower())
+        for f in char_dir.glob("*.md"):
+            stem_norm = re.sub(r"[^a-zA-Z0-9]", "", f.stem.lower())
+            if char_norm in stem_norm:
+                try:
+                    text = f.read_text(encoding="utf-8")
+                    parts = []
+                    app_match = re.search(r"<appearance[^>]*>(.*?)</appearance>", text, re.DOTALL | re.IGNORECASE)
+                    if app_match:
+                        parts.append(app_match.group(1).strip())
+                    ward_match = re.search(r"<wardrobe[^>]*>(.*?)</wardrobe>", text, re.DOTALL | re.IGNORECASE)
+                    if ward_match:
+                        parts.append(ward_match.group(1).strip())
+                    body_match = re.search(r"<body[^>]*>(.*?)</body[^>]*>", text, re.DOTALL | re.IGNORECASE)
+                    if body_match:
+                        parts.append(body_match.group(1).strip())
+                    if parts:
+                        return ", ".join(parts)
+                except Exception:
+                    pass
+    return ""
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate visual novel character sprites using ComfyUI.")
     parser.add_argument("--character", required=True, help="Character identifier (e.g. protagonist, heroine)")
+    parser.add_argument("--world", default="", help="World slug or path (e.g. worlds/<slug>) to load character cards and prompts from")
     parser.add_argument("--state", default="", help="Costume/wardrobe state (e.g. clerk, uniform, armor)")
     parser.add_argument("--expressions", default="neutral", help="Comma-separated list of expressions (e.g. neutral,smiling,bashful,smug)")
-    parser.add_argument("--prompt", required=True, help="Core character description and attire prompt")
+    parser.add_argument("--prompt", default="", help="Core character description and attire prompt (optional if --world is provided)")
     parser.add_argument("--ref-image", default="reference_character_anchor.png", help="Reference image filename for IP-Adapter")
     parser.add_argument("--mode", choices=["humanoid", "monster"], default="humanoid", help="Adaptive mode: humanoid (FaceDetailer+OpenPose) or monster (Depth+organic)")
-    parser.add_argument("--output-dir", default="worlds/_shared/assets/sprites", help="Desheroinetion folder for transparent PNGs")
+    parser.add_argument("--output-dir", default="", help="Desheroinetion folder for transparent PNGs (defaults to worlds/<slug>/assets/sprites if --world given)")
     parser.add_argument("--host", default="127.0.0.1", help="ComfyUI host address")
     parser.add_argument("--port", type=int, default=8188, help="ComfyUI port")
     parser.add_argument("--steps", type=int, default=25, help="Sampling steps (use 4-8 for Lightning models on Intel Iris Xe)")
@@ -159,14 +212,24 @@ def main():
     args = parser.parse_args()
     expr_list = [e.strip() for e in args.expressions.split(",") if e.strip()]
 
+    prompt = args.prompt
+    if not prompt and args.world:
+        prompt = load_character_prompt_from_world(args.world, args.character)
+    if not prompt:
+        prompt = f"{args.character}, anime character portrait, detailed attire"
+
+    output_dir = Path(args.output_dir) if args.output_dir else (
+        Path(args.world) / "assets" / "sprites" if args.world else Path("worlds/_shared/assets/sprites")
+    )
+
     generate_sprites(
         character=args.character,
         state=args.state,
         expressions=expr_list,
-        prompt_desc=args.prompt,
+        prompt_desc=prompt,
         ref_image=args.ref_image,
         mode=args.mode,
-        output_dir=Path(args.output_dir),
+        output_dir=output_dir,
         host=args.host,
         port=args.port,
         steps=args.steps,

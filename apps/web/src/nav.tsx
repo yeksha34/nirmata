@@ -23,7 +23,48 @@ export interface CardRef {
   keywords: string[];
 }
 
-interface Nav {
+export type TopRoute = "worlds" | "vn";
+
+export interface NavState {
+  route: TopRoute;
+  world?: string;
+  card?: string;
+  vnWorld?: string;
+  vnSlug?: string;
+  vnAssetType?: "sprite" | "cg" | "bg";
+  vnAssetName?: string;
+}
+
+function parseLocation(): NavState {
+  if (typeof window === "undefined") return { route: "worlds" };
+  const pathname = window.location.pathname;
+  if (pathname.startsWith("/vn")) {
+    const parts = pathname.slice(1).split("/").filter(Boolean);
+    const vnWorld = parts[1] ? decodeURIComponent(parts[1]) : undefined;
+    const vnSlug = parts[2] ? decodeURIComponent(parts[2]) : undefined;
+    const rawType = parts[3]?.toLowerCase();
+    const vnAssetType = rawType === "sprite" || rawType === "cg" || rawType === "bg" ? rawType : undefined;
+    const vnAssetName = parts[4] ? decodeURIComponent(parts[4]) : undefined;
+
+    return {
+      route: "vn",
+      vnWorld,
+      vnSlug,
+      vnAssetType,
+      vnAssetName,
+    };
+  }
+
+  const parts = pathname.slice(1).split("/").filter(Boolean);
+  const world = parts[0] === "worlds" && parts[1] ? decodeURIComponent(parts[1]) : undefined;
+  return {
+    route: "worlds",
+    world,
+  };
+}
+
+export interface Nav {
+  route: TopRoute;
   /** The world whose page is showing, or none for the front page. */
   world: string | undefined;
   /** The card chosen on that page. */
@@ -34,28 +75,81 @@ interface Nav {
   /** The cards of the world on show, so the jump box can find them. */
   cards: CardRef[];
   setCards: (cards: CardRef[]) => void;
+
+  // VN Studio route parameters and navigators
+  vnWorld?: string;
+  vnSlug?: string;
+  vnAssetType?: "sprite" | "cg" | "bg";
+  vnAssetName?: string;
+  toVn: (world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => void;
+  toWorlds: (world?: string, card?: string) => void;
 }
 
 const Context = createContext<Nav | undefined>(undefined);
 
 export function NavProvider({ children }: { children: ReactNode }) {
-  const [place, setPlace] = useState<{ world?: string; card?: string }>({});
+  const [place, setPlace] = useState<NavState>(parseLocation);
   const [cards, setCards] = useState<CardRef[]>([]);
+
+  useEffect(() => {
+    const onPop = () => setPlace(parseLocation());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const toVn = useCallback((world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => {
+    let path = "/vn";
+    if (world && slug) {
+      path += `/${encodeURIComponent(world)}/${encodeURIComponent(slug)}`;
+      if (type && name) {
+        path += `/${type}/${encodeURIComponent(name)}`;
+      }
+    }
+    history.pushState(null, "", path);
+    setPlace({
+      route: "vn",
+      vnWorld: world,
+      vnSlug: slug,
+      vnAssetType: type,
+      vnAssetName: name,
+    });
+  }, []);
+
+  const toWorlds = useCallback((world?: string, card?: string) => {
+    const path = world ? `/worlds/${encodeURIComponent(world)}` : "/worlds";
+    history.pushState(null, "", path);
+    setPlace({
+      route: "worlds",
+      world,
+      card,
+    });
+  }, []);
+
   const value = useMemo<Nav>(
     () => ({
+      route: place.route,
       world: place.world,
       card: place.card,
-      open: (world, card) => setPlace({ world, ...(card ? { card } : {}) }),
+      open: (world, card) => {
+        toWorlds(world, card);
+      },
       home: () => {
-        setPlace({});
+        toWorlds();
         setCards([]);
       },
-      selectCard: (card) =>
-        setPlace((p) => ({ ...(p.world ? { world: p.world } : {}), ...(card ? { card } : {}) })),
+      selectCard: (card) => {
+        setPlace((p) => ({ ...(p.world ? { world: p.world } : {}), ...(card ? { card } : {}), route: "worlds" }));
+      },
       cards,
       setCards,
+      vnWorld: place.vnWorld,
+      vnSlug: place.vnSlug,
+      vnAssetType: place.vnAssetType,
+      vnAssetName: place.vnAssetName,
+      toVn,
+      toWorlds,
     }),
-    [place, cards],
+    [place, cards, toVn, toWorlds],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

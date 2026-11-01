@@ -295,4 +295,15 @@ export const HI_SERVER: Record<string, string> = {
     'विकल्प "{choice}" में बदला गया चर "{variable}" मैनिफ़ेस्ट में घोषित नहीं है।',
   'Scene "{scene}" is never targeted by any menu choice or jump.':
     'दृश्य "{scene}" को कभी किसी मेनू विकल्प या जंप द्वारा लक्षित नहीं किया गया है।',
+
+  // ComfyUI and visual novel assets
+  "ComfyUI failed to queue prompt: {text}": "ComfyUI प्रॉम्प्ट कतारबद्ध करने में विफल रहा: {text}",
+  "Could not connect to ComfyUI at {host}: {message}": "{host} पर ComfyUI से संपर्क नहीं हो सका: {message}",
+  "ComfyUI execution failed: {messages}": "ComfyUI निष्पादन विफल रहा: {messages}",
+  "Generation timed out after {seconds}s.": "{seconds}s के बाद निर्माण का समय समाप्त हो गया।",
+  "Failed to fetch generated image: {statusText}": "निर्मित छवि प्राप्त करने में विफल: {statusText}",
+  "Failed to download image from ComfyUI: {message}": "ComfyUI से छवि डाउनलोड करने में विफल: {message}",
+  "Asset path cannot be empty": "संसाधन पथ रिक्त नहीं हो सकता",
+  "Template for {type} was not found.": "{type} के लिए टेम्पलेट नहीं मिला।",
+  "No output images produced by ComfyUI.": "ComfyUI द्वारा कोई आउटपुट छवि नहीं बनाई गई।",
 };

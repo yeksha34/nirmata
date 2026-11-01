@@ -247,6 +247,84 @@ const WORDS: Record<string, string> = {
 
   // joining
   "Your name": "आपका नाम",
+
+  // Visual Novel Studio and ComfyUI
+  All: "सभी",
+  "All Assets": "सभी संसाधन",
+  "All Visual Novels": "सभी दृश्य-उपन्यास",
+  Shared: "साझा",
+  "Shared Pool": "साझा संग्रह",
+  "Shared Assets": "साझा संसाधन",
+  "Shared Assets Pool": "साझा संसाधन संग्रह",
+  Gallery: "दीर्घा",
+  List: "सूची",
+  "Restore Run": "रन पुनर्स्थापित करें",
+  "Archive All": "सभी संग्रहीत करें",
+  "Delete All": "सभी हटाएं",
+  "Archive Asset": "संसाधन संग्रहीत करें",
+  "Delete Asset": "संसाधन हटाएं",
+  "Asset archived to dataset history.": "संसाधन डेटासेट इतिहास में संग्रहीत किया गया।",
+  "Delete rendered file for {activeName}? It will be reset to Pending.":
+    "{activeName} के लिए निर्मित फ़ाइल हटाएं? यह लंबित पर रीसेट हो जाएगी।",
+  "Deleted {activeName}. Asset reset to Pending.": "{activeName} हटा दिया गया। संसाधन लंबित पर रीसेट हो गया।",
+  "Archived {res} assets to dataset history.": "{res} संसाधन डेटासेट इतिहास में संग्रहीत किए गए।",
+  "Delete all rendered assets for {activeSlug}? They will be reset to Pending.":
+    "{activeSlug} के लिए सभी निर्मित संसाधन हटाएं? वे लंबित पर रीसेट हो जाएंगे।",
+  "Deleted {res} rendered files. All assets reset to Pending.":
+    "{res} निर्मित फ़ाइलें हटा दी गईं। सभी संसाधन लंबित पर रीसेट हो गए।",
+  Sprites: "स्प्राइट्स",
+  "Event CGs": "घटना CGs",
+  "Search assets": "संसाधन खोजें",
+  "Search assets...": "संसाधन खोजें...",
+  "Clear search": "खोज साफ़ करें",
+  "All assets": "सभी संसाधन",
+  ComfyUI: "ComfyUI",
+  "● ComfyUI": "● ComfyUI",
+  "ComfyUI Online (:8188)": "ComfyUI ऑनलाइन (:8188)",
+  "ComfyUI Offline": "ComfyUI ऑफ़लाइन",
+  "Visual Novels": "दृश्य-उपन्यास",
+  "Visual Novel:": "दृश्य-उपन्यास:",
+  "VN Assets": "दृश्य-उपन्यास संसाधन",
+  "No visual novels found. Adapt a chapter first.": "कोई दृश्य-उपन्यास नहीं मिला। पहले किसी अध्याय का रूपांतरण करें।",
+  "Loading assets…": "संसाधन लोड हो रहे हैं…",
+  "Character Sprites": "पात्र स्प्राइट्स",
+  "Event CG Scenes": "घटना CG दृश्य",
+  Backgrounds: "पृष्ठभूमि",
+  Rendered: "निर्मित",
+  Pending: "लंबित",
+  "ComfyUI Visual Novel Asset Studio": "ComfyUI दृश्य-उपन्यास संसाधन स्टूडियो",
+  "Asset Feedback & Reinforcement Studio": "संसाधन प्रतिक्रिया एवं सुदृढ़ीकरण स्टूडियो",
+  "Inspect visual novel asset budgets, tokenize prompt tags into Danbooru badges, tune attention weights interactively, and archive feedback training sets.":
+    "दृश्य-उपन्यास संसाधन बजट का निरीक्षण करें, प्रॉम्प्ट टैग को डैनबोरू बैज में टोकनाइज़ करें, ध्यान भार को इंटरएक्टिव रूप से ट्यून करें, और प्रतिक्रिया प्रशिक्षण सेट संग्रहीत करें।",
+  "Select an asset from the left to view prompt inputs and trigger generation.":
+    "प्रॉम्प्ट इनपुट देखने और निर्माण ट्रिगर करने के लिए बाईं ओर से कोई संसाधन चुनें।",
+  "Asset Pending Generation": "संसाधन निर्माण लंबित है",
+  "Use the questionnaire below and click Trigger Generation.":
+    "नीचे दी गई प्रश्नावली का उपयोग करें और निर्माण ट्रिगर पर क्लिक करें।",
+  "Danbooru Tag Badges (Click to Add to Attention Adjustment Questionnaire):":
+    "डैनबोरू टैग बैज (ध्यान समायोजन प्रश्नावली में जोड़ने के लिए क्लिक करें):",
+  "Attention Adjustment Questionnaire": "ध्यान समायोजन प्रश्नावली",
+  'Select feedback for each active tag. "Make better" reinforces weights (+0.2); "Make worse" penalizes or negates.':
+    'प्रत्येक सक्रिय टैग के लिए प्रतिक्रिया चुनें। "बेहतर बनाएँ" भार बढ़ाता है (+0.2); "कमतर बनाएँ" घटाता या नकारता है।',
+  "▲ Make better": "▲ बेहतर बनाएँ",
+  "● Keep as is": "● यथावत रखें",
+  "▼ Make worse": "▼ कमतर बनाएँ",
+  "Add Tag": "टैग जोड़ें",
+  "Positive Prompt:": "सकारात्मक प्रॉम्प्ट:",
+  "Negative Prompt:": "नकारात्मक प्रॉम्प्ट:",
+  "Trigger Generation with Feedback": "प्रतिक्रिया के साथ निर्माण ट्रिगर करें",
+  "Generating via ComfyUI...": "ComfyUI के माध्यम से निर्माण हो रहा है...",
+  "Rendering through ComfyUI...": "ComfyUI द्वारा रेंडर हो रहा है...",
+  "Dispatching workflow to ComfyUI...": "ComfyUI को कार्यप्रवाह भेजा जा रहा है...",
+  "Generation complete!": "निर्माण पूर्ण!",
+  "Sampler Parameters": "सैंपलर पैरामीटर",
+  "Steps:": "चरण:",
+  "CFG Scale:": "CFG पैमाना:",
+  "Sampler:": "सैंपलर:",
+  "Scheduler:": "शेड्यूलर:",
+  "Seed (optional):": "सीड (वैकल्पिक):",
+  "No archived passes yet. Previous runs will be preserved here automatically.":
+    "अभी तक कोई संग्रहीत पास नहीं है। पिछले रन यहाँ स्वचालित रूप से संरक्षित किए जाएँगे।",
 };
 
 /** Every label, sentence and hint that has Hindi: the short words above, then the longer text. */
