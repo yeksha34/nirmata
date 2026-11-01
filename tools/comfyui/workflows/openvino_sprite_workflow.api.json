@@ -1,0 +1,145 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "ponyDiffusionV6XL_fp16.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint (Pony Diffusion V6 XL)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "vae_name": "sdxl_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load SDXL VAE"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_7_up, rating_explicit, masterpiece, best quality, visual novel character sprite, full body portrait, solo, anime girl, standing forward, uncensored, simple background, white background",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "score_1, score_2, score_3, lowres, bad anatomy, bad hands, blurry, worst quality, low quality, normal quality, signature, watermark, cropped, censored, bar censor, mosaic censor",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 832,
+      "height": 1216,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent (9:16 Portrait)"
+    }
+  },
+  "9": {
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "device": "GPU"
+    },
+    "class_type": "TorchCompileDiffusionOpenVINO",
+    "_meta": {
+      "title": "OpenVINO Diffusion (Intel Iris Xe GPU)"
+    }
+  },
+  "10": {
+    "inputs": {
+      "vae": [
+        "2",
+        0
+      ],
+      "device": "GPU",
+      "compile_encoder": true,
+      "compile_decoder": true,
+      "remove_compile": false
+    },
+    "class_type": "TorchCompileVAEOpenVINO",
+    "_meta": {
+      "title": "OpenVINO VAE (Intel Iris Xe GPU)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "seed": 1024,
+      "steps": 25,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": [
+        "9",
+        0
+      ],
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "4",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler (Pony XL via OpenVINO)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": [
+        "6",
+        0
+      ],
+      "vae": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode (OpenVINO)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "sprites/chimeric_hybrid_walking_sprite_openvino",
+      "images": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Sprite"
+    }
+  }
+}

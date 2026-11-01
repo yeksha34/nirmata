@@ -1,0 +1,102 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "AOM3A1B_orangemixs.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple"
+  },
+  "9": {
+    "inputs": {
+      "device": "GPU",
+      "model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "TorchCompileDiffusionOpenVINO"
+  },
+  "3": {
+    "inputs": {
+      "text": "masterpiece, best quality, ultra-detailed, 1girl, solo, anime sprite portrait, standing forward, full body, uncensored, simple background, white background",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "masterpiece, best quality, ultra-detailed, 1girl, solo, anime sprite portrait, standing forward, full body, uncensored, simple background, white background",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 512,
+      "height": 768,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage"
+  },
+  "6": {
+    "inputs": {
+      "seed": 555555,
+      "steps": 22,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": [
+        "9",
+        0
+      ],
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "4",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "KSampler"
+  },
+  "7": {
+    "inputs": {
+      "samples": [
+        "6",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode"
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "sprites/chimeric_hybrid_walking_sprite_sd15_proportionate",
+      "images": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "SaveImage"
+  }
+}

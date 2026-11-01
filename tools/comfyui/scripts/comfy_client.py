@@ -61,10 +61,13 @@ class ComfyClient:
             with urllib.request.urlopen(req, timeout=10) as response:
                 result = json.loads(response.read().decode("utf-8"))
                 return result.get("prompt_id")
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"ComfyUI rejected prompt (HTTP {e.code}): {err_body}")
         except urllib.error.URLError as e:
             raise ConnectionError(f"Could not connect to ComfyUI at {self.server_address}: {e}")
 
-    def wait_for_completion(self, prompt_id: str, timeout: int = 300) -> Dict[str, Any]:
+    def wait_for_completion(self, prompt_id: str, timeout: int = 1800) -> Dict[str, Any]:
         """Listen to WebSocket events until prompt execution completes or times out."""
         if websocket is None:
             # Fallback to HTTP polling if websocket module is not installed
@@ -101,15 +104,20 @@ class ComfyClient:
 
         return self.get_history(prompt_id)
 
-    def _poll_history(self, prompt_id: str, timeout: int) -> Dict[str, Any]:
+    def _poll_history(self, prompt_id: str, timeout: int = 1800) -> Dict[str, Any]:
         """Fallback polling mechanism when WebSocket is unavailable."""
         start_time = time.time()
+        last_log = 0.0
         while time.time() - start_time < timeout:
             history = self.get_history(prompt_id)
             if prompt_id in history:
                 return history
-            time.sleep(1.0)
-        raise TimeoutError(f"Prompt {prompt_id} timed out during history polling.")
+            elapsed = time.time() - start_time
+            if elapsed - last_log >= 15.0:
+                print(f"      [Progress] Waiting for generation... elapsed: {int(elapsed)}s (timeout: {timeout}s)")
+                last_log = elapsed
+            time.sleep(2.0)
+        raise TimeoutError(f"Prompt {prompt_id} timed out during history polling after {timeout} seconds.")
 
     def get_history(self, prompt_id: str) -> Dict[str, Any]:
         """Fetch execution outputs from /history/<prompt_id>."""
