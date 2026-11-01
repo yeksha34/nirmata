@@ -1,0 +1,841 @@
+{
+  "last_node_id": 17,
+  "last_link_id": 19,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        40,
+        100
+      ],
+      "size": {
+        "0": 320,
+        "1": 98
+      },
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            7
+          ],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "AOM3A1B_orangemixs.safetensors"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "CLIPTextEncode",
+      "pos": [
+        40,
+        240
+      ],
+      "size": {
+        "0": 420,
+        "1": 130
+      },
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "masterpiece, best quality, ultra-detailed, 1girl, solo, anime sprite portrait, standing forward, full body, uncensored, simple background, white background"
+      ],
+      "title": "Positive Prompt"
+    },
+    {
+      "id": 4,
+      "type": "CLIPTextEncode",
+      "pos": [
+        40,
+        410
+      ],
+      "size": {
+        "0": 420,
+        "1": 130
+      },
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            10
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "detailed anime face, expressive eyes, parted lips, long hair, beautiful detailed anime face, high aesthetic"
+      ],
+      "title": "Region 1 (Head & Expression) Prompt"
+    },
+    {
+      "id": 11,
+      "type": "ConditioningSetArea",
+      "pos": [
+        480,
+        410
+      ],
+      "size": {
+        "0": 260,
+        "1": 140
+      },
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 10
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            11
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ConditioningSetArea"
+      },
+      "widgets_values": [
+        512,
+        256,
+        0,
+        0,
+        1.0
+      ],
+      "title": "Set Area: Top Tier (Head y=0-256)"
+    },
+    {
+      "id": 5,
+      "type": "CLIPTextEncode",
+      "pos": [
+        40,
+        580
+      ],
+      "size": {
+        "0": 420,
+        "1": 130
+      },
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            12
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "detailed anime upper torso, slender build, collarbone, detailed costume, elegant attire, uncensored"
+      ],
+      "title": "Region 2 (Upper Torso & Attire) Prompt"
+    },
+    {
+      "id": 12,
+      "type": "ConditioningSetArea",
+      "pos": [
+        480,
+        580
+      ],
+      "size": {
+        "0": 260,
+        "1": 140
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 12
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            13
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ConditioningSetArea"
+      },
+      "widgets_values": [
+        512,
+        280,
+        0,
+        220,
+        1.0
+      ],
+      "title": "Set Area: Mid Tier (Chest y=220-500)"
+    },
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [
+        40,
+        750
+      ],
+      "size": {
+        "0": 420,
+        "1": 140
+      },
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "detailed lower body, slender legs, anime character portrait, uncensored"
+      ],
+      "title": "Region 3 (Lower Body & Legs) Prompt"
+    },
+    {
+      "id": 13,
+      "type": "ConditioningSetArea",
+      "pos": [
+        480,
+        750
+      ],
+      "size": {
+        "0": 260,
+        "1": 140
+      },
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 14
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            15
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ConditioningSetArea"
+      },
+      "widgets_values": [
+        512,
+        308,
+        0,
+        460,
+        1.0
+      ],
+      "title": "Set Area: Bottom Tier (Pelvis & Legs y=460-768)"
+    },
+    {
+      "id": 14,
+      "type": "ConditioningCombine",
+      "pos": [
+        780,
+        410
+      ],
+      "size": {
+        "0": 210,
+        "1": 60
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning_1",
+          "type": "CONDITIONING",
+          "link": 11
+        },
+        {
+          "name": "conditioning_2",
+          "type": "CONDITIONING",
+          "link": 13
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            16
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ConditioningCombine"
+      },
+      "title": "Combine (Head + Torso)"
+    },
+    {
+      "id": 15,
+      "type": "ConditioningCombine",
+      "pos": [
+        780,
+        500
+      ],
+      "size": {
+        "0": 210,
+        "1": 60
+      },
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning_1",
+          "type": "CONDITIONING",
+          "link": 16
+        },
+        {
+          "name": "conditioning_2",
+          "type": "CONDITIONING",
+          "link": 15
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            17
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ConditioningCombine"
+      },
+      "title": "Combine (All 3 Regions)"
+    },
+    {
+      "id": 16,
+      "type": "ConditioningCombine",
+      "pos": [
+        780,
+        590
+      ],
+      "size": {
+        "0": 210,
+        "1": 60
+      },
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning_1",
+          "type": "CONDITIONING",
+          "link": 9
+        },
+        {
+          "name": "conditioning_2",
+          "type": "CONDITIONING",
+          "link": 17
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            18
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ConditioningCombine"
+      },
+      "title": "Combine (Global + Regional Composite)"
+    },
+    {
+      "id": 7,
+      "type": "CLIPTextEncode",
+      "pos": [
+        40,
+        930
+      ],
+      "size": {
+        "0": 420,
+        "1": 130
+      },
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 6
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            19
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "lowres, bad anatomy, bad hands, missing fingers, extra digits, cropped, worst quality, low quality, normal quality, signature, watermark, blurry, deformed, censored, bar censor, mosaic censor"
+      ],
+      "title": "Negative Prompt"
+    },
+    {
+      "id": 8,
+      "type": "EmptyLatentImage",
+      "pos": [
+        780,
+        100
+      ],
+      "size": {
+        "0": 260,
+        "1": 106
+      },
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            20
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        512,
+        768,
+        1
+      ],
+      "title": "Empty Latent (512x768 Portrait)"
+    },
+    {
+      "id": 9,
+      "type": "KSampler",
+      "pos": [
+        1060,
+        100
+      ],
+      "size": {
+        "0": 300,
+        "1": 260
+      },
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 1
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 18
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 19
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 20
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            21
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        31415,
+        "randomize",
+        25,
+        7.5,
+        "dpmpp_2m",
+        "karras",
+        1.0
+      ],
+      "title": "KSampler (SD 1.5 Native Regional)"
+    },
+    {
+      "id": 10,
+      "type": "VAEDecode",
+      "pos": [
+        1400,
+        100
+      ],
+      "size": {
+        "0": 210,
+        "1": 46
+      },
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 21
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            22
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 17,
+      "type": "SaveImage",
+      "pos": [
+        1400,
+        200
+      ],
+      "size": {
+        "0": 320,
+        "1": 120
+      },
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 22
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "sprites/chimeric_hybrid_walking_sprite_sd15_regional"
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      9,
+      0,
+      "MODEL"
+    ],
+    [
+      2,
+      1,
+      1,
+      3,
+      0,
+      "CLIP"
+    ],
+    [
+      3,
+      1,
+      1,
+      4,
+      0,
+      "CLIP"
+    ],
+    [
+      4,
+      1,
+      1,
+      5,
+      0,
+      "CLIP"
+    ],
+    [
+      5,
+      1,
+      1,
+      6,
+      0,
+      "CLIP"
+    ],
+    [
+      6,
+      1,
+      1,
+      7,
+      0,
+      "CLIP"
+    ],
+    [
+      7,
+      1,
+      2,
+      10,
+      1,
+      "VAE"
+    ],
+    [
+      9,
+      3,
+      0,
+      16,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      10,
+      4,
+      0,
+      11,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      11,
+      11,
+      0,
+      14,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      12,
+      5,
+      0,
+      12,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      13,
+      12,
+      0,
+      14,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      14,
+      6,
+      0,
+      13,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      15,
+      13,
+      0,
+      15,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      16,
+      14,
+      0,
+      15,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      17,
+      15,
+      0,
+      16,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      18,
+      16,
+      0,
+      9,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      19,
+      7,
+      0,
+      9,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      20,
+      8,
+      0,
+      9,
+      3,
+      "LATENT"
+    ],
+    [
+      21,
+      9,
+      0,
+      10,
+      0,
+      "LATENT"
+    ],
+    [
+      22,
+      10,
+      0,
+      17,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
