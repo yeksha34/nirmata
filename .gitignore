@@ -29,5 +29,9 @@ services/rules-gatekeeper/data/rule_scopes.json
 worlds/*/stories/*
 !worlds/*/stories/.gitkeep
 
+# ComfyUI world asset workflows and feedback datasets (content-neutral)
+worlds/**/assets/workflow/
+worlds/**/assets/dataset/
+
 .claude/worktrees/
 worlds/
