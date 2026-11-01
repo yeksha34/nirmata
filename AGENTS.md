@@ -26,4 +26,5 @@ Nirmata: build worlds, then host stories in them. Start at [docs/README.md](docs
 | `record-decision` | ADRs |
 | `log-bug` | Bug and tech-debt register |
 | `native-html-first` | Check for built-in HTML elements/attributes before writing custom JS components |
+| `gen-assets-workflow-comfyui` | Scaffold customized ComfyUI workflows (sprites, CGs, backgrounds) for VN assets |
 | `release-tag` | Cut a tagged release |
