@@ -54,6 +54,24 @@ import {
   type TableEvent,
   tableEvent,
 } from "./views";
+import { ComfyUiClient, type ComfyUiStatus } from "./comfyui";
+import { applyAttentionFeedback, injectWorkflowParams } from "./workflow-injector";
+import type { VnAssetDetail, VnAssetItem } from "./files";
+
+export interface GenerateAssetInput {
+  type: "sprite" | "cg" | "bg";
+  name: string;
+  targetPath?: string;
+  positivePrompt: string;
+  negativePrompt?: string;
+  steps?: number;
+  cfg?: number;
+  sampler?: string;
+  scheduler?: string;
+  seed?: number;
+  feedback?: Record<string, "better" | "keep" | "worse">;
+  workflowOverride?: Record<string, unknown>;
+}
 
 export interface TableOptions {
   /** The worlds the host can open. Which one is open is chosen on screen, not configured. */
@@ -175,6 +193,7 @@ export class Table {
   private abort: AbortController | undefined;
   /** Chapter and plot files are rewritten one after another, never at the same time. */
   private files: Promise<void> = Promise.resolve();
+  private readonly comfy = new ComfyUiClient();
 
   constructor(private readonly options: TableOptions) {
     this.settings = options.settings;
@@ -326,6 +345,158 @@ export class Table {
     subPath: string,
   ): Promise<{ data: Buffer; contentType: string } | undefined> {
     return this.options.library.readVnAsset(name, slug, subPath);
+  }
+
+  /** Check connection status of ComfyUI. */
+  async comfyStatus(): Promise<ComfyUiStatus> {
+    return this.comfy.checkStatus();
+  }
+
+  /** List all visual novels across worlds with asset completion status. Host only. */
+  async listAllVns(
+    seat: Seat,
+  ): Promise<Array<VnSummary & { worldName: string; worldTitle: string; assetCounts: { sprites: number; cgs: number; backgrounds: number } }>> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.listAllVns();
+  }
+
+  /** List all required assets for a visual novel adaptation. Host only. */
+  async listWorldVnAssets(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+  ): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.listVnAssets(worldName, slug);
+  }
+
+  /** Get detailed asset info, prompt parameters, and dataset history. Host only. */
+  async getWorldVnAssetDetail(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+  ): Promise<VnAssetDetail> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.getVnAssetDetail(worldName, slug, type, name);
+  }
+
+  /** Trigger ComfyUI generation for an asset with attention feedback and archival. Host only. */
+  async generateWorldVnAsset(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+    body: GenerateAssetInput,
+  ): Promise<{
+    ok: boolean;
+    promptId: string;
+    assetUrl: string;
+    archivedTo: string;
+    positivePrompt: string;
+    negativePrompt: string;
+  }> {
+    requireCan(this.actor(seat), "source.edit");
+
+    let positive = body.positivePrompt;
+    let negative = body.negativePrompt || "";
+
+    if (body.feedback && Object.keys(body.feedback).length > 0) {
+      const updated = applyAttentionFeedback(positive, negative, body.feedback);
+      positive = updated.positivePrompt;
+      negative = updated.negativePrompt;
+    }
+
+    const archivedDir = await this.options.library.archiveVnAsset(worldName, slug, body.type, body.name, {
+      prompt: positive,
+      negativePrompt: negative,
+      feedback: body.feedback,
+      workflow: body.workflowOverride,
+    });
+
+    const template = (body.workflowOverride || (await this.options.library.loadWorkflowTemplate(worldName, body.type))) as Record<string, any>;
+
+    const injected = injectWorkflowParams(template, {
+      positivePrompt: positive,
+      negativePrompt: negative,
+      steps: body.steps,
+      cfg: body.cfg,
+      sampler: body.sampler,
+      scheduler: body.scheduler,
+      seed: body.seed,
+      filenamePrefix: `${body.type}s/${body.name}`,
+    });
+
+    const promptId = await this.comfy.queuePrompt(injected as any);
+    const result = await this.comfy.waitForCompletion(promptId);
+
+    const firstImg = result.outputImages?.[0];
+    if (!firstImg) {
+      throw new HttpError(500, "generation_failed", "No output images produced by ComfyUI.");
+    }
+
+    const imageBytes = await this.comfy.fetchImage(firstImg.filename, firstImg.subfolder, firstImg.type);
+
+    const dirName = body.type === "sprite" ? "sprites" : body.type === "cg" ? "cgs" : "backgrounds";
+    const targetPath = body.targetPath || `${dirName}/${body.name}.png`;
+    await this.options.library.saveGeneratedVnAsset(worldName, slug, targetPath, imageBytes);
+    await this.options.library.saveDatasetGeneratedImage(worldName, archivedDir, imageBytes);
+
+    const assetUrl = `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/${targetPath}?t=${Date.now()}`;
+
+    return {
+      ok: true,
+      promptId,
+      assetUrl,
+      archivedTo: archivedDir,
+      positivePrompt: positive,
+      negativePrompt: negative,
+    };
+  }
+
+  /** Read an image from the dataset history. Open to all viewers. */
+  readDatasetImage(worldName: string, slug: string, assetName: string, timestamp: string) {
+    return this.options.library.readDatasetImage(worldName, slug, assetName, timestamp);
+  }
+
+  async archiveWorldVnAsset(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+  ): Promise<{ ok: boolean; timestamp: string }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.archiveOneVnAsset(worldName, slug, type, name);
+  }
+
+  async archiveAllWorldVnAssets(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+  ): Promise<{ ok: boolean; archivedCount: number }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.archiveAllVnAssets(worldName, slug);
+  }
+
+  async deleteWorldVnAsset(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+  ): Promise<{ ok: boolean; name: string }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.deleteOneVnAsset(worldName, slug, type, name);
+  }
+
+  async deleteAllWorldVnAssets(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+  ): Promise<{ ok: boolean; deletedCount: number }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.deleteAllVnAssets(worldName, slug);
   }
 
   /** Make a new world. It is not opened: the host goes to its page and starts a story there. */

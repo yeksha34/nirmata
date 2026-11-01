@@ -39,6 +39,72 @@ import {
   type WorldManifest,
 } from "@nirmata/core";
 import { type EventSink, HostError, type SourceBackend } from "@nirmata/host";
+import {
+  getDefaultNegativePrompt,
+  synthesizeBackgroundDanbooruPrompt,
+  synthesizeCgDanbooruPrompt,
+  synthesizeSpriteDanbooruPrompt,
+} from "./danbooru-prompt";
+import { HttpError } from "./errors";
+
+export interface VnAssetItem {
+  id: string;
+  type: "sprite" | "cg" | "bg";
+  name: string;
+  targetPath: string;
+  exists: boolean;
+  url?: string;
+  defaultPrompt?: string;
+  isShared?: boolean;
+  vnSlug?: string;
+}
+
+export interface VnAssetDatasetEntry {
+  timestamp: string;
+  imageFilename: string;
+  imageUrl?: string;
+  prompt: string;
+  negativePrompt?: string;
+  feedback?: Record<string, "better" | "keep" | "worse">;
+}
+
+export interface VnAssetPromptSpec {
+  name: string;
+  type: "sprite" | "cg" | "bg";
+  positivePrompt: string;
+  negativePrompt?: string;
+  aspectRatio?: string;
+  width?: number;
+  height?: number;
+  steps?: number;
+  cfg?: number;
+  sampler?: string;
+  scheduler?: string;
+  seed?: number;
+  referenceImage?: string;
+  status?: string;
+}
+
+export interface VnAssetDetail {
+  id: string;
+  type: "sprite" | "cg" | "bg";
+  name: string;
+  targetPath: string;
+  exists: boolean;
+  url?: string;
+  positivePrompt: string;
+  negativePrompt: string;
+  templateClass: string;
+  datasetHistory: VnAssetDatasetEntry[];
+  steps?: number;
+  cfg?: number;
+  sampler?: string;
+  scheduler?: string;
+  seed?: number;
+  aspectRatio?: string;
+  width?: number;
+  height?: number;
+}
 
 /** Where a world keeps its cards. Same layout the editor and the linter use. */
 const CARD_DIRS = ["lore", "characters", "setting", "plot", ".agents/rules"] as const;
@@ -445,6 +511,7 @@ export class WorldFiles implements SourceBackend {
   ): Promise<{ data: Buffer; contentType: string } | undefined> {
     const safeSlug = sanitizeSlug(slug);
     const cleanSub = subPath.replace(/^[/\\]+/, "").replace(/\0/g, "");
+    if (!cleanSub) return undefined;
 
     // Search priority:
     // 1. Shared VN asset pool: vns/_shared/assets/<subPath>
@@ -530,6 +597,530 @@ export class WorldFiles implements SourceBackend {
       }
     }
     return undefined;
+  }
+
+  async loadPromptSpecs(): Promise<Record<string, VnAssetPromptSpec>> {
+    const candidates = [
+      inside(this.root, "vns/_shared/assets/prompts.json"),
+      inside(this.root, "assets/workflow/prompts.json"),
+    ];
+    for (const cand of candidates) {
+      try {
+        const text = await readIfThere(cand);
+        if (text) {
+          const data = JSON.parse(text);
+          if (Array.isArray(data)) {
+            const map: Record<string, VnAssetPromptSpec> = {};
+            for (const item of data) {
+              if (item.name) map[item.name] = item;
+            }
+            return map;
+          }
+          if (typeof data === "object" && data !== null) {
+            return data as Record<string, VnAssetPromptSpec>;
+          }
+        }
+      } catch {}
+    }
+    return {};
+  }
+
+  async listVnAssets(slug: string): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+    const safeSlug = sanitizeSlug(slug);
+
+    if (safeSlug === "_all" || safeSlug === "all") {
+      const shared = await this.listVnAssets("_shared");
+      const allSprites: VnAssetItem[] = [...shared.sprites.map((s) => ({ ...s, isShared: true, vnSlug: "_shared" }))];
+      const allCgs: VnAssetItem[] = [...shared.cgs.map((c) => ({ ...c, isShared: true, vnSlug: "_shared" }))];
+      const allBgs: VnAssetItem[] = [...shared.backgrounds.map((b) => ({ ...b, isShared: true, vnSlug: "_shared" }))];
+
+      const vns = await this.vns();
+      for (const v of vns) {
+        if (v.slug === "_shared") continue;
+        const vAssets = await this.listVnAssets(v.slug);
+        for (const s of vAssets.sprites) {
+          if (!allSprites.some((existing) => existing.name === s.name)) {
+            allSprites.push({ ...s, vnSlug: v.slug });
+          }
+        }
+        for (const c of vAssets.cgs) {
+          if (!allCgs.some((existing) => existing.name === c.name)) {
+            allCgs.push({ ...c, vnSlug: v.slug });
+          }
+        }
+        for (const b of vAssets.backgrounds) {
+          if (!allBgs.some((existing) => existing.name === b.name)) {
+            allBgs.push({ ...b, vnSlug: v.slug });
+          }
+        }
+      }
+      return { sprites: allSprites, cgs: allCgs, backgrounds: allBgs };
+    }
+
+    const sprites: VnAssetItem[] = [];
+    const cgs: VnAssetItem[] = [];
+    const backgrounds: VnAssetItem[] = [];
+    const promptSpecs = await this.loadPromptSpecs();
+    const cardFiles = await this.cardFiles().catch(() => []);
+
+    const checkAsset = async (subPath: string): Promise<{ exists: boolean; fullPath?: string }> => {
+      const candidates = [
+        inside(this.root, `vns/_shared/assets/${subPath}`),
+        inside(this.root, `vns/${safeSlug}/assets/${subPath}`),
+      ];
+      for (const cand of candidates) {
+        try {
+          await stat(cand);
+          return { exists: true, fullPath: cand };
+        } catch {}
+      }
+      return { exists: false };
+    };
+
+    const scanDir = async (dirName: "sprites" | "cgs" | "backgrounds", type: "sprite" | "cg" | "bg") => {
+      const dirs: Array<{ path: string; isShared: boolean }> = [
+        { path: inside(this.root, `vns/_shared/assets/${dirName}`), isShared: true },
+      ];
+      if (safeSlug !== "_shared") {
+        dirs.push({ path: inside(this.root, `vns/${safeSlug}/assets/${dirName}`), isShared: false });
+      }
+      const seen = new Set<string>();
+      for (const { path: d, isShared } of dirs) {
+        try {
+          const files = await readdir(d);
+          for (const f of files) {
+            if (f.match(/\.(png|jpg|jpeg|webp)$/i)) {
+              const stem = f.replace(/\.[^.]+$/, "");
+              if (!seen.has(stem)) {
+                seen.add(stem);
+                const targetPath = `${dirName}/${f}`;
+                const item: VnAssetItem = {
+                  id: `${type}:${stem}`,
+                  type,
+                  name: stem,
+                  targetPath,
+                  exists: true,
+                  url: `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`,
+                  isShared,
+                  vnSlug: isShared ? "_shared" : safeSlug,
+                };
+                if (type === "sprite") sprites.push(item);
+                else if (type === "cg") cgs.push(item);
+                else backgrounds.push(item);
+              }
+            }
+          }
+        } catch {}
+      }
+    };
+
+    await scanDir("sprites", "sprite");
+    await scanDir("cgs", "cg");
+    await scanDir("backgrounds", "bg");
+
+    try {
+      const vnData = await this.vn(slug);
+      const manifestAssets = vnData.manifest.assets;
+      if (manifestAssets?.characters) {
+        for (const [charName, expressions] of Object.entries(manifestAssets.characters)) {
+          const exprList = Array.isArray(expressions) && expressions.length > 0 ? expressions : ["neutral"];
+          for (const expr of exprList) {
+            const spriteName = `${charName}_${expr}`;
+            if (!sprites.some((s) => s.name === spriteName || s.name === charName)) {
+              const targetPath = `sprites/${spriteName}.png`;
+              const check = await checkAsset(targetPath);
+              sprites.push({
+                id: `sprite:${spriteName}`,
+                type: "sprite",
+                name: spriteName,
+                targetPath,
+                exists: check.exists,
+                url: check.exists
+                  ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
+                  : undefined,
+                defaultPrompt: synthesizeSpriteDanbooruPrompt(spriteName, cardFiles),
+              });
+            }
+          }
+        }
+      }
+      if (Array.isArray(manifestAssets?.cgs)) {
+        for (const cgName of manifestAssets.cgs) {
+          if (!cgs.some((c) => c.name === cgName)) {
+            const targetPath = `cgs/${cgName}.png`;
+            const check = await checkAsset(targetPath);
+            cgs.push({
+              id: `cg:${cgName}`,
+              type: "cg",
+              name: cgName,
+              targetPath,
+              exists: check.exists,
+              url: check.exists
+                ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
+                : undefined,
+              defaultPrompt: synthesizeCgDanbooruPrompt(cgName, cardFiles),
+            });
+          }
+        }
+      }
+      if (Array.isArray(manifestAssets?.backgrounds)) {
+        for (const bgName of manifestAssets.backgrounds) {
+          if (!backgrounds.some((b) => b.name === bgName)) {
+            const targetPath = `backgrounds/${bgName}.png`;
+            const check = await checkAsset(targetPath);
+            backgrounds.push({
+              id: `bg:${bgName}`,
+              type: "bg",
+              name: bgName,
+              targetPath,
+              exists: check.exists,
+              url: check.exists
+                ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
+                : undefined,
+              defaultPrompt: synthesizeBackgroundDanbooruPrompt(bgName, cardFiles),
+            });
+          }
+        }
+      }
+    } catch {}
+
+    // Populate any disk-scanned items that did not have default prompts
+    for (const s of sprites) {
+      if (!s.defaultPrompt) {
+        s.defaultPrompt = synthesizeSpriteDanbooruPrompt(s.name, cardFiles);
+      }
+    }
+    for (const c of cgs) {
+      if (!c.defaultPrompt) {
+        c.defaultPrompt = synthesizeCgDanbooruPrompt(c.name, cardFiles);
+      }
+    }
+    for (const b of backgrounds) {
+      if (!b.defaultPrompt) {
+        b.defaultPrompt = synthesizeBackgroundDanbooruPrompt(b.name, cardFiles);
+      }
+    }
+
+    if (sprites.length === 0) {
+      sprites.push({
+        id: "sprite:main_character_neutral",
+        type: "sprite",
+        name: "main_character_neutral",
+        targetPath: "sprites/main_character_neutral.png",
+        exists: false,
+        defaultPrompt: synthesizeSpriteDanbooruPrompt("main_character_neutral", cardFiles),
+      });
+    }
+    if (cgs.length === 0) {
+      cgs.push({
+        id: "cg:scene_01_climax",
+        type: "cg",
+        name: "scene_01_climax",
+        targetPath: "cgs/scene_01_climax.png",
+        exists: false,
+        defaultPrompt: synthesizeCgDanbooruPrompt("scene_01_climax", cardFiles),
+      });
+    }
+    if (backgrounds.length === 0) {
+      backgrounds.push({
+        id: "bg:main_setting_day",
+        type: "bg",
+        name: "main_setting_day",
+        targetPath: "backgrounds/main_setting_day.png",
+        exists: false,
+        defaultPrompt: synthesizeBackgroundDanbooruPrompt("main_setting_day", cardFiles),
+      });
+    }
+
+    for (const item of [...sprites, ...cgs, ...backgrounds]) {
+      if (promptSpecs[item.name]?.positivePrompt) {
+        item.defaultPrompt = promptSpecs[item.name]!.positivePrompt;
+      }
+    }
+
+    return { sprites, cgs, backgrounds };
+  }
+
+  async getVnAssetDetail(slug: string, type: "sprite" | "cg" | "bg", name: string): Promise<VnAssetDetail> {
+    const list = await this.listVnAssets(slug);
+    const pool = type === "sprite" ? list.sprites : type === "cg" ? list.cgs : list.backgrounds;
+    const item = pool.find((a) => a.name === name) || {
+      id: `${type}:${name}`,
+      type,
+      name,
+      targetPath: `${type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds"}/${name}.png`,
+      exists: false,
+      defaultPrompt:
+        type === "sprite"
+          ? synthesizeSpriteDanbooruPrompt(name, await this.cardFiles().catch(() => []))
+          : type === "cg"
+            ? synthesizeCgDanbooruPrompt(name, await this.cardFiles().catch(() => []))
+            : synthesizeBackgroundDanbooruPrompt(name, await this.cardFiles().catch(() => [])),
+    };
+
+    let positivePrompt = item.defaultPrompt || "";
+    let negativePrompt = getDefaultNegativePrompt(type);
+    try {
+      const tpl = (await this.loadWorkflowTemplate(type)) as Record<string, any>;
+      for (const node of Object.values(tpl)) {
+        if (node.class_type === "CLIPTextEncode") {
+          const title = (node._meta?.title || "").toLowerCase();
+          if (title.includes("negative") || title.includes("anti")) {
+            if (!negativePrompt) negativePrompt = node.inputs?.text || "";
+          } else if (title.includes("positive") || title.includes("prompt")) {
+            if (!positivePrompt) positivePrompt = node.inputs?.text || "";
+          }
+        }
+      }
+    } catch {}
+
+    const promptSpecs = await this.loadPromptSpecs();
+    const spec = promptSpecs[name];
+    if (spec) {
+      if (spec.positivePrompt) positivePrompt = spec.positivePrompt;
+      if (spec.negativePrompt) negativePrompt = spec.negativePrompt;
+    }
+
+    const datasetSlugs = [sanitizeSlug(slug)];
+    if (slug !== "_shared") datasetSlugs.push("_shared");
+    if (slug === "_all" || slug === "all") {
+      try {
+        const vns = await this.vns();
+        for (const v of vns) datasetSlugs.push(sanitizeSlug(v.slug));
+      } catch {}
+    }
+
+    const uniqueDatasetSlugs = Array.from(new Set(datasetSlugs));
+    const datasetHistory: VnAssetDatasetEntry[] = [];
+    const seenTs = new Set<string>();
+
+    for (const dSlug of uniqueDatasetSlugs) {
+      const datasetDir = inside(this.root, `assets/dataset/${dSlug}/${sanitizeSlug(name)}`);
+      try {
+        const timestamps = await readdir(datasetDir);
+        for (const ts of timestamps) {
+          if (seenTs.has(ts)) continue;
+          seenTs.add(ts);
+          try {
+            const promptFile = inside(datasetDir, `${ts}/prompt.json`);
+            const feedbackFile = inside(datasetDir, `${ts}/feedback.json`);
+            const promptData = JSON.parse((await readIfThere(promptFile)) || "{}");
+            const feedbackData = JSON.parse((await readIfThere(feedbackFile)) || "{}");
+            datasetHistory.push({
+              timestamp: ts,
+              imageFilename: `assets/dataset/${dSlug}/${sanitizeSlug(name)}/${ts}/generated_image.png`,
+              imageUrl: `/api/worlds/${encodeURIComponent(basename(this.root))}/dataset/${encodeURIComponent(dSlug)}/${encodeURIComponent(name)}/${encodeURIComponent(ts)}/image`,
+              prompt: promptData.positive || "",
+              negativePrompt: promptData.negative || "",
+              feedback: feedbackData,
+            });
+          } catch {}
+        }
+      } catch {}
+    }
+    datasetHistory.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+    return {
+      id: item.id,
+      type,
+      name,
+      targetPath: item.targetPath,
+      exists: item.exists,
+      url: item.url,
+      positivePrompt,
+      negativePrompt,
+      templateClass: type,
+      datasetHistory,
+      steps: spec?.steps,
+      cfg: spec?.cfg,
+      sampler: spec?.sampler,
+      scheduler: spec?.scheduler,
+      seed: spec?.seed,
+      aspectRatio: spec?.aspectRatio,
+      width: spec?.width,
+      height: spec?.height,
+    };
+  }
+
+  async archiveVnAsset(
+    slug: string,
+    type: string,
+    name: string,
+    data: { prompt: string; negativePrompt?: string; feedback?: Record<string, "better" | "keep" | "worse">; workflow?: unknown },
+  ): Promise<string> {
+    const safeSlug = sanitizeSlug(slug);
+    const safeName = sanitizeSlug(name);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const targetDir = inside(this.root, `assets/dataset/${safeSlug}/${safeName}/${timestamp}`);
+    await mkdir(targetDir, { recursive: true });
+
+    await writeAtomic(join(targetDir, "prompt.json"), JSON.stringify({ positive: data.prompt, negative: data.negativePrompt || "" }, null, 2));
+    await writeAtomic(join(targetDir, "feedback.json"), JSON.stringify(data.feedback || {}, null, 2));
+    if (data.workflow) {
+      await writeAtomic(join(targetDir, "workflow.json"), JSON.stringify(data.workflow, null, 2));
+    }
+
+    const dirName = type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds";
+    const exts = ["png", "jpg", "jpeg", "webp"];
+    const candidates: string[] = [];
+    for (const ext of exts) {
+      candidates.push(inside(this.root, `vns/${safeSlug}/assets/${dirName}/${safeName}.${ext}`));
+      candidates.push(inside(this.root, `vns/_shared/assets/${dirName}/${safeName}.${ext}`));
+    }
+    for (const cand of candidates) {
+      try {
+        const imgBytes = await readFile(cand);
+        await writeFile(join(targetDir, "previous_image.png"), imgBytes);
+        break;
+      } catch {}
+    }
+
+    return targetDir;
+  }
+
+  async archiveOneVnAsset(
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+  ): Promise<{ ok: boolean; timestamp: string; targetDir: string }> {
+    const detail = await this.getVnAssetDetail(slug, type, name);
+    const targetDir = await this.archiveVnAsset(slug, type, name, {
+      prompt: detail.positivePrompt,
+      negativePrompt: detail.negativePrompt,
+    });
+    const timestamp = basename(targetDir);
+    return { ok: true, timestamp, targetDir };
+  }
+
+  async archiveAllVnAssets(slug: string): Promise<{ ok: boolean; archivedCount: number }> {
+    const assets = await this.listVnAssets(slug);
+    const all = [...assets.sprites, ...assets.cgs, ...assets.backgrounds];
+    let archivedCount = 0;
+    for (const item of all) {
+      if (item.exists) {
+        await this.archiveOneVnAsset(slug, item.type, item.name);
+        archivedCount++;
+      }
+    }
+    return { ok: true, archivedCount };
+  }
+
+  async deleteOneVnAsset(
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+  ): Promise<{ ok: boolean; name: string }> {
+    const safeSlug = sanitizeSlug(slug);
+    const safeName = sanitizeSlug(name);
+    const dirName = type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds";
+    const exts = ["png", "jpg", "jpeg", "webp"];
+    const candidates: string[] = [];
+    for (const ext of exts) {
+      candidates.push(inside(this.root, `vns/${safeSlug}/assets/${dirName}/${safeName}.${ext}`));
+      if (safeSlug !== "_shared") {
+        candidates.push(inside(this.root, `vns/_shared/assets/${dirName}/${safeName}.${ext}`));
+      }
+    }
+    for (const cand of candidates) {
+      try {
+        await stat(cand);
+        await rm(cand, { force: true });
+      } catch {}
+    }
+    return { ok: true, name };
+  }
+
+  async deleteAllVnAssets(slug: string): Promise<{ ok: boolean; deletedCount: number }> {
+    const safeSlug = sanitizeSlug(slug);
+    const subDirs = ["sprites", "cgs", "backgrounds"];
+    let deletedCount = 0;
+    const targetDirs: string[] = [];
+    if (safeSlug === "_all") {
+      targetDirs.push(inside(this.root, "vns/_shared/assets"));
+      const vns = await this.vns();
+      for (const v of vns) {
+        targetDirs.push(inside(this.root, `vns/${sanitizeSlug(v.slug)}/assets`));
+      }
+    } else {
+      targetDirs.push(inside(this.root, `vns/${safeSlug}/assets`));
+    }
+
+    for (const base of targetDirs) {
+      for (const sub of subDirs) {
+        const dir = join(base, sub);
+        try {
+          const files = await readdir(dir);
+          for (const f of files) {
+            if (f.match(/\.(png|jpg|jpeg|webp)$/i)) {
+              await rm(join(dir, f), { force: true });
+              deletedCount++;
+            }
+          }
+        } catch {}
+      }
+    }
+    return { ok: true, deletedCount };
+  }
+
+  async saveGeneratedVnAsset(slug: string, subPath: string, buffer: Buffer): Promise<string> {
+    const safeSlug = sanitizeSlug(slug);
+    const cleanSub = subPath.replace(/^[/\\]+/, "").replace(/\0/g, "");
+    if (!cleanSub) {
+      throw new HttpError(400, "invalid_path", "Asset path cannot be empty");
+    }
+    const dest = inside(this.root, `vns/${safeSlug}/assets/${cleanSub}`);
+    await mkdir(dirname(dest), { recursive: true });
+    await writeFile(dest, buffer);
+    return dest;
+  }
+
+  async loadWorkflowTemplate(type: "sprite" | "cg" | "bg"): Promise<Record<string, unknown>> {
+    const candidates = [
+      inside(this.root, `assets/workflow/${type}.json`),
+      inside(this.root, `assets/workflow/${type}.api.json`),
+      resolve(process.cwd(), `tools/comfyui/templates/${type}.template.api.json`),
+    ];
+    for (const cand of candidates) {
+      const content = await readIfThere(cand);
+      if (content) {
+        try {
+          return JSON.parse(content);
+        } catch {}
+      }
+    }
+    throw new HttpError(404, "template_not_found", `Template for ${type} was not found.`);
+  }
+
+  async readDatasetImage(
+    slug: string,
+    assetName: string,
+    timestamp: string,
+  ): Promise<{ data: Buffer; contentType: string } | undefined> {
+    const safeSlug = sanitizeSlug(slug);
+    const safeName = sanitizeSlug(assetName);
+    const safeTs = sanitizeSlug(timestamp);
+
+    const candidates = [
+      inside(this.root, `assets/dataset/${safeSlug}/${safeName}/${safeTs}/generated_image.png`),
+      inside(this.root, `assets/dataset/${safeSlug}/${safeName}/${safeTs}/previous_image.png`),
+      inside(this.root, `assets/dataset/${safeSlug}/${safeName}/${safeTs}/image.png`),
+      inside(this.root, `assets/dataset/_shared/${safeName}/${safeTs}/generated_image.png`),
+      inside(this.root, `assets/dataset/_shared/${safeName}/${safeTs}/previous_image.png`),
+    ];
+
+    for (const cand of candidates) {
+      try {
+        const data = await readFile(cand);
+        return { data, contentType: "image/png" };
+      } catch {}
+    }
+    return undefined;
+  }
+
+  async saveDatasetGeneratedImage(targetDir: string, buffer: Buffer): Promise<void> {
+    try {
+      await writeFile(join(targetDir, "generated_image.png"), buffer);
+    } catch {}
   }
 
   /** The folder that holds this world and its siblings. */
@@ -1078,6 +1669,87 @@ export class Library {
     subPath: string,
   ): Promise<{ data: Buffer; contentType: string } | undefined> {
     return this.open(name).readVnAsset(slug, subPath);
+  }
+
+  async listAllVns(): Promise<Array<VnSummary & { worldName: string; worldTitle: string; assetCounts: { sprites: number; cgs: number; backgrounds: number } }>> {
+    const worlds = await this.list();
+    const result: Array<VnSummary & { worldName: string; worldTitle: string; assetCounts: { sprites: number; cgs: number; backgrounds: number } }> = [];
+
+    for (const w of worlds) {
+      try {
+        const vns = await this.vns(w.name);
+        for (const vn of vns) {
+          const assets = await this.open(w.name).listVnAssets(vn.slug);
+          result.push({
+            ...vn,
+            worldName: w.name,
+            worldTitle: w.title,
+            assetCounts: {
+              sprites: assets.sprites.length,
+              cgs: assets.cgs.length,
+              backgrounds: assets.backgrounds.length,
+            },
+          });
+        }
+      } catch {}
+    }
+
+    return result;
+  }
+
+  async listVnAssets(name: string, slug: string): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+    return this.open(name).listVnAssets(slug);
+  }
+
+  async getVnAssetDetail(name: string, slug: string, type: "sprite" | "cg" | "bg", nameKey: string): Promise<VnAssetDetail> {
+    return this.open(name).getVnAssetDetail(slug, type, nameKey);
+  }
+
+  async archiveVnAsset(
+    name: string,
+    slug: string,
+    type: string,
+    nameKey: string,
+    data: { prompt: string; negativePrompt?: string; feedback?: Record<string, "better" | "keep" | "worse">; workflow?: unknown },
+  ): Promise<string> {
+    return this.open(name).archiveVnAsset(slug, type, nameKey, data);
+  }
+
+  async archiveOneVnAsset(name: string, slug: string, type: "sprite" | "cg" | "bg", nameKey: string): Promise<{ ok: boolean; timestamp: string; targetDir: string }> {
+    return this.open(name).archiveOneVnAsset(slug, type, nameKey);
+  }
+
+  async archiveAllVnAssets(name: string, slug: string): Promise<{ ok: boolean; archivedCount: number }> {
+    return this.open(name).archiveAllVnAssets(slug);
+  }
+
+  async deleteOneVnAsset(name: string, slug: string, type: "sprite" | "cg" | "bg", nameKey: string): Promise<{ ok: boolean; name: string }> {
+    return this.open(name).deleteOneVnAsset(slug, type, nameKey);
+  }
+
+  async deleteAllVnAssets(name: string, slug: string): Promise<{ ok: boolean; deletedCount: number }> {
+    return this.open(name).deleteAllVnAssets(slug);
+  }
+
+  async saveGeneratedVnAsset(name: string, slug: string, subPath: string, buffer: Buffer): Promise<string> {
+    return this.open(name).saveGeneratedVnAsset(slug, subPath, buffer);
+  }
+
+  async readDatasetImage(
+    name: string,
+    slug: string,
+    assetName: string,
+    timestamp: string,
+  ): Promise<{ data: Buffer; contentType: string } | undefined> {
+    return this.open(name).readDatasetImage(slug, assetName, timestamp);
+  }
+
+  async saveDatasetGeneratedImage(name: string, targetDir: string, buffer: Buffer): Promise<void> {
+    return this.open(name).saveDatasetGeneratedImage(targetDir, buffer);
+  }
+
+  async loadWorkflowTemplate(name: string, type: "sprite" | "cg" | "bg"): Promise<Record<string, unknown>> {
+    return this.open(name).loadWorkflowTemplate(type);
   }
 
   /** One chapter or draft of a world, in full, for reading. */
