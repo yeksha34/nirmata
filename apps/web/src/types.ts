@@ -370,3 +370,101 @@ export type StoryEvent =
 export function isHostView(story: StoryView | HostStoryView | null): story is HostStoryView {
   return story !== null && "head" in story;
 }
+
+export interface ComfyUiDevice {
+  name: string;
+  type: string;
+  vramTotal?: number;
+  vramFree?: number;
+}
+
+export interface ComfyUiStatus {
+  online: boolean;
+  host: string;
+  port: number;
+  devices: ComfyUiDevice[];
+}
+
+export interface VnAssetItem {
+  id: string;
+  type: "sprite" | "cg" | "bg";
+  name: string;
+  targetPath: string;
+  exists: boolean;
+  url?: string;
+  defaultPrompt?: string;
+  isShared?: boolean;
+  vnSlug?: string;
+}
+
+export interface VnAssetDatasetEntry {
+  timestamp: string;
+  imageFilename: string;
+  imageUrl?: string;
+  prompt: string;
+  negativePrompt?: string;
+  feedback?: Record<string, "better" | "keep" | "worse">;
+}
+
+export interface VnAssetPromptSpec {
+  name: string;
+  type: "sprite" | "cg" | "bg";
+  positivePrompt: string;
+  negativePrompt?: string;
+  aspectRatio?: string;
+  width?: number;
+  height?: number;
+  steps?: number;
+  cfg?: number;
+  sampler?: string;
+  scheduler?: string;
+  seed?: number;
+  referenceImage?: string;
+  status?: string;
+}
+
+export interface VnAssetDetail {
+  id: string;
+  type: "sprite" | "cg" | "bg";
+  name: string;
+  targetPath: string;
+  exists: boolean;
+  url?: string;
+  positivePrompt: string;
+  negativePrompt: string;
+  templateClass: string;
+  datasetHistory: VnAssetDatasetEntry[];
+  steps?: number;
+  cfg?: number;
+  sampler?: string;
+  scheduler?: string;
+  seed?: number;
+  aspectRatio?: string;
+  width?: number;
+  height?: number;
+}
+
+export interface VnWithAssetsSummary extends VnSummary {
+  worldName: string;
+  worldTitle: string;
+  assetCounts: {
+    sprites: number;
+    cgs: number;
+    backgrounds: number;
+  };
+}
+
+export interface GenerateAssetInput {
+  type: "sprite" | "cg" | "bg";
+  name: string;
+  targetPath?: string;
+  positivePrompt: string;
+  negativePrompt?: string;
+  steps?: number;
+  cfg?: number;
+  sampler?: string;
+  scheduler?: string;
+  seed?: number;
+  feedback?: Record<string, "better" | "keep" | "worse">;
+  workflowOverride?: Record<string, unknown>;
+}

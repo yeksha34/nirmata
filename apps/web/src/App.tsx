@@ -6,9 +6,10 @@ import { AskProvider } from "./controls";
 import { HeaderBar } from "./header";
 import { T, useTapToTranslate } from "./i18n";
 import { useLive } from "./live";
-import { NavProvider } from "./nav";
+import { NavProvider, useNav } from "./nav";
 import { Join } from "./screens/Join";
 import { TableScreen } from "./screens/Table";
+import { VnStudio } from "./screens/VnStudio";
 import { Waiting } from "./screens/Waiting";
 import { Worlds } from "./screens/Worlds";
 import { initialState, reducer, screenFor } from "./store";
@@ -111,8 +112,7 @@ export function App() {
             <>
               <HeaderBar />
               <main>
-                {screen === "worlds" && <Worlds />}
-                {(screen === "waiting-world" || screen === "waiting-story") && <Waiting />}
+                <MainContent screen={screen} />
               </main>
               {state.story && (
                 <StoryWindow
@@ -131,5 +131,18 @@ export function App() {
         </AskProvider>
       </NavProvider>
     </AppProvider>
+  );
+}
+
+function MainContent({ screen }: { screen: ReturnType<typeof screenFor> | undefined }) {
+  const nav = useNav();
+  if (nav.route === "vn") {
+    return <VnStudio />;
+  }
+  return (
+    <>
+      {screen === "worlds" && <Worlds />}
+      {(screen === "waiting-world" || screen === "waiting-story") && <Waiting />}
+    </>
   );
 }
