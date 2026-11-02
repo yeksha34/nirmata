@@ -203,7 +203,7 @@ begin
     end if;
     if tg_op = 'UPDATE' then
       new.changed_since_publish := true;
-      new.updated_by := (select auth.uid());
+      new.updated_by := (select platform.uid());
     end if;
   else
     update world_lore.card_drafts set changed_since_publish = true
@@ -229,7 +229,7 @@ create trigger card_draft_secrets_edit after insert or update or delete on world
 create function world_lore.create_world(p_slug text, p_title text) returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare
-  v_uid   uuid := (select auth.uid());
+  v_uid   uuid := (select platform.uid());
   v_world uuid;
 begin
   if v_uid is null or not exists (select 1 from identity.profiles where user_id = v_uid and can_found_worlds) then
@@ -276,7 +276,7 @@ begin
     values (v_world, p_key, p_title, v_head, v_head) returning id into v_new;
 
   insert into world_lore.card_drafts (line_id, card_id, world_id, title, body, meta, base_revision_id, changed_since_publish, updated_by)
-    select v_new, vc.card_id, v_world, r.title, r.body, r.meta, r.id, false, (select auth.uid())
+    select v_new, vc.card_id, v_world, r.title, r.body, r.meta, r.id, false, (select platform.uid())
     from world_lore.world_version_cards vc
     join world_lore.card_revisions r on r.id = vc.card_revision_id
     where vc.world_version_id = v_head;
@@ -294,7 +294,7 @@ begin
   -- inserting parts flagged the drafts as edited; a fresh fork has nothing unpublished
   update world_lore.card_drafts set changed_since_publish = false where line_id = v_new;
 
-  perform platform.write_audit((select auth.uid()), v_world, 'fork', 'world_line', v_new,
+  perform platform.write_audit((select platform.uid()), v_world, 'fork', 'world_line', v_new,
                                jsonb_build_object('from_version', v_head));
   return v_new;
 end $$;
@@ -312,7 +312,7 @@ end $$;
 create function world_lore.publish_world_line(p_line uuid, p_note text default null) returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare
-  v_uid    uuid := (select auth.uid());
+  v_uid    uuid := (select platform.uid());
   v_world  uuid;
   v_status text;
   v_ver    uuid;
@@ -386,7 +386,7 @@ begin
     raise exception 'not a published version of this line' using errcode = '23514';
   end if;
   update world_lore.world_lines set head_version_id = p_to_version where id = p_line;
-  perform platform.write_audit((select auth.uid()), v_world, 'rollback', 'world_line', p_line,
+  perform platform.write_audit((select platform.uid()), v_world, 'rollback', 'world_line', p_line,
                                jsonb_build_object('to_version', p_to_version));
   perform platform.emit('world.rolled_back', p_line, jsonb_build_object('version', p_to_version),
                         'rb:' || p_line::text || ':' || p_to_version::text || ':' || extract(epoch from now())::text);

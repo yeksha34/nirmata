@@ -5,8 +5,8 @@
 create function identity.accept_invitation(p_token text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
-  v_uid   uuid := (select auth.uid());
-  v_email text := lower(auth.jwt() ->> 'email');
+  v_uid   uuid := (select platform.uid());
+  v_email text := lower(platform.jwt() ->> 'email');
   inv     identity.invitations%rowtype;
 begin
   if v_uid is null then

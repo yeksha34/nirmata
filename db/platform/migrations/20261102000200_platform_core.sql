@@ -2,6 +2,21 @@
 -- enforcement, audit log, outbox. The runner connects as a member of migration_owner and does `set role`.
 
 -- ---------------------------------------------------------------------------------------------
+-- who is calling: read from the request claims, so nothing here depends on the auth schema
+-- ---------------------------------------------------------------------------------------------
+create function platform.jwt() returns jsonb
+language sql stable set search_path = '' as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb);
+$$;
+
+create function platform.uid() returns uuid
+language sql stable set search_path = '' as $$
+  select nullif(coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
+                         platform.jwt() ->> 'sub'), '')::uuid;
+$$;
+grant execute on function platform.jwt(), platform.uid() to authenticated, app_rw, app_ro, service_role;
+
+-- ---------------------------------------------------------------------------------------------
 -- small trigger functions
 -- ---------------------------------------------------------------------------------------------
 create function platform.touch() returns trigger
@@ -113,7 +128,7 @@ begin
 
   v_actor := case
     when current_setting('app.actor', true) = 'system'                    then 'system'
-    when (select auth.uid()) is null                                      then 'system'
+    when (select platform.uid()) is null                                      then 'system'
     when v_world is not null and (select membership.is_host(v_world))     then 'host'
     when v_world is not null and (select membership.is_staff(v_world))    then 'moderator'
     else 'player' end;
@@ -132,7 +147,7 @@ begin
 
   execute format('insert into %I.%I (entity_table, entity_id, from_key, to_key, actor_id) values ($1, $2, $3, $4, $5)',
                  t_schema, t_prefix || '_status_history')
-    using tg_table_schema || '.' || tg_table_name, (to_jsonb(new) ->> 'id')::uuid, v_old, v_new, (select auth.uid());
+    using tg_table_schema || '.' || tg_table_name, (to_jsonb(new) ->> 'id')::uuid, v_old, v_new, (select platform.uid());
   return new;
 end $$;
 
