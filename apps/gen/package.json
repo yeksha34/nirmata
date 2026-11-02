@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Asset generation: the ComfyUI client, workflow parameter injection, prompt synthesis, sprite transparency and the in-memory job tracker.",
-  "exports": { ".": "./src/index.ts" }
+  "description": "Asset generation: the ComfyUI client, workflow parameter injection, prompt synthesis, sprite transparency, the job tracker and the dataset importer.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@nirmata/db": "workspace:*",
+    "@nirmata/storage": "workspace:*"
+  }
 }
