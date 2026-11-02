@@ -1,6 +1,17 @@
-import type { Card } from "@nirmata/core";
 import type { Db, Query } from "@nirmata/db";
 import { WorldFiles } from "./files";
+import {
+  CARD_SLUG,
+  type CardRow,
+  cardRow,
+  SLUG,
+  slugFor,
+  stable,
+  upsertCard,
+  writeDraft,
+} from "./lore-rows";
+
+export { cardRow, slugFor };
 
 export interface LoreImportOptions {
   db: Db;
@@ -27,65 +38,7 @@ export interface LoreImportReport {
   publishedVersion: string | undefined;
 }
 
-const SLUG = /^[a-z0-9][a-z0-9-]{1,62}$/;
-const CARD_SLUG = /^[a-z0-9][a-z0-9-]{0,80}$/;
-const SECRETS = "secrets";
-
-/** What one card becomes in the database. Its id is kept in `meta`, so it can be written back out. */
-export interface CardRow {
-  kind: string;
-  slug: string;
-  title: string;
-  body: string;
-  meta: Record<string, unknown>;
-  parts: Array<{ key: string; body: string }>;
-  secrets: string[];
-}
-
-export function cardRow(card: Card): CardRow {
-  const { name, kind, fields, ...rest } = card.fm as Record<string, unknown> & {
-    name: string;
-    kind: string;
-    fields: Record<string, string>;
-  };
-  const parts = Object.entries(fields ?? {})
-    .filter(([key, text]) => key !== SECRETS && text.trim())
-    .map(([key, text]) => ({ key, body: text.trim() }));
-  const secret = (fields?.[SECRETS] ?? "").trim();
-  return {
-    kind,
-    slug: card.fm.id.replace(".", "-"),
-    title: name,
-    body: card.body,
-    meta: { ...rest, path: card.path },
-    parts,
-    secrets: secret ? [secret] : [],
-  };
-}
-
-/** JSON with sorted keys, so two meta objects compare equal whatever order the database returns. */
-function stable(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
-  if (value && typeof value === "object") {
-    const o = value as Record<string, unknown>;
-    return `{${Object.keys(o)
-      .sort()
-      .map((k) => `${JSON.stringify(k)}:${stable(o[k])}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
-
 class DryRunDone extends Error {}
-
-/** The world name in world.json as a database slug (lowercase letters, digits, hyphens). */
-export function slugFor(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 63);
-}
 
 /**
  * Copies a world's lore from its folder into the database as the author's draft: the world (made if
@@ -148,15 +101,7 @@ export async function importWorldLore(options: LoreImportOptions): Promise<LoreI
     );
 
     for (const row of rows) {
-      const card = String(
-        (
-          await q(
-            `insert into world_lore.cards (world_id, kind, slug) values ($1, $2, $3)
-             on conflict (world_id, slug) do update set kind = excluded.kind returning id`,
-            [worldId, row.kind, row.slug],
-          )
-        ).rows[0]?.id,
-      );
+      const card = await upsertCard(q, worldId, row);
       const had = (
         await q(
           "select title, body, meta from world_lore.card_drafts where line_id = $1 and card_id = $2",
@@ -188,35 +133,7 @@ export async function importWorldLore(options: LoreImportOptions): Promise<LoreI
           continue;
         }
       }
-      await q(
-        `insert into world_lore.card_drafts (line_id, card_id, world_id, title, body, meta, updated_by)
-         values ($1, $2, $3, $4, $5, $6::jsonb, $7)
-         on conflict (line_id, card_id) do update
-           set title = excluded.title, body = excluded.body, meta = excluded.meta`,
-        [line, card, worldId, row.title, row.body, JSON.stringify(row.meta), userId],
-      );
-      await q("delete from world_lore.card_draft_parts where line_id = $1 and card_id = $2", [
-        line,
-        card,
-      ]);
-      await q("delete from world_lore.card_draft_secrets where line_id = $1 and card_id = $2", [
-        line,
-        card,
-      ]);
-      for (const [i, p] of row.parts.entries()) {
-        await q(
-          `insert into world_lore.card_draft_parts (line_id, card_id, world_id, position, part_key, body)
-           values ($1, $2, $3, $4, $5, $6)`,
-          [line, card, worldId, i, p.key, p.body],
-        );
-      }
-      for (const [i, body] of row.secrets.entries()) {
-        await q(
-          `insert into world_lore.card_draft_secrets (line_id, card_id, world_id, position, body)
-           values ($1, $2, $3, $4, $5)`,
-          [line, card, worldId, i, body],
-        );
-      }
+      await writeDraft(q, { worldId, line, card, userId }, row);
       if (had) report.cards.updated++;
       else report.cards.added++;
     }

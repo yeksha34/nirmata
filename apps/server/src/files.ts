@@ -46,6 +46,7 @@ import {
   synthesizeSpriteDanbooruPrompt,
 } from "@nirmata/gen";
 import { HttpError } from "./errors";
+import { slugFor } from "./lore-rows";
 
 export interface VnAssetItem {
   id: string;
@@ -198,12 +199,35 @@ export interface CardFile {
   problems?: string[];
 }
 
+/**
+ * A world's cards when they live in the database instead of the folder. Each call answers
+ * `undefined`/`false` for a world that is not in the database, and the world's files are used.
+ */
+export interface LoreCards {
+  cardFiles(slug: string): Promise<CardFile[] | undefined>;
+  save(slug: string, card: Card): Promise<boolean>;
+  removeFile(slug: string, path: string): Promise<boolean>;
+}
+
 /** One world on disk: `world.json` and its card folders. The source cards (ADR-0009). */
 export class WorldFiles implements SourceBackend {
   readonly root: string;
 
-  constructor(root: string) {
+  constructor(
+    root: string,
+    private readonly lore?: LoreCards,
+  ) {
     this.root = resolve(root);
+  }
+
+  /** The world's name in the database, when cards may live there. */
+  private async loreSlug(): Promise<string | undefined> {
+    if (!this.lore) return undefined;
+    try {
+      return slugFor((await this.world()).name);
+    } catch {
+      return undefined;
+    }
   }
 
   get storiesDir(): string {
@@ -227,6 +251,9 @@ export class WorldFiles implements SourceBackend {
 
   /** Every card file as it is on disk, readable or not: the manager shows the broken ones too. */
   async cardFiles(): Promise<CardFile[]> {
+    const slug = await this.loreSlug();
+    const inDb = slug ? await this.lore?.cardFiles(slug) : undefined;
+    if (inDb) return inDb;
     const out: CardFile[] = [];
     for (const dir of CARD_DIRS) {
       for (const file of await markdownFiles(join(this.root, dir))) {
@@ -307,22 +334,31 @@ export class WorldFiles implements SourceBackend {
   }
 
   async save(card: Card): Promise<void> {
+    const slug = await this.loreSlug();
+    if (slug && (await this.lore?.save(slug, card))) return;
     await writeAtomic(this.cardFile(card.path), serializeCard(card));
   }
 
   /** Write a card file exactly as given (the manager's "edit as text"). */
   async saveText(path: string, text: string): Promise<void> {
+    const slug = await this.loreSlug();
+    if (slug) {
+      const parsed = parseCard(path, text);
+      if (parsed.ok && (await this.lore?.save(slug, parsed.card))) return;
+    }
     await writeAtomic(this.cardFile(path), text);
   }
 
   /** Delete one card file by its path. */
   async removeFile(path: string): Promise<void> {
+    const slug = await this.loreSlug();
+    if (slug && (await this.lore?.removeFile(slug, cardPath(path)))) return;
     await rm(this.cardFile(path), { force: true });
   }
 
   async remove(cardId: string): Promise<void> {
     const found = (await this.cards()).find((c) => c.fm.id === cardId);
-    if (found) await rm(this.cardFile(found.path), { force: true });
+    if (found) await this.removeFile(found.path);
   }
 
   get vnsDir(): string {
@@ -1546,14 +1582,17 @@ const LIBRARY_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 export class Library {
   readonly root: string;
 
-  constructor(root: string) {
+  constructor(
+    root: string,
+    private readonly options: { lore?: LoreCards | undefined } = {},
+  ) {
     this.root = resolve(root);
   }
 
   open(name: string): WorldFiles {
     if (!LIBRARY_NAME.test(name))
       throw new HostError("nothing_to_do", `There is no world "${name}".`);
-    return new WorldFiles(join(this.root, name));
+    return new WorldFiles(join(this.root, name), this.options.lore);
   }
 
   private readonly storyFiles = new Map<string, StoryFiles>();

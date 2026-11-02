@@ -74,6 +74,7 @@ export const HI_SERVER: Record<string, string> = {
   "That did not work. Check the details and try again.": "यह सफल नहीं हुआ। विवरण जाँचकर पुनः प्रयास करें।",
   "Sign in first.": "पहले प्रवेश करें।",
   "This table already has a host.": "इस पटल का पहले से एक यजमान है।",
+  "The database cannot be reached right now.": "आँकड़ा-भंडार अभी पहुँच में नहीं है।",
   "Finish setting up your account first.": "पहले अपना खाता पूरा बनाएँ।",
   "Your profile cannot be read right now.": "आपका परिचय अभी पढ़ा नहीं जा सकता।",
   "An account with that address already exists. Sign in instead.":

@@ -93,6 +93,8 @@ pnpm --filter @nirmata/server import:world worlds/<world> --user=<author uuid>
 
 It reads `world.json` and the card folders, creates the world if its name is not in the database yet (the name is the `world.json` name as lowercase letters and hyphens; `--slug=` overrides it), and writes each card as the author's draft: title, body, a `meta` object that keeps the card's id and path, its named parts, and the `secrets` part into the host-only Secrets table. A card id such as `character.ada` becomes the slug `character-ada`. Files that are not valid cards are listed and skipped. Nothing is published unless you add `--publish`, which freezes the draft as a new version when something changed or nothing is published yet. Run it again after editing: a card that has not changed is left alone, so nothing is marked as edited. It prints the world's id, which `import:assets` needs as `--world`. The folder is only read.
 
+After the import, an imported world's cards are read and written in the database whenever the table's host is signed in (ADR-0030); a world that was not imported, or a host who signed in with the obsolete host key, still uses the folder. The folder copy of an imported world is then stale: do not edit it, and do not re-run the import over database edits. `world.json`, chapters, drafts, stories, visual novels and images still come from files.
+
 ## Importing dataset images
 
 A person runs this; it needs `DATABASE_URL_RW` and, for `--target=supabase`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (or `NIRMATA_ASSET_DIR` for `--target=local`):
