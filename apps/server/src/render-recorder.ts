@@ -13,6 +13,8 @@ export interface GeneratedImage {
   run: string;
   type: "sprite" | "cg" | "bg";
   name: string;
+  /** The generation's job (in memory), so its render is linked to the job recorded for it. */
+  jobKey?: string | undefined;
   image: Buffer;
   positive: string;
   negative: string;
@@ -37,11 +39,18 @@ export interface RenderRecorder {
  */
 export class DbRecorder implements RenderRecorder {
   constructor(
-    private readonly db: Db,
-    private readonly stores: Stores,
-    private readonly userId: () => string | undefined,
-    private readonly log: (message: string) => void = () => undefined,
+    protected readonly db: Db,
+    protected readonly stores: Stores,
+    protected readonly userId: () => string | undefined,
+    protected readonly log: (message: string) => void = () => undefined,
   ) {}
+
+  /** The asset, spec and job already made for a generation, if any (see `DbGenerations`). */
+  protected existing(
+    _jobKey: string | undefined,
+  ): { assetId: string; specId: string; jobId: string } | undefined {
+    return undefined;
+  }
 
   async record(g: GeneratedImage): Promise<"supabase" | "local" | undefined> {
     const user = this.userId();
@@ -96,25 +105,30 @@ export class DbRecorder implements RenderRecorder {
     const clamp = (n: number) => Math.min(4096, Math.max(64, n));
     await store.put(path, new Uint8Array(g.image), "image/png");
     try {
+      const existing = this.existing(g.jobKey);
       await this.db.asUser(user, (q) =>
-        recordRender(q, {
-          worldId: world,
-          kind: g.type,
-          name,
-          path,
-          positive: g.positive.slice(0, 8000),
-          negative: g.negative.slice(0, 8000),
-          width: clamp(size?.width ?? 512),
-          height: clamp(size?.height ?? 768),
-          seed: g.seed,
-          steps: g.steps,
-          cfg: g.cfg,
-          sampler: g.sampler,
-          scheduler: g.scheduler,
-          store: target,
-          bytes,
-          sha256,
-        }),
+        recordRender(
+          q,
+          {
+            worldId: world,
+            kind: g.type,
+            name,
+            path,
+            positive: g.positive.slice(0, 8000),
+            negative: g.negative.slice(0, 8000),
+            width: clamp(size?.width ?? 512),
+            height: clamp(size?.height ?? 768),
+            seed: g.seed,
+            steps: g.steps,
+            cfg: g.cfg,
+            sampler: g.sampler,
+            scheduler: g.scheduler,
+            store: target,
+            bytes,
+            sha256,
+          },
+          existing,
+        ),
       );
     } catch (e) {
       await store.remove(path).catch(() => undefined);

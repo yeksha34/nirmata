@@ -91,8 +91,9 @@ describe("recording a new generation", () => {
       768,
     ]);
     const render = f.calls.find((c) => c.text.includes("record_render"));
-    expect(render?.params.slice(2, 5)).toEqual([
+    expect(render?.params.slice(2, 6)).toEqual([
       `${WORLD}/ch01/ada_neutral/2026-11-03T10-00-00-000Z.png`,
+      null, // no job
       "supabase",
       png("a").byteLength,
     ]);

@@ -41,7 +41,8 @@ import {
   injectWorkflowParams,
 } from "@nirmata/gen";
 import { HttpError } from "./errors";
-import type { GeneratedImage, RenderRecorder } from "./render-recorder";
+import type { GenerationLedger } from "./generation-ledger";
+import type { GeneratedImage } from "./render-recorder";
 import { type PlatformRole, seatKindOf } from "./roles";
 import {
   type CardInput,
@@ -99,8 +100,23 @@ export interface TableOptions {
   requireAdultConfirmation?: boolean | undefined;
   /** Called for problems worth a line in the host's console. */
   log?: ((message: string) => void) | undefined;
-  /** Keeps a new generation in the database too, for an imported world. */
-  recorder?: RenderRecorder | undefined;
+  /** Keeps generations (jobs and their renders) in the database too, for an imported world. */
+  recorder?: GenerationLedger | undefined;
+}
+
+/** The image size a workflow asks for (its latent image node), else the usual size for the kind. */
+function workflowSize(
+  workflow: Record<string, { class_type?: string; inputs?: Record<string, unknown> }>,
+  type: "sprite" | "cg" | "bg",
+): { width: number; height: number } {
+  for (const node of Object.values(workflow)) {
+    const w = Number(node.inputs?.width);
+    const h = Number(node.inputs?.height);
+    if (/latent/i.test(node.class_type ?? "") && w >= 64 && h >= 64) {
+      return { width: Math.min(4096, w), height: Math.min(4096, h) };
+    }
+  }
+  return type === "sprite" ? { width: 512, height: 768 } : { width: 1024, height: 576 };
 }
 
 /** Someone who has joined: the token they present, and the nickname it speaks for. */
@@ -240,6 +256,7 @@ export class Table {
   constructor(private readonly options: TableOptions) {
     this.settings = options.settings;
     this.hostNick = options.hostNick;
+    options.recorder?.watch(this.genJobs);
     this.board = new Board({
       host: options.hostNick,
       ports: options.ports,
@@ -452,9 +469,12 @@ export class Table {
     return job;
   }
 
-  listGenerationJobs(seat: Seat): GenerationJob[] {
+  /** The jobs in memory, and (after a restart) the recent ones the database remembers. */
+  async listGenerationJobs(seat: Seat): Promise<GenerationJob[]> {
     requireCan(this.actor(seat), "source.edit");
-    return this.genJobs.list();
+    const live = this.genJobs.list();
+    const earlier = await this.options.recorder?.recent(new Set(live.map((j) => j.id)));
+    return earlier?.length ? [...live, ...earlier].sort((a, b) => b.startedAt - a.startedAt) : live;
   }
 
   getGenerationJob(seat: Seat, id: string): GenerationJob {
@@ -537,6 +557,22 @@ export class Table {
       filenamePrefix: `${body.type}s/${body.name}`,
     });
 
+    await this.options.recorder?.begin({
+      key: jobId,
+      worldName,
+      scope: slug,
+      type: body.type,
+      name: body.name,
+      positive,
+      negative,
+      ...workflowSize(injected, body.type),
+      steps: body.steps,
+      cfg: body.cfg,
+      sampler: body.sampler,
+      scheduler: body.scheduler,
+      seed: body.seed,
+    });
+
     jobs.patch(jobId, {
       nodes: Object.entries(injected).map(([id, node]) => ({
         id,
@@ -595,6 +631,7 @@ export class Table {
       worldName,
       scope: slug,
       run: basename(archivedDir),
+      jobKey: jobId,
       type: body.type,
       name: body.name,
       image: Buffer.from(imageBytes),

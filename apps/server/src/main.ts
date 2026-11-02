@@ -12,7 +12,7 @@ import { ConfigError, loadConfig } from "./config";
 import { Library } from "./files";
 import { DbImages } from "./image-store";
 import { DbLore } from "./lore-store";
-import { DbRecorder } from "./render-recorder";
+import { DbGenerations } from "./generation-ledger";
 import { Table } from "./table";
 
 /** Open the browser on the host's own link, so the person who ran the server just lands in it. */
@@ -85,6 +85,11 @@ async function main(): Promise<void> {
     images: db ? new DbImages(db, stores, () => hostUser()) : undefined,
   });
 
+  const ledger = db ? new DbGenerations(db, stores, () => hostUser(), log) : undefined;
+  if (ledger) {
+    const closed = await ledger.failOrphans().catch(() => 0);
+    if (closed) console.log(`${closed} generation job(s) left open by the last run were closed.`);
+  }
   const table = new Table({
     library,
     provider: config.provider,
@@ -94,7 +99,7 @@ async function main(): Promise<void> {
     hostKey: config.hostKey,
     requireAdultConfirmation: config.requireAdultConfirmation,
     log,
-    recorder: db ? new DbRecorder(db, stores, () => hostUser(), log) : undefined,
+    recorder: ledger,
   });
   hostUser = () => table.hostUserId();
   const opened = await table.openOnlyWorld();
