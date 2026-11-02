@@ -104,6 +104,17 @@ export const api = {
   join: (args: { nick?: string; confirmedAdult?: boolean; hostKey?: string }) =>
     post<{ token: string; you: You }>("/api/join", args),
   leave: () => post("/api/leave"),
+
+  // sign-in: the server talks to Supabase; the browser only ever calls these
+  invitation: (token: string) =>
+    get<{ email: string }>(`/api/auth/invitation?token=${encodeURIComponent(token)}`),
+  register: (token: string, password: string) =>
+    post<{ user: { id: string; email: string } }>("/api/auth/register", { token, password }),
+  login: (email: string, password: string) =>
+    post<{ user: { id: string; email: string } }>("/api/auth/login", { email, password }),
+  onboard: (args: { attestAdult?: boolean; token?: string }) => post("/api/auth/onboard", args),
+  logout: () => post("/api/auth/logout"),
+
   play: () => post<{ you: You }>("/api/play"),
   watch: () => post<{ you: You }>("/api/watch"),
 
@@ -248,7 +259,12 @@ export const api = {
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/delete-all`,
       {},
     ),
-  archiveOneVnAsset: (worldName: string, slug: string, type: "sprite" | "cg" | "bg", name: string) =>
+  archiveOneVnAsset: (
+    worldName: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+  ) =>
     post<{ ok: boolean; timestamp: string }>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}/archive`,
       {},
