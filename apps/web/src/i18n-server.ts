@@ -73,6 +73,8 @@ export const HI_SERVER: Record<string, string> = {
   "Sign-in is not available right now.": "प्रवेश अभी उपलब्ध नहीं है।",
   "That did not work. Check the details and try again.": "यह सफल नहीं हुआ। विवरण जाँचकर पुनः प्रयास करें।",
   "Sign in first.": "पहले प्रवेश करें।",
+  "An account with that address already exists. Sign in instead.":
+    "उस पते का खाता पहले से है। प्रवेश करें।",
   "The database is not set up on this server.": "इस सेवक पर आँकड़ा-भंडार स्थापित नहीं है।",
   "Confirm that you are an adult first.": "पहले पुष्टि करें कि आप वयस्क हैं।",
   "That invitation is not valid.": "वह आमंत्रण मान्य नहीं है।",
@@ -313,7 +315,8 @@ export const HI_SERVER: Record<string, string> = {
 
   // ComfyUI and visual novel assets
   "ComfyUI failed to queue prompt: {text}": "ComfyUI प्रॉम्प्ट कतारबद्ध करने में विफल रहा: {text}",
-  "Could not connect to ComfyUI at {host}: {message}": "{host} पर ComfyUI से संपर्क नहीं हो सका: {message}",
+  "Could not connect to ComfyUI at {host}: {message}":
+    "{host} पर ComfyUI से संपर्क नहीं हो सका: {message}",
   "ComfyUI execution failed: {messages}": "ComfyUI निष्पादन विफल रहा: {messages}",
   "Generation timed out after {seconds}s.": "{seconds}s के बाद निर्माण का समय समाप्त हो गया।",
   "Failed to fetch generated image: {statusText}": "निर्मित छवि प्राप्त करने में विफल: {statusText}",
@@ -324,7 +327,8 @@ export const HI_SERVER: Record<string, string> = {
 
   // asset studio
   "Generation was cancelled.": "निर्माण रद्द कर दिया गया।",
-  "ComfyUI no longer has this prompt (restarted or queue cleared).": "ComfyUI के पास अब यह प्रॉम्प्ट नहीं है (पुनः आरंभ हुआ या कतार साफ़ हुई)।",
+  "ComfyUI no longer has this prompt (restarted or queue cleared).":
+    "ComfyUI के पास अब यह प्रॉम्प्ट नहीं है (पुनः आरंभ हुआ या कतार साफ़ हुई)।",
   "Lost contact with ComfyUI at {host}.": "{host} पर ComfyUI से संपर्क टूट गया।",
   "No such generation.": "ऐसा कोई निर्माण नहीं है।",
 };

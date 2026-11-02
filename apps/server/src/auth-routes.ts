@@ -32,6 +32,10 @@ const Signup = z.object({
   email: z.string().trim().toLowerCase().email().max(200),
   password: z.string().min(8).max(200),
 });
+const Register = z.object({
+  token: z.string().trim().min(8).max(200),
+  password: z.string().min(8).max(200),
+});
 const Onboard = z.object({
   attestAdult: z.boolean().optional(),
   token: z.string().trim().min(8).max(200).optional(),
@@ -66,6 +70,13 @@ function failureOf(e: unknown): never {
     if (e.failure === "invitation_required") {
       throw new HttpError(403, "invitation_required", "An invitation is required to sign up.");
     }
+    if (e.failure === "exists") {
+      throw new HttpError(
+        409,
+        "account_exists",
+        "An account with that address already exists. Sign in instead.",
+      );
+    }
     if (e.failure === "unavailable")
       throw new HttpError(503, "auth_unavailable", "Sign-in is not available right now.");
     throw new HttpError(
@@ -75,6 +86,19 @@ function failureOf(e: unknown): never {
     );
   }
   throw e;
+}
+
+/** The address a pending invitation is for; 404 when the token is wrong, used or expired. */
+async function invitationEmail(db: Db, token: string): Promise<string> {
+  const row =
+    token.length < 8
+      ? undefined
+      : (await db.server((q) => q("select identity.invitation_email($1) as email", [token])))
+          .rows[0];
+  if (typeof row?.email !== "string") {
+    throw new HttpError(404, "invitation_invalid", "That invitation is not valid.");
+  }
+  return row.email;
 }
 
 /**
@@ -127,6 +151,40 @@ export function registerAuthRoutes(
       if (!session) return c.json({ status: "check_email" }, 202);
       startSession(c, session);
       return c.json({ status: "signed_in", user: publicUser(session) });
+    } catch (e) {
+      return failureOf(e);
+    }
+  });
+
+  // which address an invitation is for, so the page can show it; the token is the proof
+  app.get("/api/auth/invitation", async (c) => {
+    if (!db)
+      throw new HttpError(
+        503,
+        "database_unavailable",
+        "The database is not set up on this server.",
+      );
+    const email = await invitationEmail(db, c.req.query("token") ?? "");
+    return c.json({ email });
+  });
+
+  // no email is sent: the person holds the invitation link, the server makes the account for the
+  // address it was made for, and signs them in. Then the page calls /api/auth/onboard.
+  app.post("/api/auth/register", async (c) => {
+    sameSite(c);
+    if (!db)
+      throw new HttpError(
+        503,
+        "database_unavailable",
+        "The database is not set up on this server.",
+      );
+    const body = Register.parse(await c.req.json().catch(() => ({})));
+    const email = await invitationEmail(db, body.token);
+    try {
+      await gotrue.createUser(email, body.password);
+      const session = await gotrue.login(email, body.password);
+      startSession(c, session);
+      return c.json({ user: publicUser(session) }, 201);
     } catch (e) {
       return failureOf(e);
     }

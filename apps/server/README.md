@@ -100,10 +100,14 @@ The browser never talks to Supabase. The server does, through `@nirmata/auth` (S
 | Route | What it does |
 |---|---|
 | `POST /api/auth/login` | email and password; sets the cookie |
-| `POST /api/auth/signup` | email and password; Supabase refuses an address with no pending invitation, then emails a link |
+| `GET /api/auth/invitation?token=` | the address an invitation is for (404 for a wrong, used or expired token) |
+| `POST /api/auth/register` | `{ token, password }`: no email needed. The server checks the invitation, creates the confirmed account for its address with the service role key, and signs the person in. Then call `onboard` |
+| `POST /api/auth/signup` | the email route: needs custom SMTP and the email template change below; Supabase refuses an address with no pending invitation |
 | `GET /auth/callback?token_hash=&type=&next=` | the email link: finishes sign-in, sets the cookie, redirects to `next` (a path on this site only) |
 | `POST /api/auth/logout` | ends the session |
 | `GET /api/auth/me` | who is signed in, with the profile |
 | `POST /api/auth/onboard` | `{ attestAdult?, token? }`: makes the profile, confirms adulthood, accepts the invitation, all in one transaction as that person |
 
-Add the callback to Supabase (Authentication, URL Configuration, Redirect URLs) and make the email templates link to `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup` (`invite`, `recovery` and `email` for the others), so the token reaches the server and not the browser. The first host is invited with `node tools/invite-host.mjs <email>`. The old host-key login still works alongside this until the screens replace it. Supabase applies its own rate limits to password attempts.
+**Without custom SMTP** (Supabase will not let you edit templates, and its own mailer is nearly unusable) use `register`: set `SUPABASE_SERVICE_ROLE_KEY`, switch off "Allow new users to sign up" in Authentication, Sign In / Providers (the server creates accounts with the admin API, which still works), and skip the email notes below. Password reset by email does not work then; reset a password from the Supabase dashboard (Authentication, Users).
+
+For the email route: add the callback to Supabase (Authentication, URL Configuration, Redirect URLs) and make the email templates link to `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup` (`invite`, `recovery` and `email` for the others), so the token reaches the server and not the browser. The first host is invited with `node tools/invite-host.mjs <email>`. The old host-key login still works alongside this until the screens replace it. Supabase applies its own rate limits to password attempts.

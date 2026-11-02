@@ -625,14 +625,22 @@ export class WorldFiles implements SourceBackend {
     return {};
   }
 
-  async listVnAssets(slug: string): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+  async listVnAssets(
+    slug: string,
+  ): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
     const safeSlug = sanitizeSlug(slug);
 
     if (safeSlug === "_all" || safeSlug === "all") {
       const shared = await this.listVnAssets("_shared");
-      const allSprites: VnAssetItem[] = [...shared.sprites.map((s) => ({ ...s, isShared: true, vnSlug: "_shared" }))];
-      const allCgs: VnAssetItem[] = [...shared.cgs.map((c) => ({ ...c, isShared: true, vnSlug: "_shared" }))];
-      const allBgs: VnAssetItem[] = [...shared.backgrounds.map((b) => ({ ...b, isShared: true, vnSlug: "_shared" }))];
+      const allSprites: VnAssetItem[] = [
+        ...shared.sprites.map((s) => ({ ...s, isShared: true, vnSlug: "_shared" })),
+      ];
+      const allCgs: VnAssetItem[] = [
+        ...shared.cgs.map((c) => ({ ...c, isShared: true, vnSlug: "_shared" })),
+      ];
+      const allBgs: VnAssetItem[] = [
+        ...shared.backgrounds.map((b) => ({ ...b, isShared: true, vnSlug: "_shared" })),
+      ];
 
       const vns = await this.vns();
       for (const v of vns) {
@@ -677,12 +685,18 @@ export class WorldFiles implements SourceBackend {
       return { exists: false };
     };
 
-    const scanDir = async (dirName: "sprites" | "cgs" | "backgrounds", type: "sprite" | "cg" | "bg") => {
+    const scanDir = async (
+      dirName: "sprites" | "cgs" | "backgrounds",
+      type: "sprite" | "cg" | "bg",
+    ) => {
       const dirs: Array<{ path: string; isShared: boolean }> = [
         { path: inside(this.root, `vns/_shared/assets/${dirName}`), isShared: true },
       ];
       if (safeSlug !== "_shared") {
-        dirs.push({ path: inside(this.root, `vns/${safeSlug}/assets/${dirName}`), isShared: false });
+        dirs.push({
+          path: inside(this.root, `vns/${safeSlug}/assets/${dirName}`),
+          isShared: false,
+        });
       }
       const seen = new Set<string>();
       for (const { path: d, isShared } of dirs) {
@@ -723,7 +737,8 @@ export class WorldFiles implements SourceBackend {
       const manifestAssets = vnData.manifest.assets;
       if (manifestAssets?.characters) {
         for (const [charName, expressions] of Object.entries(manifestAssets.characters)) {
-          const exprList = Array.isArray(expressions) && expressions.length > 0 ? expressions : ["neutral"];
+          const exprList =
+            Array.isArray(expressions) && expressions.length > 0 ? expressions : ["neutral"];
           for (const expr of exprList) {
             const spriteName = `${charName}_${expr}`;
             if (!sprites.some((s) => s.name === spriteName || s.name === charName)) {
@@ -841,7 +856,11 @@ export class WorldFiles implements SourceBackend {
     return { sprites, cgs, backgrounds };
   }
 
-  async getVnAssetDetail(slug: string, type: "sprite" | "cg" | "bg", name: string): Promise<VnAssetDetail> {
+  async getVnAssetDetail(
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+  ): Promise<VnAssetDetail> {
     const list = await this.listVnAssets(slug);
     const pool = type === "sprite" ? list.sprites : type === "cg" ? list.cgs : list.backgrounds;
     const item = pool.find((a) => a.name === name) || {
@@ -946,7 +965,12 @@ export class WorldFiles implements SourceBackend {
     slug: string,
     type: string,
     name: string,
-    data: { prompt: string; negativePrompt?: string; feedback?: Record<string, "better" | "keep" | "worse">; workflow?: unknown },
+    data: {
+      prompt: string;
+      negativePrompt?: string;
+      feedback?: Record<string, "better" | "keep" | "worse">;
+      workflow?: unknown;
+    },
   ): Promise<string> {
     const safeSlug = sanitizeSlug(slug);
     const safeName = sanitizeSlug(name);
@@ -954,8 +978,14 @@ export class WorldFiles implements SourceBackend {
     const targetDir = inside(this.root, `assets/dataset/${safeSlug}/${safeName}/${timestamp}`);
     await mkdir(targetDir, { recursive: true });
 
-    await writeAtomic(join(targetDir, "prompt.json"), JSON.stringify({ positive: data.prompt, negative: data.negativePrompt || "" }, null, 2));
-    await writeAtomic(join(targetDir, "feedback.json"), JSON.stringify(data.feedback || {}, null, 2));
+    await writeAtomic(
+      join(targetDir, "prompt.json"),
+      JSON.stringify({ positive: data.prompt, negative: data.negativePrompt || "" }, null, 2),
+    );
+    await writeAtomic(
+      join(targetDir, "feedback.json"),
+      JSON.stringify(data.feedback || {}, null, 2),
+    );
     if (data.workflow) {
       await writeAtomic(join(targetDir, "workflow.json"), JSON.stringify(data.workflow, null, 2));
     }
@@ -1671,9 +1701,23 @@ export class Library {
     return this.open(name).readVnAsset(slug, subPath);
   }
 
-  async listAllVns(): Promise<Array<VnSummary & { worldName: string; worldTitle: string; assetCounts: { sprites: number; cgs: number; backgrounds: number } }>> {
+  async listAllVns(): Promise<
+    Array<
+      VnSummary & {
+        worldName: string;
+        worldTitle: string;
+        assetCounts: { sprites: number; cgs: number; backgrounds: number };
+      }
+    >
+  > {
     const worlds = await this.list();
-    const result: Array<VnSummary & { worldName: string; worldTitle: string; assetCounts: { sprites: number; cgs: number; backgrounds: number } }> = [];
+    const result: Array<
+      VnSummary & {
+        worldName: string;
+        worldTitle: string;
+        assetCounts: { sprites: number; cgs: number; backgrounds: number };
+      }
+    > = [];
 
     for (const w of worlds) {
       try {
@@ -1697,11 +1741,19 @@ export class Library {
     return result;
   }
 
-  async listVnAssets(name: string, slug: string): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+  async listVnAssets(
+    name: string,
+    slug: string,
+  ): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
     return this.open(name).listVnAssets(slug);
   }
 
-  async getVnAssetDetail(name: string, slug: string, type: "sprite" | "cg" | "bg", nameKey: string): Promise<VnAssetDetail> {
+  async getVnAssetDetail(
+    name: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    nameKey: string,
+  ): Promise<VnAssetDetail> {
     return this.open(name).getVnAssetDetail(slug, type, nameKey);
   }
 
@@ -1710,28 +1762,54 @@ export class Library {
     slug: string,
     type: string,
     nameKey: string,
-    data: { prompt: string; negativePrompt?: string; feedback?: Record<string, "better" | "keep" | "worse">; workflow?: unknown },
+    data: {
+      prompt: string;
+      negativePrompt?: string;
+      feedback?: Record<string, "better" | "keep" | "worse">;
+      workflow?: unknown;
+    },
   ): Promise<string> {
     return this.open(name).archiveVnAsset(slug, type, nameKey, data);
   }
 
-  async archiveOneVnAsset(name: string, slug: string, type: "sprite" | "cg" | "bg", nameKey: string): Promise<{ ok: boolean; timestamp: string; targetDir: string }> {
+  async archiveOneVnAsset(
+    name: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    nameKey: string,
+  ): Promise<{ ok: boolean; timestamp: string; targetDir: string }> {
     return this.open(name).archiveOneVnAsset(slug, type, nameKey);
   }
 
-  async archiveAllVnAssets(name: string, slug: string): Promise<{ ok: boolean; archivedCount: number }> {
+  async archiveAllVnAssets(
+    name: string,
+    slug: string,
+  ): Promise<{ ok: boolean; archivedCount: number }> {
     return this.open(name).archiveAllVnAssets(slug);
   }
 
-  async deleteOneVnAsset(name: string, slug: string, type: "sprite" | "cg" | "bg", nameKey: string): Promise<{ ok: boolean; name: string }> {
+  async deleteOneVnAsset(
+    name: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    nameKey: string,
+  ): Promise<{ ok: boolean; name: string }> {
     return this.open(name).deleteOneVnAsset(slug, type, nameKey);
   }
 
-  async deleteAllVnAssets(name: string, slug: string): Promise<{ ok: boolean; deletedCount: number }> {
+  async deleteAllVnAssets(
+    name: string,
+    slug: string,
+  ): Promise<{ ok: boolean; deletedCount: number }> {
     return this.open(name).deleteAllVnAssets(slug);
   }
 
-  async saveGeneratedVnAsset(name: string, slug: string, subPath: string, buffer: Buffer): Promise<string> {
+  async saveGeneratedVnAsset(
+    name: string,
+    slug: string,
+    subPath: string,
+    buffer: Buffer,
+  ): Promise<string> {
     return this.open(name).saveGeneratedVnAsset(slug, subPath, buffer);
   }
 
@@ -1748,7 +1826,10 @@ export class Library {
     return this.open(name).saveDatasetGeneratedImage(targetDir, buffer);
   }
 
-  async loadWorkflowTemplate(name: string, type: "sprite" | "cg" | "bg"): Promise<Record<string, unknown>> {
+  async loadWorkflowTemplate(
+    name: string,
+    type: "sprite" | "cg" | "bg",
+  ): Promise<Record<string, unknown>> {
     return this.open(name).loadWorkflowTemplate(type);
   }
 

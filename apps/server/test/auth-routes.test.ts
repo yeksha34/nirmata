@@ -30,6 +30,7 @@ function setup(
   const gotrue = new GoTrue({
     url: "https://p.supabase.co",
     publishableKey: "pub",
+    serviceRoleKey: "svc",
     fetch: fetchFake,
   });
   const dbLog: string[] = [];
@@ -209,6 +210,50 @@ describe("auth routes", () => {
       expect(res.status, code).toBe(status);
       expect((await res.json()).error.code).toBe(errorCode);
     }
+  });
+
+  it("register: an invitation holder gets an account for the invited address, with no email", async () => {
+    const { auth, calls, dbLog } = setup(
+      [
+        { status: 200, body: { id: "x" } }, // admin create
+        { status: 200, body: TOKEN }, // login
+      ],
+      [{ email: "ann@example.test" }],
+    );
+    const r = await rig([], { auth });
+    const res = await post(r.app, "/api/auth/register", {
+      token: "invite-token-1",
+      password: "longenough",
+    });
+    expect(res.status).toBe(201);
+    expect(cookieOf(res)).toContain("nirmata_session=");
+    expect(calls[0]?.url).toContain("/admin/users");
+    expect(calls[0]?.body).toEqual({
+      email: "ann@example.test",
+      password: "longenough",
+      email_confirm: true,
+    });
+    expect(dbLog.join("\n")).toContain("invitation_email");
+  });
+
+  it("register: a wrong token is refused before any account is made", async () => {
+    const { auth, calls } = setup([], [{ email: null }]);
+    const r = await rig([], { auth });
+    const res = await post(r.app, "/api/auth/register", {
+      token: "wrong-token-1",
+      password: "longenough",
+    });
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe("invitation_invalid");
+    expect(calls).toEqual([]);
+  });
+
+  it("shows which address an invitation is for", async () => {
+    const { auth } = setup([], [{ email: "ann@example.test" }]);
+    const r = await rig([], { auth });
+    const res = await r.app.request("/api/auth/invitation?token=invite-token-1");
+    expect(await res.json()).toEqual({ email: "ann@example.test" });
+    expect((await r.app.request("/api/auth/invitation?token=x")).status).toBe(404);
   });
 
   it("refuse a change that comes from another site", async () => {
