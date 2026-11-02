@@ -59,6 +59,7 @@ in `identity.idp_age_rules` as configuration (no rows ship).
 | 015 | repair: platform.uid() and jwt() executable by signed-in roles | applied |
 | 016 | repair: render path check used a repetition count above the regex limit | applied |
 | 017 | repair: row level security on platform.publish_status_history | applied |
+| 018 | renders record their store (supabase/local/none), size and hash; `set_render_store`; `v_store_usage` | written, not applied |
 
 "Applied" means a person ran it with `tools/db-apply.mjs` against the project. "Written, syntax-checked" means the file
 parses with the Postgres parser (every PL/pgSQL body included) but has not been run. `db/tests` has not been run.
