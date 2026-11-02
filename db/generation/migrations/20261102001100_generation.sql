@@ -243,7 +243,7 @@ end $$;
 -- the generation server: login app_rw with no role set, or service_role. People cannot call these.
 -- ---------------------------------------------------------------------------------------------
 create function generation.start_job(p_job uuid, p_prompt_id text default null) returns void
-language plpgsql security definer set search_path = '' as $
+language plpgsql security definer set search_path = '' as $$
 declare
   v_n int;
 begin
