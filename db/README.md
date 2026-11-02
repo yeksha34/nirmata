@@ -17,6 +17,7 @@ db/
 | `node tools/db-apply.mjs --reset --yes` | development only: drops the nine schemas and forgets applied files, then run `db-apply` again |
 | `node tools/db-build.mjs --check` | verifies order, names and that every file is listed |
 | `FORBIDDEN_TERMS_FILE=<path outside the repo> node tools/db-check-neutral.mjs` | fails if any line contains a forbidden term; fails closed if the file is missing |
+| `node tools/assets-import-dry-run.mjs <world> [--select=latest|all] [--used-bytes=N] [--hash]` | read-only: counts dataset files and bytes an upload would use, finds identical files, and shows the quota level it would reach (no database or storage access) |
 
 ## Running migrations
 
@@ -60,7 +61,7 @@ in `identity.idp_age_rules` as configuration (no rows ship).
 | 016 | repair: render path check used a repetition count above the regex limit | applied |
 | 017 | repair: row level security on platform.publish_status_history | applied |
 | 018 | renders record their store (supabase/local/none), size and hash; `set_render_store`; `v_store_usage` | applied |
-| 019 | storage quota: editable limits and `assets.storage_status` (server only: used, level ok/warn/block, daily alert) | written, not applied |
+| 019 | storage quota: editable limits and `assets.storage_status` (server only: used, level ok/warn/block, daily alert) | applied |
 
 "Applied" means a person ran it with `tools/db-apply.mjs` against the project. "Written, syntax-checked" means the file
 parses with the Postgres parser (every PL/pgSQL body included) but has not been run. `db/tests` has not been run.
@@ -77,4 +78,4 @@ SQL editor (runs as `postgres`). Each file ends in `rollback`, so nothing is lef
 | `003_render_store.sql` | where a render's file lives: store, size and hash, moving between stores, who may do it, the usage view |
 | `004_quota.sql` | the quota check: what counts, the levels, the daily alert, who may call it |
 
-Pass on the project: `001_baseline.sql` 16 of 16, `002_flows.sql` 69 of 69. `003_render_store.sql` 27 of 27. `004_quota.sql` is written but not run yet. Not covered yet: invitation acceptance end to end, the Auth hook, rebase and rollback, the dataset views.
+Pass on the project: `001_baseline.sql` 16 of 16, `002_flows.sql` 69 of 69. `003_render_store.sql` 27 of 27. `004_quota.sql` 12 of 12. Not covered yet: invitation acceptance end to end, the Auth hook, rebase and rollback, the dataset views.
