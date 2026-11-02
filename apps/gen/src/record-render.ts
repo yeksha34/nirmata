@@ -20,20 +20,33 @@ export interface RenderToRecord {
   sha256: string;
 }
 
-/**
- * Records one image in the database, inside a transaction the caller opened as the host: finds or
- * makes the asset, adds the spec that made the image, and records the render with its store, size
- * and hash. Used by the importer and by a new generation, so both leave the same rows.
- */
-export async function recordRender(q: Query, r: RenderToRecord): Promise<void> {
+/** The asset for a name in a world (shared by all visual novels), made when it does not exist. */
+export async function ensureAsset(
+  q: Query,
+  worldId: string,
+  kind: "sprite" | "cg" | "bg",
+  name: string,
+): Promise<string> {
   const found = await q(
     "select id from assets.assets where world_id = $1 and vn_id is null and kind_key = $2 and name = $3",
-    [r.worldId, r.kind, r.name],
+    [worldId, kind, name],
   );
-  const assetId =
+  const id =
     found.rows[0]?.id ??
-    (await q("select assets.create_asset($1, null, $2, $3) as id", [r.worldId, r.kind, r.name]))
-      .rows[0]?.id;
+    (await q("select assets.create_asset($1, null, $2, $3) as id", [worldId, kind, name])).rows[0]
+      ?.id;
+  return String(id);
+}
+
+/** Adds the spec that describes an image to be (or that was) made: prompts, sampler settings, size. */
+export async function addSpec(
+  q: Query,
+  assetId: string,
+  r: Pick<
+    RenderToRecord,
+    "positive" | "negative" | "width" | "height" | "seed" | "steps" | "cfg" | "sampler" | "scheduler"
+  >,
+): Promise<string> {
   const spec = (
     await q("select assets.add_spec($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id", [
       assetId,
@@ -48,10 +61,27 @@ export async function recordRender(q: Query, r: RenderToRecord): Promise<void> {
       r.height,
     ])
   ).rows[0]?.id;
-  await q("select assets.record_render($1, $2, $3, null, $4, $5, $6, 'image/png')", [
+  return String(spec);
+}
+
+/**
+ * Records one image in the database, inside a transaction the caller opened as the host: finds or
+ * makes the asset, adds the spec that made the image, and records the render with its store, size
+ * and hash. Used by the importer and by a new generation, so both leave the same rows. A generation
+ * that already made its asset, spec and job passes them in `existing`; the render is linked to the job.
+ */
+export async function recordRender(
+  q: Query,
+  r: RenderToRecord,
+  existing?: { assetId: string; specId: string; jobId?: string | undefined },
+): Promise<void> {
+  const assetId = existing?.assetId ?? (await ensureAsset(q, r.worldId, r.kind, r.name));
+  const specId = existing?.specId ?? (await addSpec(q, assetId, r));
+  await q("select assets.record_render($1, $2, $3, $4, $5, $6, $7, 'image/png')", [
     assetId,
-    spec,
+    specId,
     r.path,
+    existing?.jobId ?? null,
     r.store,
     r.bytes,
     r.sha256,

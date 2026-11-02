@@ -136,7 +136,8 @@ describe("importDataset", () => {
     ]);
     const rec = log.filter((l) => l.text.includes("record_render"));
     expect(rec).toHaveLength(2);
-    expect(rec[0]?.params?.[3]).toBe("supabase");
+    expect(rec[0]?.params?.[3]).toBeNull(); // an import has no job
+    expect(rec[0]?.params?.[4]).toBe("supabase");
     expect(log.some((l) => l.text.includes("storage_status(0, true)"))).toBe(true);
     expect(log.some((l) => l.text === "set local role authenticated")).toBe(true);
   });

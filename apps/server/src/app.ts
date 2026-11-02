@@ -186,7 +186,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
     );
   });
   // follow generations (survives a page refresh: the server holds the record)
-  app.get("/api/vn-jobs", (c) => c.json({ jobs: table.listGenerationJobs(seatOf(c)) }));
+  app.get("/api/vn-jobs", async (c) => c.json({ jobs: await table.listGenerationJobs(seatOf(c)) }));
   app.get("/api/vn-jobs/:id", (c) => c.json(table.getGenerationJob(seatOf(c), c.req.param("id"))));
   app.post("/api/vn-jobs/:id/cancel", async (c) =>
     c.json(await table.cancelGenerationJob(seatOf(c), c.req.param("id"))),
