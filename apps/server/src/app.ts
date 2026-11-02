@@ -99,6 +99,11 @@ const GenerateAsset = z.object({
   seed: z.number().int().optional(),
   feedback: z.record(z.enum(["better", "keep", "worse"])).optional(),
   workflowOverride: z.record(z.unknown()).optional(),
+  references: z
+    .array(z.string().regex(/^[A-Za-z0-9._-]{1,120}$/))
+    .max(6)
+    .optional(),
+  referenceStrength: z.number().min(0.05).max(1.5).optional(),
 });
 
 export interface AppOptions {

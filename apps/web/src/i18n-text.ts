@@ -69,6 +69,12 @@ export const HI_TEXT: Record<string, string> = {
   "Sign in": "प्रवेश करें",
   "Sign out": "बाहर निकलें",
   Database: "आँकड़ा-भंडार",
+  "Reference images": "संदर्भ-चित्र",
+  "The ticked sprites are the starting point: this one is made from them, so the character stays the same.":
+    "चिह्नित आकृतियाँ आरंभ-बिंदु हैं: यह उन्हीं से बनती है, इसलिए पात्र वही रहता है।",
+  "The ticked sprites show the image who is in it. Tick one sprite per character.":
+    "चिह्नित आकृतियाँ चित्र को बताती हैं कि उसमें कौन है। हर पात्र की एक आकृति चिह्नित करें।",
+  "No other sprites exist yet.": "अभी कोई और आकृति नहीं है।",
   Files: "फ़ाइलें",
   "Cards are kept in the database. Edits here are saved there; the folder copy is not used.":
     "पत्र आँकड़ा-भंडार में रखे हैं। यहाँ के सुधार वहीं सहेजे जाते हैं; फ़ोल्डर की प्रति काम में नहीं ली जाती।",

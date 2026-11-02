@@ -142,6 +142,7 @@ export function VnStudio() {
 
   const [detail, setDetail] = useState<VnAssetDetail | null>(null);
   const [positivePrompt, setPositivePrompt] = useState("");
+  const [references, setReferences] = useState<string[]>([]);
   const [negativePrompt, setNegativePrompt] = useState("");
   const [steps, setSteps] = useState(22);
   const [cfg, setCfg] = useState(7.5);
@@ -216,6 +217,7 @@ export function VnStudio() {
         if (d.seed !== undefined) setSeed(d.seed);
         setSelectedBadges([]);
         setFeedback({});
+        setReferences(d.references?.suggested ?? []);
         setMessage("");
       }
     },
@@ -340,6 +342,7 @@ export function VnStudio() {
       scheduler,
       seed: seed ?? Math.floor(Math.random() * 1000000),
       feedback,
+      ...(activeType !== "bg" && references.length > 0 ? { references } : {}),
     };
     setMessage("");
     dispatch(jobsActions.start(activeWorld, targetSlug, payload));
@@ -708,6 +711,59 @@ export function VnStudio() {
                   />
                 </label>
               </details>
+
+              {activeType !== "bg" && (
+                <details
+                  className="vs-card vs-fold"
+                  open={(detail?.references?.suggested.length ?? 0) > 0}
+                >
+                  <summary>
+                    <T>Reference images</T>
+                    {references.length > 0 && (
+                      <small className="vs-count">{references.length}</small>
+                    )}
+                  </summary>
+                  <p className="vs-muted">
+                    {activeType === "sprite" ? (
+                      <T>
+                        The ticked sprites are the starting point: this one is made from them, so
+                        the character stays the same.
+                      </T>
+                    ) : (
+                      <T>
+                        The ticked sprites show the image who is in it. Tick one sprite per
+                        character.
+                      </T>
+                    )}
+                  </p>
+                  {(detail?.references?.available.length ?? 0) === 0 ? (
+                    <p className="vs-muted">
+                      <T>No other sprites exist yet.</T>
+                    </p>
+                  ) : (
+                    <ul className="vs-refs">
+                      {detail?.references?.available.map((name) => (
+                        <li key={name}>
+                          <label className="check">
+                            <input
+                              type="checkbox"
+                              checked={references.includes(name)}
+                              onChange={(e) =>
+                                setReferences((prev) =>
+                                  e.target.checked
+                                    ? [...prev, name]
+                                    : prev.filter((n) => n !== name),
+                                )
+                              }
+                            />
+                            {name}
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </details>
+              )}
 
               <details className="vs-card vs-fold">
                 <summary>

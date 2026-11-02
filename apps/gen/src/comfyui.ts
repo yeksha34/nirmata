@@ -116,6 +116,30 @@ export class ComfyUiClient {
     }
   }
 
+  /**
+   * Puts an image into ComfyUI's input folder so a `LoadImage` node can use it, and returns the file
+   * name to give that node. The caller names the file after the image's content, so the same image
+   * uploaded again lands on the same name.
+   */
+  async uploadImage(filename: string, data: Uint8Array): Promise<string> {
+    try {
+      const form = new FormData();
+      form.append("image", new Blob([new Uint8Array(data)], { type: "image/png" }), filename);
+      form.append("type", "input");
+      form.append("overwrite", "true");
+      const res = await fetch(`${this.baseUrl}/upload/image`, { method: "POST", body: form });
+      if (!res.ok) {
+        throw new GenError(502, "comfyui_error", `ComfyUI did not accept the reference image: ${await res.text()}`);
+      }
+      const out = (await res.json()) as { name?: string; subfolder?: string };
+      if (!out.name) throw new GenError(502, "comfyui_error", "ComfyUI did not say where it put the reference image.");
+      return out.subfolder ? `${out.subfolder}/${out.name}` : out.name;
+    } catch (e) {
+      if (e instanceof GenError) throw e;
+      throw new GenError(503, "comfyui_offline", `Could not connect to ComfyUI at ${this.baseUrl}: ${(e as Error).message}`);
+    }
+  }
+
   async queuePrompt(prompt: ComfyPromptPayload, clientId?: string): Promise<string> {
     try {
       const res = await fetch(`${this.baseUrl}/prompt`, {

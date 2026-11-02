@@ -129,3 +129,12 @@ python tools/comfyui/scripts/sync_adaptation_assets.py \
   --vn-dir worlds/my_world/vns/ch01-awakening \
   --dry-run
 ```
+
+## Reference images (ADR-0031)
+
+`templates/sprite_ref.template.api.json` and `templates/cg_ref.template.api.json` take reference images. The app uses them when the Studio's "Reference images" list has ticked sprites; a world's own `assets/workflow/sprite_ref.json` or `cg_ref.json` wins over these.
+
+- **`sprite_ref`** starts from the reference (a `LoadImage` titled "Reference Image", encoded and sampled at denoise 0.55). Built-in nodes only.
+- **`cg_ref`** sends the model through `IPAdapterUnifiedLoader` and `IPAdapterAdvanced`, fed by the reference image. It needs `ComfyUI_IPAdapter_plus`, an **SD1.5** IPAdapter model (for the `PLUS (high strength)` preset, `ip-adapter-plus_sd15`) in `models/ipadapter/`, and the CLIP vision model `CLIP-ViT-H-14-laion2B-s32B-b79K` in `models/clip_vision/`. The checkpoint in these templates is SD1.5, so the SDXL model named above does not fit it. This variant has not been run against an installed ComfyUI; if the node's inputs differ in your version, adjust `cg_ref.json` in the world's `assets/workflow/`.
+- A world says which expression is a character's base sprite in `assets/workflow/references.json`, for example `{"baseSprite": "neutral"}`. Add `"cgSprite"` to use another expression as the character's stand-in in a CG.
+- Any workflow can take references: add a `LoadImage` node whose title contains "Reference" and wire it in. The app fills it; several images work when the slot feeds an IPAdapter node.

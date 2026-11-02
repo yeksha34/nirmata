@@ -78,6 +78,10 @@ export const HI_SERVER: Record<string, string> = {
   "That is the asset's current image, so its file is kept. Make a new image first, then delete this one.":
     "यही इस सामग्री का वर्तमान चित्र है, इसलिए इसकी फ़ाइल रखी गई है। पहले नया चित्र बनाएँ, फिर इसे हटाएँ।",
   "There is no such run.": "ऐसा कोई प्रयास नहीं है।",
+  "A reference sprite does not exist yet. Generate it first, or remove it from the references.":
+    "एक संदर्भ-आकृति अभी बनी नहीं है। पहले उसे बनाएँ, या संदर्भों से हटा दें।",
+  "This workflow has no place for a reference image. Use a workflow with a Reference Image node.":
+    "इस कार्यप्रवाह में संदर्भ-चित्र के लिए स्थान नहीं है। संदर्भ-चित्र वाली कड़ी के साथ कार्यप्रवाह चुनें।",
   "Finish setting up your account first.": "पहले अपना खाता पूरा बनाएँ।",
   "Your profile cannot be read right now.": "आपका परिचय अभी पढ़ा नहीं जा सकता।",
   "An account with that address already exists. Sign in instead.":

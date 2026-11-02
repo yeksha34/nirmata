@@ -5,4 +5,5 @@ export * from "./generation-jobs";
 export * from "./import-dataset";
 export * from "./png-transparency";
 export * from "./record-render";
+export * from "./reference-images";
 export * from "./workflow-injector";
