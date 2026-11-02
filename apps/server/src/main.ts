@@ -10,6 +10,7 @@ import { createApp } from "./app";
 import type { AuthDeps } from "./auth-routes";
 import { ConfigError, loadConfig } from "./config";
 import { Library } from "./files";
+import { DbLore } from "./lore-store";
 import { Table } from "./table";
 
 /** Open the browser on the host's own link, so the person who ran the server just lands in it. */
@@ -73,7 +74,12 @@ async function main(): Promise<void> {
 
   const config = loadConfig();
   const log = (message: string) => console.error(`[nirmata] ${message}`);
-  const library = new Library(config.libraryDir);
+  const db = await connectDb(process.env);
+  // an imported world keeps its cards in the database, read and written as the signed-in host
+  let hostUser: () => string | undefined = () => undefined;
+  const library = new Library(config.libraryDir, {
+    lore: db ? new DbLore(db, () => hostUser()) : undefined,
+  });
 
   const table = new Table({
     library,
@@ -85,13 +91,13 @@ async function main(): Promise<void> {
     requireAdultConfirmation: config.requireAdultConfirmation,
     log,
   });
+  hostUser = () => table.hostUserId();
   const opened = await table.openOnlyWorld();
   const worlds = await library.list();
 
   const uiDir = join(here, "..", "..", "web", "dist");
   const ui = existsSync(join(uiDir, "index.html")) ? uiDir : undefined;
 
-  const db = await connectDb(process.env);
   const data = db ? { db, stores: storesFromEnv(process.env) } : undefined;
   if (data) console.log("Database connected: asset files are served through it.");
   const auth = authFromEnv(process.env, db, config.port);

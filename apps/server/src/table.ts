@@ -812,6 +812,11 @@ export class Table {
     return seat;
   }
 
+  /** The signed-in account that is the table's host, once there is one. */
+  hostUserId(): string | undefined {
+    return this.hostAccount;
+  }
+
   /** The seat a token speaks for. */
   seat(token: string | undefined): Seat {
     const seat = token ? this.seats.get(token) : undefined;
