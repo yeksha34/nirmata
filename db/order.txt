@@ -1,5 +1,6 @@
 # Cross-schema migration order. One path per line, relative to db/. Timestamps must ascend.
 _bootstrap/migrations/20261102000100_roles_and_schemas.sql
+_bootstrap/migrations/20261102000110_auth_access.sql
 platform/migrations/20261102000200_platform_core.sql
 identity/migrations/20261102000300_identity.sql
 membership/migrations/20261102000400_membership.sql
