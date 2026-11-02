@@ -593,9 +593,24 @@ export class Table {
     return { assetUrl, positivePrompt: positive, negativePrompt: negative };
   }
 
-  /** Read an image from the dataset history. Open to all viewers. */
-  readDatasetImage(worldName: string, slug: string, assetName: string, timestamp: string) {
-    return this.options.library.readDatasetImage(worldName, slug, assetName, timestamp);
+  /**
+   * Read an image from the dataset history. Open to all viewers for files; the database copy of an
+   * imported world is used only when `fromDatabase` says the request is the signed-in host's own.
+   */
+  readDatasetImage(
+    worldName: string,
+    slug: string,
+    assetName: string,
+    timestamp: string,
+    fromDatabase = false,
+  ) {
+    return this.options.library.readDatasetImage(
+      worldName,
+      slug,
+      assetName,
+      timestamp,
+      fromDatabase,
+    );
   }
 
   async archiveWorldVnAsset(

@@ -1,4 +1,4 @@
-# ADR-0030: An imported world reads and writes its cards in the database
+# ADR-0030: An imported world reads its cards and images from the database
 
 - Status: Proposed
 - Date: 2026-11-03
@@ -11,8 +11,10 @@
 - **Precedence per world.** If the world is in the database (found by its `world.json` name as a slug) and the table's host is signed in, its cards are read from and written to the database draft. Otherwise the folder is used, exactly as before.
 - **Who reads.** Database access is as the signed-in host (row level security applies), never as the server. With no signed-in host (the obsolete host-key login) the folder is used.
 - **No silent fallback.** If the database is unreachable for an imported world, the request fails with a plain message. Falling back to files would let edits land in the folder and diverge.
+- **Images.** The dataset gallery's image route looks the render up by the path the importer wrote (`<world id>/<scope>/<name>/<run>.png`) and streams it from the store the row names (ADR-0028). If there is no such render it reads the file as before. A render whose bytes were deleted (`store = none`) answers "not found" and is not brought back from an old local copy.
+- **Privacy of the database copy.** The image route is open to anyone for files, because an image tag cannot send a token. The database copy is returned only when the request carries the signed-in host's own session cookie; any other request gets the file or nothing.
 - **One seam.** `WorldFiles` takes an optional card store (`LoreCards`); the card list, save and remove go through it. Everything that reads cards (the world page, starting a story, the manager) is unchanged.
-- **Still in files.** `world.json` (title, tone, genre, systems), chapters, drafts, stories, visual novels and images. The database has no tables for the manifest yet.
+- **Still in files.** `world.json` (title, tone, genre, systems), chapters, drafts, stories, visual novels, visual novel images (`…/vns/…/assets/…`) and every new generation. The database has no tables for the manifest yet.
 - **Publishing** is a separate step. The app edits the draft; `import:world --publish` freezes a version.
 
 ## Consequences

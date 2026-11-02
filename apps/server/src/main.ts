@@ -10,6 +10,7 @@ import { createApp } from "./app";
 import type { AuthDeps } from "./auth-routes";
 import { ConfigError, loadConfig } from "./config";
 import { Library } from "./files";
+import { DbImages } from "./image-store";
 import { DbLore } from "./lore-store";
 import { Table } from "./table";
 
@@ -77,8 +78,10 @@ async function main(): Promise<void> {
   const db = await connectDb(process.env);
   // an imported world keeps its cards in the database, read and written as the signed-in host
   let hostUser: () => string | undefined = () => undefined;
+  const stores = storesFromEnv(process.env);
   const library = new Library(config.libraryDir, {
     lore: db ? new DbLore(db, () => hostUser()) : undefined,
+    images: db ? new DbImages(db, stores, () => hostUser()) : undefined,
   });
 
   const table = new Table({
@@ -98,7 +101,7 @@ async function main(): Promise<void> {
   const uiDir = join(here, "..", "..", "web", "dist");
   const ui = existsSync(join(uiDir, "index.html")) ? uiDir : undefined;
 
-  const data = db ? { db, stores: storesFromEnv(process.env) } : undefined;
+  const data = db ? { db, stores } : undefined;
   if (data) console.log("Database connected: asset files are served through it.");
   const auth = authFromEnv(process.env, db, config.port);
   if (auth) console.log("Sign-in through Supabase is on (email and password).");

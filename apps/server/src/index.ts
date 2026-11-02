@@ -4,6 +4,7 @@ export * from "./auth-routes";
 export * from "./config";
 export * from "./errors";
 export * from "./files";
+export * from "./image-store";
 export * from "./lore-import";
 export * from "./lore-store";
 export * from "./table";
