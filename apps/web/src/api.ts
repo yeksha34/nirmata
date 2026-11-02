@@ -104,6 +104,14 @@ export const api = {
   join: (args: { nick?: string; confirmedAdult?: boolean; hostKey?: string }) =>
     post<{ token: string; you: You }>("/api/join", args),
   leave: () => post("/api/leave"),
+  /** Come in as the signed-in person; the host is whoever the account says. */
+  joinSession: () => post<{ token: string; you: You }>("/api/join/session"),
+  /** Who is signed in. Fails with 401 when nobody is, 404 when sign-in is not set up. */
+  me: () =>
+    get<{
+      user: { id: string; email: string };
+      profile: { displayName: string; canFoundWorlds: boolean; ageConfirmed: boolean } | null;
+    }>("/api/auth/me"),
 
   // sign-in: the server talks to Supabase; the browser only ever calls these
   invitation: (token: string) =>

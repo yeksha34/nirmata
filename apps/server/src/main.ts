@@ -109,14 +109,20 @@ async function main(): Promise<void> {
       console.log(
         "The screens are not built yet: run `corepack pnpm --filter @nirmata/web build`.",
       );
-    console.log(`\nYou are the host. Open this link on this computer:\n  ${hostLink}`);
+    if (auth) {
+      console.log(
+        `\nSign in at:\n  ${link}login\nThe host is the signed-in account that was invited as host.\n(Obsolete host-key link, development only:\n  ${hostLink})`,
+      );
+    } else {
+      console.log(`\nYou are the host. Open this link on this computer:\n  ${hostLink}`);
+    }
     if (config.bind === "0.0.0.0")
       console.log(
         `Friends on your network join at:\n  http://<this computer's address>:${info.port}/`,
       );
     if (config.requireAdultConfirmation) console.log("Joiners must confirm they are adults.");
     if (ui && process.env.NIRMATA_OPEN !== "0" && !config.requireAdultConfirmation)
-      openBrowser(hostLink);
+      openBrowser(auth ? link : hostLink);
   });
 
   const stop = () => {

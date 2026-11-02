@@ -4,7 +4,7 @@ import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { type DataDeps, registerAssetRoutes } from "./asset-routes";
-import { type AuthDeps, registerAuthRoutes } from "./auth-routes";
+import { type AuthDeps, readProfile, registerAuthRoutes } from "./auth-routes";
 import { describeError, HttpError } from "./errors";
 import { type CardInput, WORLD_NAME } from "./files";
 import type { Seat, Send, Table } from "./table";
@@ -156,7 +156,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
 
   app.get("/api/health", (c) => c.json({ ok: true }));
   if (data) registerAssetRoutes(app, data, seatOf);
-  if (auth) registerAuthRoutes(app, auth);
+  const userOf = auth ? registerAuthRoutes(app, auth) : undefined;
   app.get("/api/comfyui/status", async (c) => c.json(await table.comfyStatus()));
   app.get("/api/table", async (c) => c.json(await table.info()));
 
@@ -262,6 +262,32 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
     const seat = table.join(body.nick ?? "", {
       ...(body.confirmedAdult !== undefined ? { confirmedAdult: body.confirmedAdult } : {}),
       ...(body.hostKey !== undefined ? { hostKey: body.hostKey } : {}),
+    });
+    return c.json({ token: seat.token, you: table.you(seat) }, 201);
+  });
+
+  // Come to the table as the signed-in person. Who is the host comes from the account (the host
+  // invitation sets it), not from a key; the same person always gets the same seat back.
+  app.post("/api/join/session", async (c) => {
+    if (!auth || !userOf)
+      throw new HttpError(404, "not_found", "There is nothing at that address.");
+    const session = await userOf(c);
+    if (!session) throw new HttpError(401, "sign_in_required", "Sign in first.");
+    if (!auth.db)
+      throw new HttpError(
+        503,
+        "database_unavailable",
+        "The database is not set up on this server.",
+      );
+    const profile = await readProfile(auth.db, session).catch(() => {
+      throw new HttpError(503, "profile_unavailable", "Your profile cannot be read right now.");
+    });
+    if (!profile?.ageConfirmed)
+      throw new HttpError(409, "onboarding_required", "Finish setting up your account first.");
+    const seat = table.joinAccount({
+      userId: session.user.id,
+      name: profile.displayName,
+      host: profile.canFoundWorlds,
     });
     return c.json({ token: seat.token, you: table.you(seat) }, 201);
   });

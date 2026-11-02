@@ -94,6 +94,11 @@ export function Join({
             Running the server? Open the link it printed in your terminal to take the host's seat.
           </T>
         </p>
+        <p className="hint">
+          <a href="/login">
+            <T>Have an account? Sign in.</T>
+          </a>
+        </p>
       </form>
     </main>
   );

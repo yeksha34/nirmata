@@ -67,6 +67,8 @@ export const HI_TEXT: Record<string, string> = {
   "Try again": "पुनः प्रयास करें",
   "Create my account": "मेरा खाता बनाएँ",
   "Sign in": "प्रवेश करें",
+  "Sign out": "बाहर निकलें",
+  "Have an account? Sign in.": "खाता है? प्रवेश करें।",
   "Signing in…": "प्रवेश हो रहा है…",
   Email: "ईमेल",
   "Coming in…": "भीतर आ रहे हैं…",

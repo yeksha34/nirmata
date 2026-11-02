@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
-import { api, seat } from "./api";
+import { ApiError, api, seat } from "./api";
 import { AppProvider } from "./app-context";
 import { ClippedTips } from "./clipped-tips";
 import { AskProvider } from "./controls";
@@ -53,6 +53,17 @@ export function App() {
         } catch (e) {
           if (!cancelled) setJoinError((e as Error).message);
         }
+      }
+      // A signed-in person is seated from their account: a host is the table's host, under their
+      // own name. 401/404 only mean nobody is signed in (or sign-in is off): carry on as before.
+      try {
+        const joined = await api.joinSession();
+        seat.save(joined.token);
+        if (!cancelled) setToken(joined.token);
+        return;
+      } catch (e) {
+        const status = e instanceof ApiError ? e.status : 0;
+        if (status !== 401 && status !== 404 && !cancelled) setJoinError((e as Error).message);
       }
       const saved = seat.load();
       if (saved) {

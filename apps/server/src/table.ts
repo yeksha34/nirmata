@@ -103,12 +103,25 @@ export interface Seat {
   token: string;
   nick: string;
   host: boolean;
+  /** The signed-in person this seat belongs to; absent for a nickname seat or the host key. */
+  account?: string | undefined;
 }
 
 export interface You {
   nick: string;
   seat: ParticipantView["seat"];
   muted: boolean;
+  host: boolean;
+  /** True when the seat comes from a signed-in account. */
+  account: boolean;
+}
+
+/** A signed-in person, as the table needs to know them. */
+export interface Account {
+  userId: string;
+  /** The name they go by; made into a valid nickname if it is not one. */
+  name: string;
+  /** May found worlds: the table's host. */
   host: boolean;
 }
 
@@ -172,6 +185,16 @@ const sameKey = (a: string, b: string): boolean => {
 
 const lower = (s: string) => s.toLowerCase();
 
+/** A valid nickname (letters, digits, a few marks; up to 24) from whatever name a person goes by. */
+const nickFrom = (name: string): string => {
+  const clean = name
+    .trim()
+    .replace(/[^\p{L}\p{N}_\-[\]\\^{}|]+/gu, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24);
+  return clean || "Reader";
+};
+
 /** More than this at one table is a crowd, not a game; also a cheap limit on tokens held. */
 const MAX_SEATS = 64;
 
@@ -204,8 +227,14 @@ export class Table {
   private readonly comfy = new ComfyUiClient();
   private readonly genJobs = new GenerationJobs();
 
+  /** What the host is called now: the server's setting until a signed-in host takes the seat. */
+  private hostNick: string;
+  /** The signed-in host, once there is one; the table has one host at a time. */
+  private hostAccount: string | undefined;
+
   constructor(private readonly options: TableOptions) {
     this.settings = options.settings;
+    this.hostNick = options.hostNick;
     this.board = new Board({
       host: options.hostNick,
       ports: options.ports,
@@ -218,7 +247,7 @@ export class Table {
   async info(): Promise<TableInfo> {
     return {
       world: this.open?.info ?? null,
-      host: this.options.hostNick,
+      host: this.hostNick,
       requiresAdultConfirmation: this.board.requiresAdultConfirmation,
       story: this.session !== undefined,
     };
@@ -715,7 +744,7 @@ export class Table {
         throw new HttpError(403, "forbidden", "That host key is not right.");
       }
       host = true;
-      name = this.options.hostNick;
+      name = this.hostNick;
     } else {
       if (this.seats.size >= MAX_SEATS) {
         throw new HttpError(409, "table_full", "The table is full. Try again later.");
@@ -725,6 +754,58 @@ export class Table {
       }).nick;
     }
     const seat: Seat = { token: randomBytes(24).toString("base64url"), nick: name, host };
+    this.seats.set(seat.token, seat);
+    this.pushBoard();
+    return seat;
+  }
+
+  /**
+   * Come to the table as a signed-in person. A person who may found worlds takes the host's seat
+   * under their own name, so the table is theirs and nobody is hosted under a stand-in. Anyone
+   * else comes in as a spectator under their name. Coming back returns the same seat.
+   */
+  joinAccount(account: Account): Seat {
+    for (const seat of this.seats.values()) {
+      if (seat.account === account.userId) return seat;
+    }
+    const base = nickFrom(account.name);
+    if (account.host) {
+      if (this.hostAccount !== undefined && this.hostAccount !== account.userId) {
+        throw new HttpError(409, "table_has_host", "This table already has a host.");
+      }
+      const name = this.board.setHost(base);
+      for (const seat of this.seats.values()) if (seat.host) seat.nick = name;
+      this.hostNick = name;
+      this.hostAccount = account.userId;
+      const seat: Seat = {
+        token: randomBytes(24).toString("base64url"),
+        nick: name,
+        host: true,
+        account: account.userId,
+      };
+      this.seats.set(seat.token, seat);
+      this.pushBoard();
+      return seat;
+    }
+    if (this.seats.size >= MAX_SEATS) {
+      throw new HttpError(409, "table_full", "The table is full. Try again later.");
+    }
+    let name = base;
+    for (let n = 2; ; n++) {
+      try {
+        name = this.board.join(name, { confirmedAdult: true }).nick;
+        break;
+      } catch (e) {
+        if (n > 99 || !(e instanceof HostError) || e.code !== "bad_nickname") throw e;
+        name = `${base.slice(0, 22)}${n}`;
+      }
+    }
+    const seat: Seat = {
+      token: randomBytes(24).toString("base64url"),
+      nick: name,
+      host: false,
+      account: account.userId,
+    };
     this.seats.set(seat.token, seat);
     this.pushBoard();
     return seat;
@@ -759,7 +840,13 @@ export class Table {
 
   you(seat: Seat): You {
     const person = this.person(seat);
-    return { nick: person.nick, seat: person.seat, muted: person.muted, host: seat.host };
+    return {
+      nick: person.nick,
+      seat: person.seat,
+      muted: person.muted,
+      host: seat.host,
+      account: seat.account !== undefined,
+    };
   }
 
   private person(seat: Seat): ParticipantView {
