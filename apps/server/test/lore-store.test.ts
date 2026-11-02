@@ -88,6 +88,15 @@ describe("a world whose cards are in the database", () => {
     expect(names(await world.cardFiles())).not.toContain("lore.on-disk");
   });
 
+  it("says where the cards came from, for the badge on the world page", async () => {
+    const root = folder();
+    const f = fakeDb();
+    const fromDb = await new WorldFiles(root, new DbLore(f.db, () => USER)).cardFilesFrom();
+    expect(fromDb.source).toBe("database");
+    const fromFiles = await new WorldFiles(root, new DbLore(f.db, () => undefined)).cardFilesFrom();
+    expect(fromFiles.source).toBe("files");
+  });
+
   it("writes an edit to the database and leaves the folder alone", async () => {
     const root = folder();
     const f = fakeDb();

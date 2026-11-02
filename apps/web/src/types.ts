@@ -225,6 +225,8 @@ export interface Writing {
 /** A world's page: its details, saved stories and cards, whether or not it is the open one. */
 export interface WorldDetail {
   world: WorldSummary;
+  /** Where the cards came from: the database for an imported world, else the world's folder. */
+  cardSource?: "database" | "files";
   manifest?: Manifest;
   stories: StorySummary[];
   cards: Card[];

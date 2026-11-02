@@ -199,6 +199,9 @@ export interface CardFile {
   problems?: string[];
 }
 
+/** Where a world's cards are read from. */
+export type CardSource = "database" | "files";
+
 /**
  * A world's cards when they live in the database instead of the folder. Each call answers
  * `undefined`/`false` for a world that is not in the database, and the world's files are used.
@@ -251,9 +254,18 @@ export class WorldFiles implements SourceBackend {
 
   /** Every card file as it is on disk, readable or not: the manager shows the broken ones too. */
   async cardFiles(): Promise<CardFile[]> {
+    return (await this.cardFilesFrom()).files;
+  }
+
+  /** The cards, and where they came from: the database for an imported world, else the folder. */
+  async cardFilesFrom(): Promise<{ files: CardFile[]; source: CardSource }> {
     const slug = await this.loreSlug();
     const inDb = slug ? await this.lore?.cardFiles(slug) : undefined;
-    if (inDb) return inDb;
+    if (inDb) return { files: inDb, source: "database" };
+    return { files: await this.cardFilesOnDisk(), source: "files" };
+  }
+
+  private async cardFilesOnDisk(): Promise<CardFile[]> {
     const out: CardFile[] = [];
     for (const dir of CARD_DIRS) {
       for (const file of await markdownFiles(join(this.root, dir))) {
@@ -1533,6 +1545,8 @@ export interface WritingSummary {
 
 export interface WorldDetail {
   world: WorldSummary;
+  /** Where the cards came from: the database for an imported world (ADR-0030), else the folder. */
+  cardSource: CardSource;
   /** world.json as read; missing when the world cannot be read. */
   manifest?: WorldManifest;
   stories: StorySummary[];
@@ -1661,6 +1675,7 @@ export class Library {
     if (found.problem)
       return {
         world: found,
+        cardSource: "files",
         stories: [],
         cards: [],
         broken: [],
@@ -1668,11 +1683,12 @@ export class Library {
         drafts: [],
         vns: [],
       };
-    const files = await this.open(name).cardFiles();
+    const { files, source } = await this.open(name).cardFilesFrom();
     const writings = await this.open(name).writings(new Set(files.map((f) => f.path)));
     const vns = await this.open(name).vns();
     return {
       world: found,
+      cardSource: source,
       manifest: await this.open(name).world(),
       stories: await this.stories(name).list(),
       cards: files.flatMap((f) => (f.card ? [{ ...f.card, file: f.text }] : [])),
