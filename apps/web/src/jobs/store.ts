@@ -12,9 +12,38 @@ export interface JobsState {
   /** A start that never reached the server, shown instead of a job. */
   startError: string | undefined;
   starting: boolean;
+  /** Jobs the person cleared from the queue panel; the server still lists them. */
+  dismissed: Record<string, true>;
 }
 
-export const initialJobs: JobsState = { byId: {}, startError: undefined, starting: false };
+export const initialJobs: JobsState = {
+  byId: {},
+  startError: undefined,
+  starting: false,
+  dismissed: {},
+};
+
+const DISMISSED_KEY = "nirmata.dismissed-jobs";
+const DISMISSED_KEEP = 200;
+
+function loadDismissed(): Record<string, true> {
+  try {
+    const ids = JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? "[]") as unknown;
+    return Array.isArray(ids)
+      ? Object.fromEntries(ids.filter((i) => typeof i === "string").map((i) => [i, true as const]))
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveDismissed(ids: Record<string, true>): void {
+  try {
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(Object.keys(ids).slice(-DISMISSED_KEEP)));
+  } catch {
+    // private browsing: they come back after a reload
+  }
+}
 
 export type JobsAction =
   | { type: "jobs/hydrate" }
@@ -50,10 +79,12 @@ export function jobsReducer(state: JobsState = initialJobs, action: Action): Job
     case "jobs/start-failed":
       return { ...state, starting: false, startError: a.message };
     case "jobs/upsert":
-      return { ...state, byId: { ...state.byId, [a.job.id]: a.job } };
+      return state.dismissed[a.job.id]
+        ? state
+        : { ...state, byId: { ...state.byId, [a.job.id]: a.job } };
     case "jobs/forget": {
       const { [a.id]: _gone, ...rest } = state.byId;
-      return { ...state, byId: rest };
+      return { ...state, byId: rest, dismissed: { ...state.dismissed, [a.id]: true } };
     }
     default:
       return state;
@@ -78,7 +109,18 @@ export function jobForAsset(
 
 export function makeJobsStore() {
   const saga = createSagaMiddleware();
-  const store = createStore(jobsReducer, applyMiddleware(saga));
+  const store = createStore(
+    jobsReducer,
+    { ...initialJobs, dismissed: loadDismissed() },
+    applyMiddleware(saga),
+  );
+  let last = store.getState().dismissed;
+  store.subscribe(() => {
+    const now = store.getState().dismissed;
+    if (now === last) return;
+    last = now;
+    saveDismissed(now);
+  });
   saga.run(rootSaga);
   return store;
 }

@@ -92,3 +92,13 @@ describe("generation jobs store", () => {
     expect(jobForAsset(store.getState(), "w", "cg", "a")).toBeUndefined();
   });
 });
+
+describe("the queue panel's cleared jobs", () => {
+  it("stay cleared when the server lists them again", () => {
+    const store = makeJobsStore();
+    store.dispatch({ type: "jobs/upsert", job: job({ id: "gone", state: "done" }) });
+    store.dispatch(jobsActions.forget("gone"));
+    store.dispatch({ type: "jobs/upsert", job: job({ id: "gone", state: "done" }) });
+    expect(store.getState().byId.gone).toBeUndefined();
+  });
+});

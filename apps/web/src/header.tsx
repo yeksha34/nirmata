@@ -51,6 +51,14 @@ export function HeaderBar() {
           >
             <T>Visual Novels</T>
           </button>
+          <button
+            type="button"
+            className="navlink"
+            aria-current={nav.route === "dataset" ? "page" : undefined}
+            onClick={() => nav.toDataset()}
+          >
+            <T>Dataset</T>
+          </button>
         </nav>
       )}
       {state.world && state.story && (
