@@ -161,6 +161,11 @@ export function VnStudio() {
   const [history, setHistory] = useState<VnAssetDatasetEntry[]>([]);
 
   const job = jobForAsset(jobsState, activeWorld, activeType, activeName);
+  // the latest few, to restore from here; the dataset gallery holds them all
+  const recent = useMemo(
+    () => [...history].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 6),
+    [history],
+  );
   const generating = jobsState.starting || (job ? isActive(job) : false);
 
   // pick the jobs back up after a refresh
@@ -783,7 +788,7 @@ export function VnStudio() {
                   </p>
                 ) : (
                   <ul className="vs-gallery">
-                    {history.map((h) => (
+                    {recent.map((h) => (
                       <li key={h.timestamp}>
                         <button
                           type="button"
@@ -805,6 +810,19 @@ export function VnStudio() {
                       </li>
                     ))}
                   </ul>
+                )}
+                {history.length > 0 && (
+                  <button
+                    type="button"
+                    className="vs-btn"
+                    onClick={() =>
+                      activeWorld &&
+                      activeSlug &&
+                      nav.toDataset(activeWorld, activeSlug, activeType, activeName)
+                    }
+                  >
+                    <T>Open full gallery</T>
+                  </button>
                 )}
               </details>
 

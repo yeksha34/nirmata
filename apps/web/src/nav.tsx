@@ -23,7 +23,7 @@ export interface CardRef {
   keywords: string[];
 }
 
-export type TopRoute = "worlds" | "vn";
+export type TopRoute = "worlds" | "vn" | "dataset";
 
 export interface NavState {
   route: TopRoute;
@@ -38,16 +38,17 @@ export interface NavState {
 function parseLocation(): NavState {
   if (typeof window === "undefined") return { route: "worlds" };
   const pathname = window.location.pathname;
-  if (pathname.startsWith("/vn")) {
+  if (pathname.startsWith("/vn") || pathname.startsWith("/dataset")) {
     const parts = pathname.slice(1).split("/").filter(Boolean);
     const vnWorld = parts[1] ? decodeURIComponent(parts[1]) : undefined;
     const vnSlug = parts[2] ? decodeURIComponent(parts[2]) : undefined;
     const rawType = parts[3]?.toLowerCase();
-    const vnAssetType = rawType === "sprite" || rawType === "cg" || rawType === "bg" ? rawType : undefined;
+    const vnAssetType =
+      rawType === "sprite" || rawType === "cg" || rawType === "bg" ? rawType : undefined;
     const vnAssetName = parts[4] ? decodeURIComponent(parts[4]) : undefined;
 
     return {
-      route: "vn",
+      route: parts[0] === "dataset" ? "dataset" : "vn",
       vnWorld,
       vnSlug,
       vnAssetType,
@@ -82,6 +83,8 @@ export interface Nav {
   vnAssetType?: "sprite" | "cg" | "bg";
   vnAssetName?: string;
   toVn: (world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => void;
+  /** The dataset gallery: every archived render of a visual novel, or of one asset in it. */
+  toDataset: (world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => void;
   toWorlds: (world?: string, card?: string) => void;
 }
 
@@ -97,23 +100,45 @@ export function NavProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  const toVn = useCallback((world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => {
-    let path = "/vn";
-    if (world && slug) {
-      path += `/${encodeURIComponent(world)}/${encodeURIComponent(slug)}`;
-      if (type && name) {
-        path += `/${type}/${encodeURIComponent(name)}`;
+  const toVn = useCallback(
+    (world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => {
+      let path = "/vn";
+      if (world && slug) {
+        path += `/${encodeURIComponent(world)}/${encodeURIComponent(slug)}`;
+        if (type && name) {
+          path += `/${type}/${encodeURIComponent(name)}`;
+        }
       }
-    }
-    history.pushState(null, "", path);
-    setPlace({
-      route: "vn",
-      vnWorld: world,
-      vnSlug: slug,
-      vnAssetType: type,
-      vnAssetName: name,
-    });
-  }, []);
+      history.pushState(null, "", path);
+      setPlace({
+        route: "vn",
+        vnWorld: world,
+        vnSlug: slug,
+        vnAssetType: type,
+        vnAssetName: name,
+      });
+    },
+    [],
+  );
+
+  const toDataset = useCallback(
+    (world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => {
+      let path = "/dataset";
+      if (world && slug) {
+        path += `/${encodeURIComponent(world)}/${encodeURIComponent(slug)}`;
+        if (type && name) path += `/${type}/${encodeURIComponent(name)}`;
+      }
+      history.pushState(null, "", path);
+      setPlace({
+        route: "dataset",
+        vnWorld: world,
+        vnSlug: slug,
+        vnAssetType: type,
+        vnAssetName: name,
+      });
+    },
+    [],
+  );
 
   const toWorlds = useCallback((world?: string, card?: string) => {
     const path = world ? `/worlds/${encodeURIComponent(world)}` : "/worlds";
@@ -138,7 +163,11 @@ export function NavProvider({ children }: { children: ReactNode }) {
         setCards([]);
       },
       selectCard: (card) => {
-        setPlace((p) => ({ ...(p.world ? { world: p.world } : {}), ...(card ? { card } : {}), route: "worlds" }));
+        setPlace((p) => ({
+          ...(p.world ? { world: p.world } : {}),
+          ...(card ? { card } : {}),
+          route: "worlds",
+        }));
       },
       cards,
       setCards,
@@ -147,9 +176,10 @@ export function NavProvider({ children }: { children: ReactNode }) {
       vnAssetType: place.vnAssetType,
       vnAssetName: place.vnAssetName,
       toVn,
+      toDataset,
       toWorlds,
     }),
-    [place, cards, toVn, toWorlds],
+    [place, cards, toVn, toDataset, toWorlds],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

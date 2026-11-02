@@ -334,4 +334,18 @@ export const HI_TEXT: Record<string, string> = {
   "Deleted {count} rendered files.": "{count} बनी हुई फ़ाइलें हटाई गईं।",
   "The table restarted while this was running. Start it again.": "यह चल रहा था तभी पटल पुनः आरंभ हुआ। इसे फिर शुरू करें।",
   "No visual novels found. Adapt a chapter first.": "कोई दृश्य-उपन्यास नहीं मिला। पहले कोई अध्याय रूपांतरित करें।",
+
+  // asset studio
+  "Dataset": "डेटासेट",
+  "Dataset gallery": "डेटासेट दीर्घा",
+  "Asset": "संसाधन",
+  "Find": "खोजें",
+  "Every asset": "हर संसाधन",
+  "archived renders": "संग्रहित निर्माण",
+  "Open in studio": "कार्यशाला में खोलें",
+  "Open full gallery": "पूरी दीर्घा खोलें",
+  "Generation queue": "निर्माण कतार",
+  "Dismiss": "हटाएँ",
+  "Clear finished": "पूर्ण हटाएँ",
+  "Drag to move. Alt + arrows moves it too.": "खिसकाने के लिए खींचें। Alt + तीर कुंजियाँ भी खिसकाती हैं।",
 };

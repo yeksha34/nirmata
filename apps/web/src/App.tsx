@@ -7,6 +7,8 @@ import { HeaderBar } from "./header";
 import { T, useTapToTranslate } from "./i18n";
 import { useLive } from "./live";
 import { NavProvider, useNav } from "./nav";
+import { QueuePortal } from "./queue-portal";
+import { DatasetGallery } from "./screens/DatasetGallery";
 import { Join } from "./screens/Join";
 import { TableScreen } from "./screens/Table";
 import { VnStudio } from "./screens/VnStudio";
@@ -114,6 +116,7 @@ export function App() {
               <main>
                 <MainContent screen={screen} />
               </main>
+              {state.you?.seat === "host" && <QueuePortal />}
               {state.story && (
                 <StoryWindow
                   title={state.world?.title ?? "Story"}
@@ -138,6 +141,9 @@ function MainContent({ screen }: { screen: ReturnType<typeof screenFor> | undefi
   const nav = useNav();
   if (nav.route === "vn") {
     return <VnStudio />;
+  }
+  if (nav.route === "dataset") {
+    return <DatasetGallery />;
   }
   return (
     <>

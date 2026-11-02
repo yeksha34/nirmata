@@ -2617,3 +2617,184 @@ label.choice-opt:has(input:focus-visible) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---- Dataset gallery (screens/DatasetGallery.tsx) ---- */
+.ds-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.9rem;
+  align-items: end;
+}
+.ds-group {
+  display: grid;
+  gap: 0.7rem;
+}
+.ds-group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.ds-group-head h2 {
+  margin: 0;
+  flex: 1;
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-grid,
+.ds-fb,
+.queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.8rem;
+}
+.ds-run {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  font-size: 0.78rem;
+}
+.ds-run img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.ds-run time {
+  color: var(--muted);
+}
+.ds-prompt {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.ds-fb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.ds-fb li {
+  max-width: 100%;
+  padding: 0 0.45rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-fb li[data-choice="better"] {
+  color: var(--ok);
+}
+.ds-fb li[data-choice="worse"] {
+  color: var(--bad);
+}
+
+/* ---- Generation queue panel (queue-portal.tsx) ----
+   A native popover: it floats in the top layer over every screen. */
+.queue-portal {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: min(21rem, calc(100vw - 2rem));
+  max-height: min(26rem, calc(100vh - 2rem));
+  padding: 0;
+  overflow: hidden;
+  display: block;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow), 0 8px 28px rgb(0 0 0 / 22%);
+}
+.queue-portal > details {
+  display: grid;
+  max-height: inherit;
+}
+.queue-portal summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  font-size: 0.85rem;
+}
+.queue-portal summary:active {
+  cursor: grabbing;
+}
+.queue-portal summary strong {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.queue-list {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem 0.6rem;
+  overflow-y: auto;
+  max-height: 18rem;
+}
+.queue-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.2rem 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+.queue-list li[data-state="error"] {
+  border-color: var(--bad);
+}
+.queue-list li[data-state="done"] {
+  border-color: color-mix(in srgb, var(--ok) 50%, var(--line));
+}
+.queue-list progress {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 0.4rem;
+  accent-color: var(--accent);
+  order: 3;
+}
+.queue-open {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.queue-open strong,
+.queue-open small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: inherit;
+}
+.queue-open small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.queue-list .vs-btn-quiet {
+  margin-left: 0;
+}
+.queue-clear {
+  margin: 0 0.6rem 0.6rem;
+}
