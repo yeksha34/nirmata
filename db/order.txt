@@ -4,3 +4,4 @@ platform/migrations/20261102000200_platform_core.sql
 identity/migrations/20261102000300_identity.sql
 membership/migrations/20261102000400_membership.sql
 identity/migrations/20261102000450_accept_invitation.sql
+world_lore/migrations/20261102000500_world_lore.sql
