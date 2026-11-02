@@ -287,7 +287,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
     const seat = table.joinAccount({
       userId: session.user.id,
       name: profile.displayName,
-      host: profile.canFoundWorlds,
+      role: profile.role,
     });
     return c.json({ token: seat.token, you: table.you(seat) }, 201);
   });

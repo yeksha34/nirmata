@@ -40,6 +40,7 @@ import {
   injectWorkflowParams,
 } from "@nirmata/gen";
 import { HttpError } from "./errors";
+import { type PlatformRole, seatKindOf } from "./roles";
 import {
   type CardInput,
   type Library,
@@ -121,8 +122,8 @@ export interface Account {
   userId: string;
   /** The name they go by; made into a valid nickname if it is not one. */
   name: string;
-  /** May found worlds: the table's host. */
-  host: boolean;
+  /** What they are on the platform; an author or admin runs the table (ADR-0029). */
+  role: PlatformRole;
 }
 
 /** The world the table has open. */
@@ -769,7 +770,7 @@ export class Table {
       if (seat.account === account.userId) return seat;
     }
     const base = nickFrom(account.name);
-    if (account.host) {
+    if (seatKindOf(account.role) === "host") {
       if (this.hostAccount !== undefined && this.hostAccount !== account.userId) {
         throw new HttpError(409, "table_has_host", "This table already has a host.");
       }

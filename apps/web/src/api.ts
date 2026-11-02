@@ -110,7 +110,12 @@ export const api = {
   me: () =>
     get<{
       user: { id: string; email: string };
-      profile: { displayName: string; canFoundWorlds: boolean; ageConfirmed: boolean } | null;
+      profile: {
+        displayName: string;
+        canFoundWorlds: boolean;
+        role: "admin" | "author" | "player";
+        ageConfirmed: boolean;
+      } | null;
     }>("/api/auth/me"),
 
   // sign-in: the server talks to Supabase; the browser only ever calls these

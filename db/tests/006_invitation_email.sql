@@ -20,7 +20,7 @@ end $$;
 grant execute on function tx.act(uuid, text) to public;
 
 select tx.act(null, 'service_role');
-insert into tx.tok select identity.create_host_invitation('Invitee@Example.test');
+insert into tx.tok select identity.create_author_invitation('Invitee@Example.test');
 
 insert into tx.out (line) select is(identity.invitation_email((select t from tx.tok)), 'invitee@example.test', 'the token finds the address');
 insert into tx.out (line) select is(identity.invitation_email('not-a-real-token'), null, 'a wrong token finds nothing');
