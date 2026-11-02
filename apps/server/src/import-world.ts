@@ -21,8 +21,7 @@ async function main(): Promise<void> {
     for (const file of [join(process.cwd(), ".env"), join(here, "..", "..", "..", ".env")]) {
       if (existsSync(file)) {
         try {
-          process.loadEnvFile(file);
-          break;
+          process.loadEnvFile(file); // a variable already set is kept, so the nearest file wins
         } catch {
           // ignore an unreadable .env
         }
