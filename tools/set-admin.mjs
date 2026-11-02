@@ -1,12 +1,11 @@
 #!/usr/bin/env node
-// Human-run: invites the first world host (or any person who may found worlds). Run it yourself.
+// Human-run: makes a signed-up person a platform administrator, or takes it back. Run it yourself.
 //
-//   node tools/invite-host.mjs <email> [--days=7]
+//   node tools/set-admin.mjs <email> [--off]
 //
 // Needs DATABASE_URL_BOOTSTRAP in .env (the postgres login, as for db-apply) and `cd tools/db-deps && npm install`.
-// It acts as migration_owner to call identity.create_host_invitation, which only the owner and the service role may call.
-// The invitation token is printed once and stored only as a hash; send the link to that person. Sign-up with that
-// address then works (Supabase's before-user-created hook allows it), and accepting the invitation lets them found worlds.
+// The person must already have an account and have finished onboarding. It acts as service_role to call
+// identity.set_admin, which the backend's own login cannot call. An administrator can do everything, in every world.
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
@@ -24,9 +23,9 @@ if (existsSync(envFile)) {
 
 const args = process.argv.slice(2);
 const email = args.find((a) => !a.startsWith('--'))?.trim().toLowerCase();
-const days = Number(args.find((a) => a.startsWith('--days='))?.slice(7) ?? '7');
-if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !Number.isInteger(days) || days < 1 || days > 30) {
-  console.error('usage: node tools/invite-host.mjs <email> [--days=1..30]');
+const on = !args.includes('--off');
+if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+  console.error('usage: node tools/set-admin.mjs <email> [--off]');
   process.exit(2);
 }
 if (!env.DATABASE_URL_BOOTSTRAP) {
@@ -46,12 +45,12 @@ const client = new pg.Client({ connectionString: env.DATABASE_URL_BOOTSTRAP, ssl
 await client.connect();
 try {
   await client.query('begin');
-  await client.query('set local role migration_owner');
-  const res = await client.query('select identity.create_host_invitation($1, make_interval(days => $2)) as token', [email, days]);
+  const found = await client.query('select p.user_id from identity.profiles p join auth.users u on u.id = p.user_id where lower(u.email) = $1', [email]);
+  if (found.rows.length === 0) throw new Error(`no onboarded account for ${email}`);
+  await client.query('set local role service_role');
+  await client.query('select identity.set_admin($1, $2)', [found.rows[0].user_id, on]);
   await client.query('commit');
-  const site = (env.NIRMATA_SITE_URL || `http://127.0.0.1:${env.NIRMATA_PORT || 8788}`).replace(/\/+$/, '');
-  console.log(`Invitation for ${email}, valid ${days} days.`);
-  console.log(`Send this link (shown once, not stored):\n  ${site}/accept-invite?token=${res.rows[0].token}`);
+  console.log(`${email} is ${on ? 'now' : 'no longer'} an administrator.`);
 } catch (e) {
   await client.query('rollback').catch(() => {});
   console.error(`failed: ${e.message}`);

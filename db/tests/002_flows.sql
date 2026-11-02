@@ -43,11 +43,11 @@ insert into tx.out (line) select throws_ok($$select world_lore.create_world('nop
 select tx.act(tx.id('H'));
 insert into tx.ids select 'world', world_lore.create_world('flow-world', 'Flow');
 insert into tx.ids select 'line', id from world_lore.world_lines where world_id = tx.id('world') and is_default;
-insert into tx.out (line) select ok(membership.is_host(tx.id('world')), 'the founder is the host');
+insert into tx.out (line) select ok(membership.is_author(tx.id('world')), 'the founder is an author');
 select membership.grant_role(tx.id('world'), tx.id('M'), 'moderator');
 select membership.grant_role(tx.id('world'), tx.id('P'), 'player');
-insert into tx.out (line) select throws_ok(format('select membership.grant_role(%L, %L, %L)', tx.id('world'), tx.id('O'), 'host'), '42501', null,
-  'a host cannot grant the host role');
+insert into tx.out (line) select throws_ok(format('select membership.grant_role(%L, %L, %L)', tx.id('world'), tx.id('O'), 'author'), '42501', null,
+  'an author cannot grant the author role');
 select tx.act(tx.id('P'));
 insert into tx.out (line) select ok(membership.is_member(tx.id('world')), 'the player is a member');
 insert into tx.out (line) select throws_ok(format('select membership.grant_role(%L, %L, %L)', tx.id('world'), tx.id('P'), 'moderator'), '42501', null,
@@ -229,7 +229,7 @@ insert into tx.out (line) select ok(not membership.can_listen_topic('world:' || 
 select tx.act(null, 'anon');
 insert into tx.out (line) select throws_ok('select * from world_lore.worlds', '42501', null, 'anon cannot read worlds');
 insert into tx.out (line) select throws_ok('select * from story_run.turns', '42501', null, 'anon cannot read turns');
-insert into tx.out (line) select throws_ok('select membership.is_host(gen_random_uuid())', '42501', null, 'anon cannot call helpers');
+insert into tx.out (line) select throws_ok('select membership.is_author(gen_random_uuid())', '42501', null, 'anon cannot call helpers');
 
 reset role;
 select count(*) filter (where line like 'ok%') as passed, count(*) filter (where line like 'not ok%') as failed,

@@ -164,7 +164,7 @@ describe("auth routes", () => {
     const me = await r.app.request("/api/auth/me", { headers: { cookie } });
     expect(await me.json()).toEqual({
       user: { id: USER, email: "ann@example.test" },
-      profile: { displayName: "Ann", canFoundWorlds: true, ageConfirmed: false },
+      profile: { displayName: "Ann", canFoundWorlds: true, role: "author", ageConfirmed: false },
     });
     expect((await post(r.app, "/api/auth/logout", {}, cookie)).status).toBe(200);
     expect((await r.app.request("/api/auth/me", { headers: { cookie } })).status).toBe(401);
@@ -258,7 +258,7 @@ describe("auth routes", () => {
 
   describe("seating a signed-in person", () => {
     const profile = (host: boolean, age = true) => [
-      { display_name: "Ann Host", can_found_worlds: host, age_confirmed: age },
+      { display_name: "Ann Host", can_found_worlds: host, is_admin: false, age_confirmed: age },
     ];
     const signedIn = async (rows: Record<string, unknown>[]) => {
       const { auth } = setup([{ status: 200, body: TOKEN }], rows);
@@ -276,6 +276,8 @@ describe("auth routes", () => {
       expect(res.status).toBe(201);
       const body = await res.json();
       expect(body.you).toMatchObject({ nick: "Ann_Host", seat: "host", host: true, account: true });
+      const me = await (await r.app.request("/api/auth/me", { headers: { cookie } })).json();
+      expect(me.profile.role).toBe("author");
       expect((await (await r.app.request("/api/table")).json()).host).toBe("Ann_Host");
       // the same person gets the same seat back, not a second one
       const again = await (await post(r.app, "/api/join/session", {}, cookie)).json();

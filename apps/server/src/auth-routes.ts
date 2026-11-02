@@ -10,6 +10,7 @@ import type { Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { z } from "zod";
 import { HttpError } from "./errors";
+import { type PlatformRole, platformRoleOf } from "./roles";
 
 /** Sign-in through the server: the browser talks only to these routes, never to Supabase. */
 export interface AuthDeps {
@@ -103,8 +104,10 @@ async function invitationEmail(db: Db, token: string): Promise<string> {
 
 export interface Profile {
   displayName: string;
-  /** May found worlds: the host (invited with invite-host). */
+  /** May found worlds: an author (invited with invite-author). */
   canFoundWorlds: boolean;
+  /** admin, author or player (ADR-0029). */
+  role: PlatformRole;
   ageConfirmed: boolean;
 }
 
@@ -115,7 +118,7 @@ export async function readProfile(db: Db, session: AuthSession): Promise<Profile
       session.user.id,
       (q) =>
         q(
-          `select p.display_name, p.can_found_worlds, coalesce(a.age_confirmed, false) as age_confirmed
+          `select p.display_name, p.can_found_worlds, p.is_admin, coalesce(a.age_confirmed, false) as age_confirmed
              from identity.profiles p left join identity.profile_age a using (user_id) where p.user_id = $1`,
           [session.user.id],
         ),
@@ -123,9 +126,11 @@ export async function readProfile(db: Db, session: AuthSession): Promise<Profile
     )
   ).rows[0];
   if (!row) return null;
+  const canFoundWorlds = row.can_found_worlds === true;
   return {
     displayName: String(row.display_name),
-    canFoundWorlds: row.can_found_worlds === true,
+    canFoundWorlds,
+    role: platformRoleOf({ isAdmin: row.is_admin === true, canFoundWorlds }),
     ageConfirmed: row.age_confirmed === true,
   };
 }

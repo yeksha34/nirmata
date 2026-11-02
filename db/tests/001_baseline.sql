@@ -77,7 +77,7 @@ insert into identity.profile_age (user_id, age_confirmed, age_confirmed_at, sour
 insert into world_lore.worlds (id, slug, title, created_by) values
   ('00000000-0000-0000-0000-0000000000b1', 'baseline-world', 'Baseline', '00000000-0000-0000-0000-0000000000a1');
 insert into membership.world_members (world_id, user_id, role_key, granted_by) values
-  ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000a1', 'host',
+  ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000a1', 'author',
    '00000000-0000-0000-0000-0000000000a1');
 
 insert into _out (line) select throws_ok($$
@@ -106,7 +106,7 @@ $$, '23514', null, 'accepted -> pending is refused');
 
 -- 8. revocation takes effect on the next statement ----------------------------------------------
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}';
-insert into _out (line) select is(membership.is_host('00000000-0000-0000-0000-0000000000b1'), true, 'the host is a host');
+insert into _out (line) select is(membership.is_author('00000000-0000-0000-0000-0000000000b1'), true, 'the author is an author');
 reset request.jwt.claims;
 
 select count(*) filter (where line like 'ok%') as passed, count(*) filter (where line like 'not ok%') as failed,
