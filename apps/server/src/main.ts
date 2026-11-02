@@ -12,6 +12,7 @@ import { ConfigError, loadConfig } from "./config";
 import { Library } from "./files";
 import { DbImages } from "./image-store";
 import { DbLore } from "./lore-store";
+import { DbRecorder } from "./render-recorder";
 import { Table } from "./table";
 
 /** Open the browser on the host's own link, so the person who ran the server just lands in it. */
@@ -93,6 +94,7 @@ async function main(): Promise<void> {
     hostKey: config.hostKey,
     requireAdultConfirmation: config.requireAdultConfirmation,
     log,
+    recorder: db ? new DbRecorder(db, stores, () => hostUser(), log) : undefined,
   });
   hostUser = () => table.hostUserId();
   const opened = await table.openOnlyWorld();

@@ -31,8 +31,14 @@ export class DbImages implements DatasetImages {
       ).rows[0]?.id;
       if (!world) return undefined;
       const path = `${String(world)}/${scope}/${assetName}/${run}.png`;
-      const render = (await q("select id from assets.renders where storage_path = $1", [path]))
-        .rows[0]?.id;
+      // exact first; an older dataset may have been named in another case
+      const render = (
+        await q(
+          `select id from assets.renders where lower(storage_path) = lower($1)
+            order by (storage_path = $1) desc limit 1`,
+          [path],
+        )
+      ).rows[0]?.id;
       return render ? String(render) : undefined;
     });
     if (!found) return undefined;

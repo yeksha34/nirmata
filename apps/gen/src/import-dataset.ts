@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { Db } from "@nirmata/db";
 import type { Stores } from "@nirmata/storage";
+import { recordRender } from "./record-render";
 
 export type ImportTarget = "supabase" | "local";
 export type ImportSelect = "latest" | "all";
@@ -201,32 +202,21 @@ export async function importDataset(options: ImportOptions): Promise<ImportRepor
       const data = new Uint8Array(readFileSync(c.file));
       await (store as NonNullable<typeof store>).put(c.path, data, "image/png");
       try {
-        await db.asUser(userId, async (q) => {
-          const found = await q(
-            "select id from assets.assets where world_id = $1 and vn_id is null and kind_key = $2 and name = $3",
-            [worldId, c.kind, c.name],
-          );
-          const assetId =
-            found.rows[0]?.id ??
-            (await q("select assets.create_asset($1, null, $2, $3) as id", [worldId, c.kind, c.name])).rows[0]?.id;
-          const spec = (
-            await q("select assets.add_spec($1, $2, $3, 0, 20, 7, 'euler', 'normal', $4, $5) as id", [
-              assetId,
-              c.positive,
-              c.negative,
-              c.width,
-              c.height,
-            ])
-          ).rows[0]?.id;
-          await q("select assets.record_render($1, $2, $3, null, $4, $5, $6, 'image/png')", [
-            assetId,
-            spec,
-            c.path,
-            target,
-            c.bytes,
-            c.sha256,
-          ]);
-        });
+        await db.asUser(userId, (q) =>
+          recordRender(q, {
+            worldId,
+            kind: c.kind,
+            name: c.name,
+            path: c.path,
+            positive: c.positive,
+            negative: c.negative,
+            width: c.width,
+            height: c.height,
+            store: target,
+            bytes: c.bytes,
+            sha256: c.sha256,
+          }),
+        );
       } catch (e) {
         await (store as NonNullable<typeof store>).remove(c.path).catch(() => undefined);
         throw e;

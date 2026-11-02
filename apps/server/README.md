@@ -95,6 +95,8 @@ It reads `world.json` and the card folders, creates the world if its name is not
 
 After the import, an imported world's cards are read and written in the database whenever the table's host is signed in (ADR-0030); a world that was not imported, or a host who signed in with the obsolete host key, still uses the folder. The folder copy of an imported world is then stale: do not edit it, and do not re-run the import over database edits. Dataset gallery images of an imported world are served from its store when the request carries the signed-in host's cookie, and from the folder otherwise. `world.json`, chapters, drafts, stories, visual novels, visual novel images and new generations still come from and go to files.
 
+A new generation of an imported world is kept twice: the file is saved on disk as before, and when the host is signed in the image is also uploaded to Supabase storage (or `NIRMATA_ASSET_DIR` when Supabase is not set up or the quota is at "block") and recorded as an asset, spec and render, the same rows the importer writes. A failure to record is logged and does not fail the generation. Archive and delete still change files only.
+
 ## Importing dataset images
 
 A person runs this; it needs `DATABASE_URL_RW` and, for `--target=supabase`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (or `NIRMATA_ASSET_DIR` for `--target=local`):
