@@ -11,3 +11,5 @@ story_run/migrations/20261102000600_story_run.sql
 reader/migrations/20261102000700_reader.sql
 platform/migrations/20261102000800_templates.sql
 vn_content/migrations/20261102000900_vn_content.sql
+platform/migrations/20261102000950_server_guard.sql
+assets/migrations/20261102001000_assets.sql
