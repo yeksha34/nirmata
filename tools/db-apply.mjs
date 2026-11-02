@@ -2,7 +2,8 @@
 // Applies db/ migrations in db/order.txt order. A HUMAN runs this, agents do not (AGENTS.md).
 //   cd tools/db-deps && npm install
 //   node tools/db-apply.mjs --dry     list what would run
-//   node tools/db-apply.mjs           apply what is not applied yet, then set the app role passwords
+//   node tools/db-apply.mjs           apply what is not applied yet
+//   node tools/db-apply.mjs --passwords   also set the app_rw / app_ro passwords from .env
 // Uses DATABASE_URL_BOOTSTRAP (user postgres) for everything: 001 runs as postgres, every other file runs
 // after `set role migration_owner` so the objects are owned by it. Applied files are recorded in
 // supabase_migrations.schema_migrations. Prints file names and errors only, never a secret or a row.
@@ -73,10 +74,16 @@ for (const [i, f] of files.entries()) {
   } catch (e) { await c.query('rollback').catch(() => {}); fail(f, e); }
 }
 
-try {
-  await c.query(`alter role app_rw password ${pg.escapeLiteral(env.APP_RW_PASSWORD)}; alter role app_ro password ${pg.escapeLiteral(env.APP_RO_PASSWORD)}`);
-  console.log('set    app_rw and app_ro passwords');
-} catch (e) { fail('role passwords', e); }
+// Setting a password re-hashes it with a new salt, and the connection pooler caches the old hash for a while,
+// so logins through it fail for a minute or two. Do it only when asked.
+if (process.argv.includes('--passwords')) {
+  try {
+    await c.query(`alter role app_rw password ${pg.escapeLiteral(env.APP_RW_PASSWORD)}; alter role app_ro password ${pg.escapeLiteral(env.APP_RO_PASSWORD)}`);
+    console.log('set    app_rw and app_ro passwords (the pooler may refuse them for a minute or two)');
+  } catch (e) { fail('role passwords', e); }
+} else {
+  console.log('skip   role passwords (add --passwords to set them)');
+}
 
 await c.end();
 console.log('done. next: node tools/db-doctor.mjs --login');

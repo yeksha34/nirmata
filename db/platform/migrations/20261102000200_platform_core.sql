@@ -14,8 +14,6 @@ language sql stable set search_path = '' as $$
   select nullif(coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
                          platform.jwt() ->> 'sub'), '')::uuid;
 $$;
-grant execute on function platform.jwt(), platform.uid() to authenticated, app_rw, app_ro, service_role;
-
 -- ---------------------------------------------------------------------------------------------
 -- small trigger functions
 -- ---------------------------------------------------------------------------------------------
@@ -227,6 +225,8 @@ $$;
 -- grants: platform is not exposed; only the server roles touch it
 -- ---------------------------------------------------------------------------------------------
 revoke execute on all functions in schema platform from public, anon, authenticated;
+-- who is calling: every role and every policy needs these, so they are granted after the revoke above
+grant execute on function platform.jwt(), platform.uid() to authenticated, app_rw, app_ro, service_role;
 grant execute on function platform.write_audit(uuid, uuid, text, text, uuid, jsonb) to app_rw, service_role;
 grant execute on function platform.emit(text, uuid, jsonb, text) to app_rw, service_role;
 grant select, update (delivered_at) on platform.outbox to service_role;
