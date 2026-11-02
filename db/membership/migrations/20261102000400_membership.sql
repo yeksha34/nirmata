@@ -99,7 +99,7 @@ language sql stable security definer set search_path = '' as $$
     join identity.profiles p     on p.user_id = m.user_id
     join identity.profile_age a  on a.user_id = m.user_id
     where m.world_id = p_world
-      and m.user_id = (select auth.uid())
+      and m.user_id = (select platform.uid())
       and m.revoked_at is null
       and m.role_key = any (p_roles)
       and a.age_confirmed
@@ -123,7 +123,7 @@ create function membership.is_story_player(p_story uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from membership.story_seats s
-    where s.story_id = p_story and s.user_id = (select auth.uid()) and s.left_at is null
+    where s.story_id = p_story and s.user_id = (select platform.uid()) and s.left_at is null
       and membership.is_member(s.world_id));
 $$;
 
@@ -131,7 +131,7 @@ create function membership.is_hushed(p_story uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (
     select 1 from membership.hushes h
-    where h.story_id = p_story and h.user_id = (select auth.uid()) and h.lifted_at is null
+    where h.story_id = p_story and h.user_id = (select platform.uid()) and h.lifted_at is null
       and now() >= h.starts_at and now() < coalesce(h.ends_at, 'infinity'::timestamptz));
 $$;
 
@@ -141,7 +141,7 @@ language sql stable security definer set search_path = '' as $$
     select 1
     from membership.world_members a
     join membership.world_members b on b.world_id = a.world_id
-    where a.user_id = (select auth.uid()) and a.revoked_at is null
+    where a.user_id = (select platform.uid()) and a.revoked_at is null
       and b.user_id = p_user and b.revoked_at is null);
 $$;
 
@@ -191,7 +191,7 @@ begin
   if p_role not in ('moderator', 'player') then
     raise exception 'a host can grant moderator or player only' using errcode = '42501';
   end if;
-  return membership._add_member(p_world, p_user, p_role, (select auth.uid()));
+  return membership._add_member(p_world, p_user, p_role, (select platform.uid()));
 end $$;
 
 create function membership.revoke_role(p_world uuid, p_user uuid, p_role text) returns void
@@ -213,7 +213,7 @@ begin
   if v_id is null then
     raise exception 'no such live role' using errcode = 'P0002';
   end if;
-  perform platform.write_audit((select auth.uid()), p_world, 'role_revoke', 'world_member', v_id,
+  perform platform.write_audit((select platform.uid()), p_world, 'role_revoke', 'world_member', v_id,
                                jsonb_build_object('role', p_role));
   perform platform.emit('membership.revoked', p_world, jsonb_build_object('user', p_user),
                         'revoke:' || v_id::text);
@@ -235,10 +235,10 @@ begin
     raise exception 'a host cannot be hushed' using errcode = '42501';
   end if;
   insert into membership.hushes (world_id, story_id, user_id, by_user_id, reason, ends_at)
-    values (p_world, p_story, p_user, (select auth.uid()), p_reason, p_ends_at) returning id into v_id;
+    values (p_world, p_story, p_user, (select platform.uid()), p_reason, p_ends_at) returning id into v_id;
   insert into membership.moderation_actions (world_id, story_id, target_user_id, actor_id, kind_key, target_ref, reason)
-    values (p_world, p_story, p_user, (select auth.uid()), 'hush', v_id, p_reason);
-  perform platform.write_audit((select auth.uid()), p_world, 'moderate', 'hush', v_id);
+    values (p_world, p_story, p_user, (select platform.uid()), 'hush', v_id, p_reason);
+  perform platform.write_audit((select platform.uid()), p_world, 'moderate', 'hush', v_id);
   return v_id;
 end $$;
 
@@ -257,11 +257,11 @@ begin
   if not found or not (select membership.is_staff(h.world_id)) then
     raise exception 'staff only' using errcode = '42501';
   end if;
-  update membership.hushes set lifted_at = now(), lifted_by = (select auth.uid())
+  update membership.hushes set lifted_at = now(), lifted_by = (select platform.uid())
    where id = p_hush and lifted_at is null;
   insert into membership.moderation_actions (world_id, story_id, target_user_id, actor_id, kind_key, target_ref, reason)
-    values (h.world_id, h.story_id, h.user_id, (select auth.uid()), 'lift', p_hush, p_reason);
-  perform platform.write_audit((select auth.uid()), h.world_id, 'moderate', 'hush_lift', p_hush);
+    values (h.world_id, h.story_id, h.user_id, (select platform.uid()), 'lift', p_hush, p_reason);
+  perform platform.write_audit((select platform.uid()), h.world_id, 'moderate', 'hush_lift', p_hush);
 end $$;
 
 -- ---------------------------------------------------------------------------------------------
@@ -273,17 +273,17 @@ alter table membership.moderation_actions enable row level security;
 alter table membership.hushes             enable row level security;
 
 create policy members_read on membership.world_members for select to authenticated
-  using (user_id = (select auth.uid()) or (select membership.is_staff(world_id)));
+  using (user_id = (select platform.uid()) or (select membership.is_staff(world_id)));
 create policy seats_read on membership.story_seats for select to authenticated
-  using (user_id = (select auth.uid()) or (select membership.is_staff(world_id)));
+  using (user_id = (select platform.uid()) or (select membership.is_staff(world_id)));
 create policy moderation_read_staff on membership.moderation_actions for select to authenticated
   using ((select membership.is_staff(world_id)));
 create policy moderation_read_target on membership.moderation_actions for select to authenticated
-  using (target_user_id = (select auth.uid()));
+  using (target_user_id = (select platform.uid()));
 create policy hushes_read_staff on membership.hushes for select to authenticated
   using ((select membership.is_staff(world_id)));
 create policy hushes_read_own on membership.hushes for select to authenticated
-  using (user_id = (select auth.uid()));
+  using (user_id = (select platform.uid()));
 
 -- people who share a world can read each other's display name (identity.profiles, columns limited by grant)
 create policy profiles_read_peers on identity.profiles for select to authenticated
@@ -304,7 +304,7 @@ create view membership.v_my_worlds with (security_invoker = true) as
 select m.world_id, array_agg(m.role_key order by r.sort_order) as roles
 from membership.world_members m
 join membership.roles r on r.key = m.role_key
-where m.user_id = (select auth.uid()) and m.revoked_at is null
+where m.user_id = (select platform.uid()) and m.revoked_at is null
 group by m.world_id;
 
 create view membership.v_world_members with (security_invoker = true) as

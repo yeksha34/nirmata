@@ -14,12 +14,14 @@ db/
 |---|---|
 | `node tools/db-build.mjs` | copies the migrations, in order, to `supabase/migrations/` (generated, git-ignored) |
 | `node tools/db-apply.mjs [--dry]` | human-run: applies unapplied migrations via `DATABASE_URL_BOOTSTRAP`, then sets the app role passwords (needs `cd tools/db-deps && npm install`) |
+| `node tools/db-apply.mjs --reset --yes` | development only: drops the nine schemas and forgets applied files, then run `db-apply` again |
 | `node tools/db-build.mjs --check` | verifies order, names and that every file is listed |
 | `FORBIDDEN_TERMS_FILE=<path outside the repo> node tools/db-check-neutral.mjs` | fails if any line contains a forbidden term; fails closed if the file is missing |
 
 ## Running migrations
 
-`_bootstrap` (001) runs once with `DATABASE_URL_BOOTSTRAP` (user `postgres`). Everything else uses `DATABASE_URL_MIGRATOR`.
+Files under `_bootstrap/` run as `postgres` (the only role that can touch Supabase's `auth` schema); all others run as `migration_owner`. They use
+ `DATABASE_URL_BOOTSTRAP` (user `postgres`). Everything else uses `DATABASE_URL_MIGRATOR`.
 
 Migrations run as a login that is a member of `migration_owner` and does `set role migration_owner`
 first, so every object is owned by it. The app never uses that role. `_bootstrap` runs once as a

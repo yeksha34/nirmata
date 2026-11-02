@@ -6,7 +6,7 @@
 -- display name without ever seeing anyone's age state (1:1 split on purpose).
 -- ---------------------------------------------------------------------------------------------
 create table identity.profiles (
-  user_id          uuid primary key references auth.users (id) on delete restrict,
+  user_id          uuid primary key,   -- foreign key to auth.users is added by 003b (bootstrap)
   display_name     text not null check (length(display_name) between 1 and 80),
   can_found_worlds boolean not null default false,       -- set when a platform-issued host invitation is accepted
   disabled_at      timestamptz,
@@ -160,9 +160,9 @@ end $$;
 create function identity.ensure_profile() returns void
 language plpgsql security definer set search_path = '' as $$
 declare
-  v_uid  uuid := (select auth.uid());
-  v_name text := coalesce(nullif(auth.jwt() -> 'user_metadata' ->> 'name', ''),
-                          nullif(auth.jwt() ->> 'email', ''), 'member');
+  v_uid  uuid := (select platform.uid());
+  v_name text := coalesce(nullif(platform.jwt() -> 'user_metadata' ->> 'name', ''),
+                          nullif(platform.jwt() ->> 'email', ''), 'member');
 begin
   if v_uid is null then
     raise exception 'sign-in required' using errcode = '42501';
@@ -176,7 +176,7 @@ end $$;
 create function identity.confirm_age_from_idp() returns boolean
 language plpgsql security definer set search_path = '' as $$
 declare
-  v_uid  uuid := (select auth.uid());
+  v_uid  uuid := (select platform.uid());
   v_rule record;
   v_val  jsonb;
 begin
@@ -187,9 +187,8 @@ begin
 
   for v_rule in
     select r.idp, r.claim_name, r.accepted_values, ai.identity_data
-    from auth.identities ai
+    from identity.user_idp_claims(v_uid) ai
     join identity.idp_age_rules r on r.idp = ai.provider
-    where ai.user_id = v_uid
   loop
     v_val := v_rule.identity_data -> v_rule.claim_name;
     if v_val is not null and v_rule.accepted_values @> jsonb_build_array(v_val) then
@@ -208,11 +207,11 @@ end $$;
 create function identity.attest_adult() returns void
 language plpgsql security definer set search_path = '' as $$
 declare
-  v_uid uuid := (select auth.uid());
+  v_uid uuid := (select platform.uid());
 begin
   perform identity.ensure_profile();
   if exists (select 1 from identity.idp_age_rules r
-             join auth.identities ai on ai.provider = r.idp and ai.user_id = v_uid) then
+             join identity.user_idp_claims(v_uid) ai on ai.provider = r.idp) then
     raise exception 'this provider confirms age itself' using errcode = '42501';
   end if;
   insert into identity.age_confirmations (user_id, source_key)
@@ -250,9 +249,9 @@ begin
   end if;
   insert into identity.invitations (token_hash, invitee_email, world_id, story_id, role_key, invited_by, expires_at)
     values (sha256(convert_to(v_token, 'UTF8')), lower(trim(p_email)), p_world, p_story, p_role,
-            (select auth.uid()), now() + p_ttl)
+            (select platform.uid()), now() + p_ttl)
     returning id into v_id;
-  perform platform.write_audit((select auth.uid()), p_world, 'invite', 'invitation', v_id,
+  perform platform.write_audit((select platform.uid()), p_world, 'invite', 'invitation', v_id,
                                jsonb_build_object('role', p_role));
   return v_token;
 end $$;
@@ -278,7 +277,7 @@ begin
     raise exception 'host only' using errcode = '42501';
   end if;
   update identity.invitations set status_key = 'revoked' where id = p_invitation;   -- trigger checks the move
-  perform platform.write_audit((select auth.uid()), v_world, 'invite_revoke', 'invitation', p_invitation);
+  perform platform.write_audit((select platform.uid()), v_world, 'invite_revoke', 'invitation', p_invitation);
 end $$;
 
 -- The sweep that expires old invitations (scheduled; service role).
@@ -306,20 +305,20 @@ alter table identity.invitation_status_history enable row level security;
 
 -- own profile, and the profiles of people who share a world (policy helper added in 004)
 create policy profiles_read_own on identity.profiles for select to authenticated
-  using (user_id = (select auth.uid()));
+  using (user_id = (select platform.uid()));
 create policy profiles_update_own on identity.profiles for update to authenticated
-  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+  using (user_id = (select platform.uid())) with check (user_id = (select platform.uid()));
 
 create policy profile_age_read_own on identity.profile_age for select to authenticated
-  using (user_id = (select auth.uid()));
+  using (user_id = (select platform.uid()));
 create policy age_confirmations_read_own on identity.age_confirmations for select to authenticated
-  using (user_id = (select auth.uid()));
+  using (user_id = (select platform.uid()));
 
 create policy invitations_read_issued on identity.invitations for select to authenticated
-  using (invited_by = (select auth.uid()));
+  using (invited_by = (select platform.uid()));
 create policy invitation_history_read_issued on identity.invitation_status_history for select to authenticated
   using (exists (select 1 from identity.invitations i
-                 where i.id = entity_id and i.invited_by = (select auth.uid())));
+                 where i.id = entity_id and i.invited_by = (select platform.uid())));
 
 revoke all on identity.profiles, identity.profile_age, identity.age_confirmations,
   identity.idp_age_rules, identity.invitations, identity.invitation_status_history

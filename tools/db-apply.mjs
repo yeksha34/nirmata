@@ -39,7 +39,16 @@ try {
   await c.query(`create schema if not exists supabase_migrations;
     create table if not exists supabase_migrations.schema_migrations (version text primary key, name text, statements text[])`);
 } catch (e) { fail('tracking table', e); }
-const redo = process.argv.find((a) => a.startsWith('--reapply='))?.split('=')[1];
+if (process.argv.includes('--reset')) {
+  // development only: drops the nine schemas (and everything in them) and forgets what was applied
+  if (!process.argv.includes('--yes')) { console.error('--reset drops all nine app schemas; add --yes to confirm'); process.exit(2); }
+  const schemas = ['identity', 'membership', 'world_lore', 'story_run', 'reader', 'vn_content', 'assets', 'generation', 'platform'];
+  try {
+    await c.query(`${schemas.map((s) => `drop schema if exists ${s} cascade;`).join(' ')} delete from supabase_migrations.schema_migrations where version like '20261102%'`);
+    console.log('reset  dropped the nine schemas and cleared the applied list');
+  } catch (e) { fail('reset', e); }
+}
+const redo =process.argv.find((a) => a.startsWith('--reapply='))?.split('=')[1];
 if (redo) await c.query('delete from supabase_migrations.schema_migrations where version = $1', [redo]);
 const done = new Set((await c.query('select version from supabase_migrations.schema_migrations')).rows.map((r) => r.version));
 

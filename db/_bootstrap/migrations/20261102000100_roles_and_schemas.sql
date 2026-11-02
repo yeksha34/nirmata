@@ -54,15 +54,6 @@ begin
   execute format('grant create on database %I to migration_owner', current_database());
 end $$;
 
--- the owner needs to read the auth tables the identity functions rely on (Supabase only)
-do $$
-begin
-  if to_regclass('auth.identities') is not null then
-    grant usage on schema auth to migration_owner;
-    grant select on auth.identities to migration_owner;
-  end if;
-end $$;
-
 -- Nothing lives in public, and nobody can create there.
 revoke all on schema public from public, anon, authenticated;
 
@@ -98,7 +89,7 @@ end $$;
 -- every schema is usable by the app roles; the API roles get usage only where they have objects
 grant usage on schema identity, membership, world_lore, story_run, reader, vn_content, assets, generation
   to authenticated, app_rw, app_ro;
-grant usage on schema platform to app_rw, service_role;
+grant usage on schema platform to authenticated, app_rw, app_ro, service_role;   -- platform.uid() / jwt() are used by policies
 grant usage on schema identity to supabase_auth_admin;
 grant usage on schema identity, membership, world_lore, story_run, reader, vn_content, assets, generation, platform
   to service_role;
