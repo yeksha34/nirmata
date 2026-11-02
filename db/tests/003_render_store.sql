@@ -93,6 +93,7 @@ insert into tx.out (line) select is((select count(*) from assets.v_store_usage):
 insert into tx.out (line) select throws_ok(format('select assets.set_render_store(%L, %L)', tx.id('r2'), 'local'), '42501', null, 'an outsider cannot move a file');
 select tx.act(null, 'service_role');
 select assets.set_render_store(tx.id('r2'), 'local', 50, repeat('c', 64), 'image/png');
+select tx.act(tx.id('H'));      -- the server has no table rights; the host reads the result
 insert into tx.out (line) select is((select store from assets.renders where id = tx.id('r2')), 'local', 'the server can move a file');
 insert into tx.out (line) select is((select bytes from assets.renders where id = tx.id('r2')), 50::bigint, 'the server fills in a missing size');
 select tx.act(null, 'anon');
