@@ -81,3 +81,14 @@ Routes (host only for now): `GET /api/health/db`, `GET /api/assets/renders/:id/f
 ## Generation (`apps/gen`)
 
 `@nirmata/gen` holds the asset generation code that used to live in this package: the ComfyUI client, workflow parameter injection, prompt synthesis, sprite transparency and the job tracker. The server imports it; its failures are `GenError`s, which the server turns into the same plain error replies as before.
+
+## Importing dataset images
+
+A person runs this; it needs `DATABASE_URL_RW` and, for `--target=supabase`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (or `NIRMATA_ASSET_DIR` for `--target=local`):
+
+```bash
+pnpm --filter @nirmata/server import:assets worlds/<world> --world=<world uuid> --user=<host uuid> --dry
+pnpm --filter @nirmata/server import:assets worlds/<world> --world=<world uuid> --user=<host uuid>
+```
+
+For each `assets/dataset/<scope>/<name>/<run>/generated_image.png` (newest run per name; `--select=all` takes every run) it uploads the file, then creates the asset, a spec and the render in one transaction, with store, size and hash. It acts as the host (`--user`), checks the storage quota before each upload and stops at "block", skips files whose hash the world already has, and removes an uploaded file if recording it fails. `--dry` does everything except write. Kinds come from the name: `cg_…` is a CG, `bg_…` a background, anything else a sprite. `prompt.json` supplies the prompt; the other sampler settings are placeholders (`euler`, 20 steps, cfg 7, seed 0), and the size is read from the image.
