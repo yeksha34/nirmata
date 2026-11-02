@@ -52,6 +52,32 @@ describe("visual novel adaptation pipeline (server & disk)", () => {
     expect(slidesOnDisk.slides.length).toBe(summary.slideCount);
   });
 
+  it("lists a visual novel's assets for counting without reading the cards", async () => {
+    const worldDir = await tempWorld();
+    let cardReads = 0;
+    const lore = {
+      cardFiles: async () => {
+        cardReads++;
+        return undefined;
+      },
+      save: async () => false,
+      removeFile: async () => false,
+    };
+    const world = new WorldFiles(worldDir, lore);
+    await world.scaffoldVn({ slug: "ch01", title: "One", source: "chapters/01.md" });
+
+    const counted = await world.listVnAssets("ch01", { prompts: false });
+    expect(cardReads).toBe(0);
+    expect(counted.sprites.every((a) => a.defaultPrompt === undefined)).toBe(true);
+
+    const full = await world.listVnAssets("ch01");
+    expect(cardReads).toBeGreaterThan(0);
+    expect(full.sprites.length).toBe(counted.sprites.length);
+    expect(full.cgs.length).toBe(counted.cgs.length);
+    expect(full.backgrounds.length).toBe(counted.backgrounds.length);
+    expect(full.sprites.every((a) => typeof a.defaultPrompt === "string")).toBe(true);
+  });
+
   it("compiles script updates and saves slides to disk", async () => {
     const worldDir = await tempWorld();
     const world = new WorldFiles(worldDir);
