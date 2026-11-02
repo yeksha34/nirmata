@@ -27,6 +27,14 @@ begin
   if not exists (select 1 from pg_roles where rolname = 'app_ro') then
     create role app_ro login noinherit connection limit 15;
   end if;
+
+  -- the login running this file must be able to SET ROLE migration_owner (schemas below are created
+  -- for it); newer Postgres does not give the creator that by default
+  begin
+    execute format('grant migration_owner to %I with set true', current_user);
+  exception when others then
+    execute format('grant migration_owner to %I', current_user);
+  end;
 end $$;
 
 -- the app roles may act as `authenticated` (set local role) so one set of policies serves
