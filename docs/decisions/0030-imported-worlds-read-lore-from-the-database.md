@@ -20,7 +20,7 @@
 ## Consequences
 + An imported world is edited in one place; unimported worlds are unaffected.
 + The change is reversible per world: stop signing in as host and the folder is used.
-- The folder copy of an imported world goes stale and should not be edited. Re-running the import would overwrite database edits; guarding against that is not built.
+- The folder copy of an imported world goes stale and should not be edited. Re-running the import keeps database edits: each imported card carries a hash of what the importer wrote (`meta.imported`), and a card whose stored content no longer matches it is kept and listed unless `--force` is given. A card imported before the stamp existed counts as edited when it differs from the file.
 - A world imported under a custom `--slug` is not recognised, because the lookup uses the `world.json` name.
 - Stories still take their snapshot from the draft, not a published version.
 

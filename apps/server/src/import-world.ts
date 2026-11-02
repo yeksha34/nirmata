@@ -9,10 +9,11 @@ import { importWorldLore } from "./lore-import";
  * database as the author's draft. Run by a person:
  *
  *   pnpm --filter @nirmata/server import:world <world folder> --user=<author uuid>
- *        [--slug=<name>] [--publish] [--dry]
+ *        [--slug=<name>] [--publish] [--force] [--dry]
  *
  * `--user` is the author the import acts as (they must be allowed to found worlds). `--dry` checks
- * everything and writes nothing. Run it again after editing the files: unchanged cards are skipped.
+ * everything and writes nothing. Run it again after editing the files: unchanged cards are skipped,
+ * and a card that was edited in the app since it was imported is kept and listed, unless `--force`.
  * It prints the world's id, which `import:assets` needs.
  */
 async function main(): Promise<void> {
@@ -35,7 +36,7 @@ async function main(): Promise<void> {
   const user = opt("user");
   if (!folder || !user || !isUuid(user)) {
     console.error(
-      "usage: import:world <world folder> --user=<author uuid> [--slug=<name>] [--publish] [--dry]",
+      "usage: import:world <world folder> --user=<author uuid> [--slug=<name>] [--publish] [--force] [--dry]",
     );
     process.exit(2);
   }
@@ -57,6 +58,7 @@ async function main(): Promise<void> {
       userId: user,
       slug: opt("slug"),
       publish: args.includes("--publish"),
+      force: args.includes("--force"),
       dryRun: dry,
       log: (m) => console.log(m),
     });
@@ -71,7 +73,13 @@ async function main(): Promise<void> {
       console.log(`Skipped ${r.skipped.length}:`);
       for (const s of r.skipped.slice(0, 20)) console.log(`  - ${s}`);
     }
-    process.exitCode = r.skipped.length ? 3 : 0;
+    if (r.conflicts.length) {
+      console.log(
+        `Kept ${r.conflicts.length} card(s) edited in the database (add --force to overwrite):`,
+      );
+      for (const c of r.conflicts.slice(0, 20)) console.log(`  - ${c}`);
+    }
+    process.exitCode = r.skipped.length || r.conflicts.length ? 3 : 0;
   } finally {
     await db.close();
   }

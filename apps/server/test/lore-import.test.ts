@@ -140,6 +140,51 @@ describe("importing a world's lore", () => {
     expect(changed.cards).toMatchObject({ added: 0, updated: 1, unchanged: 1 });
   });
 
+  it("keeps a card that was edited in the database, and overwrites it only when forced", async () => {
+    const folder = world();
+    const f = fakeDb();
+    await importWorldLore({ db: f.db, folder, userId: USER });
+
+    // someone edits the card in the app: the stored content changes, the importer's stamp does not
+    const stored = f.drafts.get("c-lore-the-gate");
+    if (!stored) throw new Error("the card was not imported");
+    f.drafts.set("c-lore-the-gate", { ...stored, body: "Edited in the app." });
+    // and the file changes too
+    writeFileSync(
+      join(folder, "lore", "the-gate.md"),
+      `<card id="lore.the-gate" kind="lore" name="The Gate">
+The gate is open.
+</card>
+`,
+    );
+
+    const kept = await importWorldLore({ db: f.db, folder, userId: USER });
+    expect(kept.conflicts).toEqual(["lore/the-gate.md"]);
+    expect(kept.cards).toMatchObject({ added: 0, updated: 0, unchanged: 1 });
+    expect(f.drafts.get("c-lore-the-gate")?.body).toBe("Edited in the app.");
+
+    const forced = await importWorldLore({ db: f.db, folder, userId: USER, force: true });
+    expect(forced.conflicts).toEqual([]);
+    expect(forced.cards.updated).toBe(1);
+    expect(f.drafts.get("c-lore-the-gate")?.body.trim()).toBe("The gate is open.");
+  });
+
+  it("treats a card imported before the stamp existed as edited when it differs", async () => {
+    const folder = world();
+    const f = fakeDb();
+    await importWorldLore({ db: f.db, folder, userId: USER });
+    const stored = f.drafts.get("c-lore-the-gate") as { meta: Record<string, unknown> };
+    delete stored.meta.imported;
+    writeFileSync(
+      join(folder, "lore", "the-gate.md"),
+      `<card id="lore.the-gate" kind="lore" name="The Gate">
+The gate is open.
+</card>
+`,
+    );
+    expect((await importWorldLore({ db: f.db, folder, userId: USER })).conflicts).toHaveLength(1);
+  });
+
   it("publishes only when asked, and only when something changed or nothing is published", async () => {
     const folder = world();
     const f = fakeDb();
