@@ -71,7 +71,9 @@ Conventions: every table has `id uuid primary key default gen_random_uuid()`, `c
 ### identity
 | Table | Columns | Constraints and reason |
 |---|---|---|
-| `profiles` | `user_id uuid pk fk auth.users`, `display_name text not null`, `age_confirmed boolean not null default false`, `age_confirmed_at timestamptz`, `age_source text`, `disabled_at` | `check (age_confirmed = (age_confirmed_at is not null))`. Spec asks for boolean plus timestamp. |
+| `profiles` | `user_id uuid pk fk auth.users`, `display_name text not null`, `can_found_worlds boolean`, `disabled_at` | Readable by people who share a world, so it carries no age state. |
+| `profile_age` | `user_id pk fk profiles`, `age_confirmed boolean`, `age_confirmed_at timestamptz`, `source_key fk age_sources` | 1:1 split of `profiles` so peers never see age state. `check (age_confirmed = (age_confirmed_at is not null))`. Own-row policy only. |
+| `idp_age_rules` | `idp pk`, `claim_name`, `accepted_values jsonb` | Deployment configuration: which provider claim counts as an adult assertion. No rows ship. |
 | `age_confirmations` | `id`, `user_id fk`, `source_key fk age_sources`, `idp text`, `claim_name text`, `asserted_at timestamptz`, `evidence_hash bytea` | Append-only. Keeps *how* it was confirmed without storing the claim payload or a birth date. 3NF: source facts do not depend on the profile row. |
 | `age_sources` (lookup) | `key`: `idp_claim`, `idp_attestation` | Add sources without a type migration. |
 | `invitation_statuses` | key, label, is_terminal, sort_order | see 9 |
@@ -217,7 +219,7 @@ Test: sign in through the player screen with a host-only account; every host pol
 
 ## 5. Row Level Security
 
-All tables: `enable` and `force row level security`. `anon` and `public` get nothing. `service_role` bypasses RLS by Supabase design, so it is used only inside narrow definer functions and the generation worker, never from the browser.
+All tables: `enable row level security`. `force` is not used: the definer functions run as the table owner and must not be blocked by the policies they implement. `anon` and `public` get nothing. `service_role` bypasses RLS by Supabase design, so it is used only inside narrow definer functions and the generation worker, never from the browser.
 
 Notation: S select, I insert, U update, D delete; "own" means the caller's rows; — means none. Anon and N (non-member) are always —. Service role: all, bypassing RLS.
 
@@ -255,7 +257,6 @@ Tables that are written only by definer functions (versions, revisions, history,
 
 ```sql
 alter table world_lore.card_revision_secrets enable row level security;
-alter table world_lore.card_revision_secrets force row level security;
 create policy secrets_host_only on world_lore.card_revision_secrets
   for select to authenticated
   using ((select membership.is_host(world_id)));

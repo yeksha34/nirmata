@@ -34,4 +34,4 @@ worlds/**/assets/workflow/
 worlds/**/assets/dataset/
 
 .claude/worktrees/
-worlds/
+worlds/supabase/migrations/
