@@ -1,5 +1,4 @@
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { GenerationJobs, type GenerationJob } from "./generation-jobs";
 import {
   type Action,
   type Actor,
@@ -31,6 +30,15 @@ import {
   StorySession,
 } from "@nirmata/host";
 import type { Provider } from "@nirmata/llm";
+import {
+  applyAttentionFeedback,
+  ComfyUiClient,
+  type ComfyUiStatus,
+  ensureTransparentSpritePng,
+  type GenerationJob,
+  GenerationJobs,
+  injectWorkflowParams,
+} from "@nirmata/gen";
 import { HttpError } from "./errors";
 import {
   type CardInput,
@@ -55,9 +63,7 @@ import {
   type TableEvent,
   tableEvent,
 } from "./views";
-import { ComfyUiClient, type ComfyUiStatus } from "./comfyui";
-import { ensureTransparentSpritePng } from "./png-transparency";
-import { applyAttentionFeedback, injectWorkflowParams } from "./workflow-injector";
+
 import type { VnAssetDetail, VnAssetItem } from "./files";
 
 export interface GenerateAssetInput {
@@ -358,7 +364,15 @@ export class Table {
   /** List all visual novels across worlds with asset completion status. Host only. */
   async listAllVns(
     seat: Seat,
-  ): Promise<Array<VnSummary & { worldName: string; worldTitle: string; assetCounts: { sprites: number; cgs: number; backgrounds: number } }>> {
+  ): Promise<
+    Array<
+      VnSummary & {
+        worldName: string;
+        worldTitle: string;
+        assetCounts: { sprites: number; cgs: number; backgrounds: number };
+      }
+    >
+  > {
     requireCan(this.actor(seat), "source.edit");
     return this.options.library.listAllVns();
   }
@@ -389,9 +403,19 @@ export class Table {
    * Start a ComfyUI generation and return at once with a job to follow. The render runs in the
    * background for as long as ComfyUI takes; read progress with `listGenerationJobs`. Host only.
    */
-  startWorldVnAsset(seat: Seat, worldName: string, slug: string, body: GenerateAssetInput): GenerationJob {
+  startWorldVnAsset(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+    body: GenerateAssetInput,
+  ): GenerationJob {
     requireCan(this.actor(seat), "source.edit");
-    const { job, signal } = this.genJobs.create({ world: worldName, slug, type: body.type, name: body.name });
+    const { job, signal } = this.genJobs.create({
+      world: worldName,
+      slug,
+      type: body.type,
+      name: body.name,
+    });
     void this.runGeneration(job.id, signal, worldName, slug, body);
     return job;
   }
@@ -451,14 +475,24 @@ export class Table {
       negative = updated.negativePrompt;
     }
 
-    const archivedDir = await this.options.library.archiveVnAsset(worldName, slug, body.type, body.name, {
-      prompt: positive,
-      negativePrompt: negative,
-      feedback: body.feedback,
-      workflow: body.workflowOverride,
-    });
+    const archivedDir = await this.options.library.archiveVnAsset(
+      worldName,
+      slug,
+      body.type,
+      body.name,
+      {
+        prompt: positive,
+        negativePrompt: negative,
+        feedback: body.feedback,
+        workflow: body.workflowOverride,
+      },
+    );
 
-    const template = (body.workflowOverride || (await this.options.library.loadWorkflowTemplate(worldName, body.type))) as Record<string, any>;
+    const template = (body.workflowOverride ||
+      (await this.options.library.loadWorkflowTemplate(worldName, body.type))) as Record<
+      string,
+      any
+    >;
 
     const injected = injectWorkflowParams(template, {
       positivePrompt: positive,
@@ -513,8 +547,13 @@ export class Table {
 
     jobs.stage(jobId, "save");
     jobs.patch(jobId, { state: "saving" });
-    const rawImageBytes = await this.comfy.fetchImage(firstImg.filename, firstImg.subfolder, firstImg.type);
-    const imageBytes = body.type === "sprite" ? ensureTransparentSpritePng(rawImageBytes) : rawImageBytes;
+    const rawImageBytes = await this.comfy.fetchImage(
+      firstImg.filename,
+      firstImg.subfolder,
+      firstImg.type,
+    );
+    const imageBytes =
+      body.type === "sprite" ? ensureTransparentSpritePng(rawImageBytes) : rawImageBytes;
 
     const dirName = body.type === "sprite" ? "sprites" : body.type === "cg" ? "cgs" : "backgrounds";
     const targetPath = body.targetPath || `${dirName}/${body.name}.png`;
