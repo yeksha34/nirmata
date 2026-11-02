@@ -79,12 +79,30 @@
   },
   "8": {
     "inputs": {
+      "image": ["7", 0],
+      "model": "RMBG-2.0",
+      "sensitivity": 1.0,
+      "process_res": 1024,
+      "mask_blur": 0,
+      "mask_offset": 0,
+      "background": "Alpha",
+      "background_color": "#000000",
+      "invert_output": false,
+      "refine_foreground": true
+    },
+    "class_type": "RMBG",
+    "_meta": {
+      "title": "RMBG Background Removal (Alpha Transparency)"
+    }
+  },
+  "10": {
+    "inputs": {
       "filename_prefix": "sprites/sprite_asset",
-      "images": ["7", 0]
+      "images": ["8", 0]
     },
     "class_type": "SaveImage",
     "_meta": {
-      "title": "Save Sprite Image"
+      "title": "Save Transparent Sprite Image (RGBA PNG)"
     }
   }
 }

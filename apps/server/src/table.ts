@@ -55,6 +55,7 @@ import {
   tableEvent,
 } from "./views";
 import { ComfyUiClient, type ComfyUiStatus } from "./comfyui";
+import { ensureTransparentSpritePng } from "./png-transparency";
 import { applyAttentionFeedback, injectWorkflowParams } from "./workflow-injector";
 import type { VnAssetDetail, VnAssetItem } from "./files";
 
@@ -435,7 +436,8 @@ export class Table {
       throw new HttpError(500, "generation_failed", "No output images produced by ComfyUI.");
     }
 
-    const imageBytes = await this.comfy.fetchImage(firstImg.filename, firstImg.subfolder, firstImg.type);
+    const rawImageBytes = await this.comfy.fetchImage(firstImg.filename, firstImg.subfolder, firstImg.type);
+    const imageBytes = body.type === "sprite" ? ensureTransparentSpritePng(rawImageBytes) : rawImageBytes;
 
     const dirName = body.type === "sprite" ? "sprites" : body.type === "cg" ? "cgs" : "backgrounds";
     const targetPath = body.targetPath || `${dirName}/${body.name}.png`;
