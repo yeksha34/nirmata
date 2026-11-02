@@ -52,7 +52,8 @@ every provider except the SSO one, and set the before-user-created hook to
 | 012 | storage buckets and policies, realtime channel policy (bootstrap) | applied |
 | 013 | seeds: default workflow and VN templates | applied |
 | 014 | server grants (service_role may run the generation worker) | applied |
-| 015 | repair: platform.uid() and jwt() executable by signed-in roles | written, syntax-checked |
+| 015 | repair: platform.uid() and jwt() executable by signed-in roles | applied |
+| 016 | repair: render path check used a repetition count above the regex limit | written, syntax-checked |
 
 "Applied" means a person ran it with `tools/db-apply.mjs` against the project. "Written, syntax-checked" means the file
 parses with the Postgres parser (every PL/pgSQL body included) but has not been run. `db/tests` has not been run.
