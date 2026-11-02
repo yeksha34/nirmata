@@ -1,4 +1,5 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { GenerationJobs, type GenerationJob } from "./generation-jobs";
 import {
   type Action,
   type Actor,
@@ -195,6 +196,7 @@ export class Table {
   /** Chapter and plot files are rewritten one after another, never at the same time. */
   private files: Promise<void> = Promise.resolve();
   private readonly comfy = new ComfyUiClient();
+  private readonly genJobs = new GenerationJobs();
 
   constructor(private readonly options: TableOptions) {
     this.settings = options.settings;
@@ -383,22 +385,63 @@ export class Table {
     return this.options.library.getVnAssetDetail(worldName, slug, type, name);
   }
 
-  /** Trigger ComfyUI generation for an asset with attention feedback and archival. Host only. */
-  async generateWorldVnAsset(
-    seat: Seat,
+  /**
+   * Start a ComfyUI generation and return at once with a job to follow. The render runs in the
+   * background for as long as ComfyUI takes; read progress with `listGenerationJobs`. Host only.
+   */
+  startWorldVnAsset(seat: Seat, worldName: string, slug: string, body: GenerateAssetInput): GenerationJob {
+    requireCan(this.actor(seat), "source.edit");
+    const { job, signal } = this.genJobs.create({ world: worldName, slug, type: body.type, name: body.name });
+    void this.runGeneration(job.id, signal, worldName, slug, body);
+    return job;
+  }
+
+  listGenerationJobs(seat: Seat): GenerationJob[] {
+    requireCan(this.actor(seat), "source.edit");
+    return this.genJobs.list();
+  }
+
+  getGenerationJob(seat: Seat, id: string): GenerationJob {
+    requireCan(this.actor(seat), "source.edit");
+    const job = this.genJobs.get(id);
+    if (!job) throw new HttpError(404, "not_found", "No such generation.");
+    return job;
+  }
+
+  async cancelGenerationJob(seat: Seat, id: string): Promise<GenerationJob> {
+    const job = this.getGenerationJob(seat, id);
+    if (job.promptId) await this.comfy.cancel(job.promptId);
+    this.genJobs.cancel(id);
+    return job;
+  }
+
+  private async runGeneration(
+    jobId: string,
+    signal: AbortSignal,
     worldName: string,
     slug: string,
     body: GenerateAssetInput,
-  ): Promise<{
-    ok: boolean;
-    promptId: string;
-    assetUrl: string;
-    archivedTo: string;
-    positivePrompt: string;
-    negativePrompt: string;
-  }> {
-    requireCan(this.actor(seat), "source.edit");
+  ): Promise<void> {
+    const jobs = this.genJobs;
+    try {
+      const result = await this.generateWorldVnAsset(jobId, signal, worldName, slug, body);
+      const job = jobs.get(jobId);
+      if (job) for (const s of job.stages) s.state = "done";
+      jobs.finish(jobId, { state: "done", result });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      jobs.fail(jobId, signal.aborted ? "cancelled" : "error", message);
+    }
+  }
 
+  private async generateWorldVnAsset(
+    jobId: string,
+    signal: AbortSignal,
+    worldName: string,
+    slug: string,
+    body: GenerateAssetInput,
+  ): Promise<{ assetUrl: string; positivePrompt: string; negativePrompt: string }> {
+    const jobs = this.genJobs;
     let positive = body.positivePrompt;
     let negative = body.negativePrompt || "";
 
@@ -428,14 +471,48 @@ export class Table {
       filenamePrefix: `${body.type}s/${body.name}`,
     });
 
-    const promptId = await this.comfy.queuePrompt(injected as any);
-    const result = await this.comfy.waitForCompletion(promptId);
+    jobs.patch(jobId, {
+      nodes: Object.entries(injected).map(([id, node]) => ({
+        id,
+        title: String(node._meta?.title ?? node.class_type),
+        state: "pending" as const,
+      })),
+    });
+    jobs.stage(jobId, "queue");
+
+    const clientId = randomUUID();
+    const promptId = await this.comfy.queuePrompt(injected as any, clientId);
+    jobs.patch(jobId, { promptId, state: "queued" });
+    const result = await this.comfy.waitForCompletion(promptId, {
+      clientId,
+      signal,
+      onEvent: (event) => {
+        if (event.kind === "location") {
+          if (event.where === "running") {
+            jobs.stage(jobId, "render");
+            jobs.patch(jobId, { state: "running", queuePosition: undefined });
+          } else {
+            jobs.patch(jobId, { queuePosition: event.position });
+          }
+        } else if (event.kind === "node") {
+          jobs.stage(jobId, "render");
+          jobs.patch(jobId, { state: "running", queuePosition: undefined });
+          jobs.nodeActive(jobId, event.node);
+        } else if (event.kind === "progress") {
+          jobs.patch(jobId, { progress: { value: event.value, max: event.max } });
+        } else {
+          jobs.nodesCached(jobId, event.nodes);
+        }
+      },
+    });
 
     const firstImg = result.outputImages?.[0];
     if (!firstImg) {
       throw new HttpError(500, "generation_failed", "No output images produced by ComfyUI.");
     }
 
+    jobs.stage(jobId, "save");
+    jobs.patch(jobId, { state: "saving" });
     const rawImageBytes = await this.comfy.fetchImage(firstImg.filename, firstImg.subfolder, firstImg.type);
     const imageBytes = body.type === "sprite" ? ensureTransparentSpritePng(rawImageBytes) : rawImageBytes;
 
@@ -446,14 +523,7 @@ export class Table {
 
     const assetUrl = `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/${targetPath}?t=${Date.now()}`;
 
-    return {
-      ok: true,
-      promptId,
-      assetUrl,
-      archivedTo: archivedDir,
-      positivePrompt: positive,
-      negativePrompt: negative,
-    };
+    return { assetUrl, positivePrompt: positive, negativePrompt: negative };
   }
 
   /** Read an image from the dataset history. Open to all viewers. */

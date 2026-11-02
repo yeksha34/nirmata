@@ -1,20 +1,133 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { api } from "../api";
-import { useAct, useApp } from "../app-context";
-import { T } from "../i18n";
+import { useAct } from "../app-context";
+import { bilingual, T } from "../i18n";
+import { isActive, type JobsState, jobForAsset, jobsActions } from "../jobs/store";
 import { useNav } from "../nav";
 import type {
   GenerateAssetInput,
+  GenerationJob,
   VnAssetDatasetEntry,
   VnAssetDetail,
   VnAssetItem,
   VnWithAssetsSummary,
 } from "../types";
-import { Empty, Panel } from "../ui";
+
+type Choice = "better" | "keep" | "worse";
+type AssetKind = "sprite" | "cg" | "bg";
+type Filter = "all" | "shared" | AssetKind;
+
+const CHOICES: Array<{ id: Choice; mark: string; label: string }> = [
+  { id: "better", mark: "▲", label: "Better" },
+  { id: "keep", mark: "●", label: "Keep" },
+  { id: "worse", mark: "▼", label: "Worse" },
+];
+
+const KIND_LABEL: Record<AssetKind, string> = {
+  sprite: "Sprites",
+  cg: "Event CGs",
+  bg: "Backgrounds",
+};
+
+const baseTag = (tag: string) =>
+  (tag.replace(/^\(+/, "").replace(/\)+$/, "").split(":")[0] ?? "").trim();
+
+function elapsed(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** What the render is doing now, stage by stage and node by node, straight from ComfyUI. */
+function JobStatus({ job, onCancel }: { job: GenerationJob; onCancel: () => void }) {
+  const [now, setNow] = useState(Date.now());
+  const active = isActive(job);
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [active]);
+
+  const counted = job.nodes.filter((n) => n.state !== "cached");
+  const finished = counted.filter((n) => n.state === "done").length;
+  const current = job.nodes.find((n) => n.state === "active");
+
+  return (
+    <section className="vs-card vs-job" aria-live="polite">
+      <header className="vs-job-head">
+        <strong className={`vs-job-state vs-${job.state}`}>
+          <T>
+            {job.state === "done"
+              ? "Done"
+              : job.state === "error"
+                ? "Failed"
+                : job.state === "cancelled"
+                  ? "Cancelled"
+                  : "Working"}
+          </T>
+        </strong>
+        <small className="vs-muted">
+          {elapsed((active ? now : job.updatedAt) - job.startedAt)}
+        </small>
+        {active && (
+          <button type="button" className="vs-btn vs-btn-quiet" onClick={onCancel}>
+            <T>Cancel</T>
+          </button>
+        )}
+      </header>
+
+      <ol className="vs-stages">
+        {job.stages.map((s) => (
+          <li key={s.id} data-state={s.state}>
+            <T>{s.label}</T>
+            {s.id === "queue" && s.state === "active" && job.queuePosition
+              ? ` · #${job.queuePosition}`
+              : ""}
+          </li>
+        ))}
+      </ol>
+
+      {job.nodes.length > 0 && (
+        <>
+          <p className="vs-meter">
+            <small>
+              {current ? current.title : <T>Workflow steps</T>}
+              {job.progress ? ` · ${job.progress.value}/${job.progress.max}` : ""}
+            </small>
+            {job.progress && <progress max={job.progress.max} value={job.progress.value} />}
+          </p>
+          <p className="vs-meter">
+            <small>
+              <T>Workflow</T> {finished}/{counted.length}
+            </small>
+            <progress max={Math.max(1, counted.length)} value={finished} />
+          </p>
+          <details className="vs-nodes">
+            <summary>
+              <T>All steps</T>
+            </summary>
+            <ol>
+              {job.nodes.map((n) => (
+                <li key={n.id} data-state={n.state}>
+                  {n.title}
+                </li>
+              ))}
+            </ol>
+          </details>
+        </>
+      )}
+
+      {job.error && <p className="vs-error">{bilingual(job.error)}</p>}
+    </section>
+  );
+}
 
 export function VnStudio() {
   const nav = useNav();
   const { act } = useAct();
+  const dispatch = useDispatch();
+  const jobsState = useSelector((s: JobsState) => s);
+
   const [allVns, setAllVns] = useState<VnWithAssetsSummary[]>([]);
   const [assets, setAssets] = useState<{
     sprites: VnAssetItem[];
@@ -22,10 +135,9 @@ export function VnStudio() {
     backgrounds: VnAssetItem[];
   } | null>(null);
 
-  // Active selections
   const activeWorld = nav.vnWorld || allVns[0]?.worldName;
   const activeSlug = nav.vnSlug || allVns[0]?.slug;
-  const activeType = nav.vnAssetType || "sprite";
+  const activeType: AssetKind = nav.vnAssetType || "sprite";
   const activeName = nav.vnAssetName;
 
   const [detail, setDetail] = useState<VnAssetDetail | null>(null);
@@ -37,22 +149,25 @@ export function VnStudio() {
   const [scheduler, setScheduler] = useState("karras");
   const [seed, setSeed] = useState<number | undefined>(undefined);
 
-  // Asset list search & category filtering
   const [assetSearch, setAssetSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "shared" | "sprite" | "cg" | "bg">("all");
-  const [galleryMode, setGalleryMode] = useState<"gallery" | "list">("gallery");
+  const [typeFilter, setTypeFilter] = useState<Filter>("all");
 
-  // Danbooru badges & attention adjustment
   const [selectedBadges, setSelectedBadges] = useState<string[]>([]);
-  const [feedback, setFeedback] = useState<Record<string, "better" | "keep" | "worse">>({});
+  const [feedback, setFeedback] = useState<Record<string, Choice>>({});
   const [newTagInput, setNewTagInput] = useState("");
 
-  const [generating, setGenerating] = useState(false);
-  const [statusText, setStatusText] = useState("");
+  const [message, setMessage] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
   const [history, setHistory] = useState<VnAssetDatasetEntry[]>([]);
 
-  // Load all VNs
+  const job = jobForAsset(jobsState, activeWorld, activeType, activeName);
+  const generating = jobsState.starting || (job ? isActive(job) : false);
+
+  // pick the jobs back up after a refresh
+  useEffect(() => {
+    dispatch(jobsActions.hydrate());
+  }, [dispatch]);
+
   useEffect(() => {
     void act(api.allVns).then((v) => {
       setAllVns(v ?? []);
@@ -62,30 +177,33 @@ export function VnStudio() {
     });
   }, [act, nav]);
 
-  // Load assets for selected VN
-  useEffect(() => {
+  const loadAssets = useCallback(async () => {
     if (!activeWorld || !activeSlug) return;
-    void act(() => api.vnAssets(activeWorld, activeSlug)).then((res) => {
-      setAssets(res ?? null);
-      if (res && !activeName) {
+    const res = await act(() => api.vnAssets(activeWorld, activeSlug));
+    setAssets(res ?? null);
+    return res;
+  }, [act, activeWorld, activeSlug]);
+
+  useEffect(() => {
+    void loadAssets().then((res) => {
+      if (res && !activeName && activeWorld && activeSlug) {
         const first = res.sprites[0] || res.cgs[0] || res.backgrounds[0];
-        if (first) {
-          nav.toVn(activeWorld, activeSlug, first.type, first.name);
-        }
+        if (first) nav.toVn(activeWorld, activeSlug, first.type, first.name);
       }
     });
-  }, [activeWorld, activeSlug, activeName, act, nav]);
+  }, [loadAssets, activeName, activeWorld, activeSlug, nav]);
 
-  // Load detail for selected asset
-  useEffect(() => {
-    if (!activeWorld || !activeSlug || !activeName) return;
-    void act(() => api.vnAssetDetail(activeWorld, activeSlug, activeType, activeName)).then((d) => {
-      if (d) {
-        setDetail(d);
+  const loadDetail = useCallback(
+    async (resetForm: boolean) => {
+      if (!activeWorld || !activeSlug || !activeName) return;
+      const d = await act(() => api.vnAssetDetail(activeWorld, activeSlug, activeType, activeName));
+      if (!d) return;
+      setDetail(d);
+      setPreviewUrl(d.url);
+      setHistory(d.datasetHistory || []);
+      if (resetForm) {
         setPositivePrompt(d.positivePrompt);
         setNegativePrompt(d.negativePrompt);
-        setPreviewUrl(d.url);
-        setHistory(d.datasetHistory || []);
         if (d.steps !== undefined) setSteps(d.steps);
         if (d.cfg !== undefined) setCfg(d.cfg);
         if (d.sampler !== undefined) setSampler(d.sampler);
@@ -93,90 +211,87 @@ export function VnStudio() {
         if (d.seed !== undefined) setSeed(d.seed);
         setSelectedBadges([]);
         setFeedback({});
+        setMessage("");
       }
-    });
-  }, [activeWorld, activeSlug, activeType, activeName, act]);
+    },
+    [act, activeWorld, activeSlug, activeType, activeName],
+  );
 
-  // Targeted asset search and filtering
+  useEffect(() => {
+    void loadDetail(true);
+  }, [loadDetail]);
+
+  // When a render this page watched ends, show its result. A job that was already over when the
+  // page opened only refreshes the picture and history; it does not overwrite what is being edited.
+  const watched = useRef(new Set<string>());
+  useEffect(() => {
+    if (!job) return;
+    if (isActive(job)) {
+      watched.current.add(job.id);
+      return;
+    }
+    if (job.state === "done" && job.result && watched.current.has(job.id)) {
+      watched.current.delete(job.id);
+      setPreviewUrl(job.result.assetUrl);
+      setPositivePrompt(job.result.positivePrompt);
+      setNegativePrompt(job.result.negativePrompt);
+      setSelectedBadges([]);
+      setFeedback({});
+      void loadDetail(false);
+      void loadAssets();
+    }
+  }, [job, loadDetail, loadAssets]);
+
   const query = assetSearch.trim().toLowerCase();
   const matches = useCallback(
-    (item: VnAssetItem) => {
-      if (!query) return true;
-      return (
-        item.name.toLowerCase().includes(query) ||
-        (item.defaultPrompt ? item.defaultPrompt.toLowerCase().includes(query) : false)
-      );
-    },
+    (item: VnAssetItem) =>
+      !query ||
+      item.name.toLowerCase().includes(query) ||
+      (item.defaultPrompt ? item.defaultPrompt.toLowerCase().includes(query) : false),
     [query],
   );
 
-  const filteredSprites = useMemo(() => {
+  const groups = useMemo(() => {
     if (!assets) return [];
-    if (typeFilter === "shared") return assets.sprites.filter((s) => s.isShared && matches(s));
-    if (typeFilter !== "all" && typeFilter !== "sprite") return [];
-    return assets.sprites.filter(matches);
+    const pick = (kind: AssetKind, list: VnAssetItem[]) => {
+      if (typeFilter === "shared") return list.filter((i) => i.isShared && matches(i));
+      if (typeFilter !== "all" && typeFilter !== kind) return [];
+      return list.filter(matches);
+    };
+    return [
+      { kind: "sprite" as const, items: pick("sprite", assets.sprites) },
+      { kind: "cg" as const, items: pick("cg", assets.cgs) },
+      { kind: "bg" as const, items: pick("bg", assets.backgrounds) },
+    ].filter((g) => g.items.length > 0);
   }, [assets, typeFilter, matches]);
 
-  const filteredCgs = useMemo(() => {
-    if (!assets) return [];
-    if (typeFilter === "shared") return assets.cgs.filter((c) => c.isShared && matches(c));
-    if (typeFilter !== "all" && typeFilter !== "cg") return [];
-    return assets.cgs.filter(matches);
-  }, [assets, typeFilter, matches]);
+  const totalVisible = groups.reduce((n, g) => n + g.items.length, 0);
 
-  const filteredBackgrounds = useMemo(() => {
-    if (!assets) return [];
-    if (typeFilter === "shared") return assets.backgrounds.filter((b) => b.isShared && matches(b));
-    if (typeFilter !== "all" && typeFilter !== "bg") return [];
-    return assets.backgrounds.filter(matches);
-  }, [assets, typeFilter, matches]);
-
-  const sharedCount = useMemo(() => {
-    if (!assets) return 0;
-    return (
-      assets.sprites.filter((s) => s.isShared).length +
-      assets.cgs.filter((c) => c.isShared).length +
-      assets.backgrounds.filter((b) => b.isShared).length
-    );
-  }, [assets]);
-
-  const totalVisible = filteredSprites.length + filteredCgs.length + filteredBackgrounds.length;
-
-  const handleSelectFirstMatch = () => {
-    if (!activeWorld || !activeSlug) return;
-    const first = filteredSprites[0] || filteredCgs[0] || filteredBackgrounds[0];
-    if (first) {
-      nav.toVn(activeWorld, activeSlug, first.type, first.name);
-    }
-  };
-
-  // Parse prompt into Danbooru tag tokens
-  const parsedTags = useMemo(() => {
-    if (!positivePrompt) return [];
-    return positivePrompt
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-  }, [positivePrompt]);
+  const parsedTags = useMemo(
+    () => [
+      ...new Set(
+        positivePrompt
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+      ),
+    ],
+    [positivePrompt],
+  );
 
   const toggleBadge = (tag: string) => {
-    // Strip weighting syntax to get base keyword
-    const cleanTag = (tag.replace(/^\(+/, "").replace(/\)+$/, "").split(":")[0] ?? "").trim();
-    if (selectedBadges.includes(cleanTag)) {
-      setSelectedBadges((prev) => prev.filter((b) => b !== cleanTag));
+    const clean = baseTag(tag);
+    if (selectedBadges.includes(clean)) {
+      setSelectedBadges((prev) => prev.filter((b) => b !== clean));
       setFeedback((prev) => {
         const next = { ...prev };
-        delete next[cleanTag];
+        delete next[clean];
         return next;
       });
     } else {
-      setSelectedBadges((prev) => [...prev, cleanTag]);
-      setFeedback((prev) => ({ ...prev, [cleanTag]: "keep" }));
+      setSelectedBadges((prev) => [...prev, clean]);
+      setFeedback((prev) => ({ ...prev, [clean]: "keep" }));
     }
-  };
-
-  const setTagAction = (tag: string, action: "better" | "keep" | "worse") => {
-    setFeedback((prev) => ({ ...prev, [tag]: action }));
   };
 
   const handleAddCustomTag = () => {
@@ -198,11 +313,8 @@ export function VnStudio() {
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!activeWorld || !activeSlug || !activeName) return;
-    setGenerating(true);
-    setStatusText("Dispatching workflow to ComfyUI...");
-
     const selectedItem = assets
       ? [...assets.sprites, ...assets.cgs, ...assets.backgrounds].find(
           (a) => a.name === activeName && a.type === activeType,
@@ -211,537 +323,343 @@ export function VnStudio() {
     const targetSlug =
       selectedItem?.vnSlug ||
       (selectedItem?.isShared ? "_shared" : activeSlug === "_all" ? "_shared" : activeSlug);
+    const payload: GenerateAssetInput = {
+      type: activeType,
+      name: activeName,
+      targetPath: detail?.targetPath,
+      positivePrompt,
+      negativePrompt,
+      steps,
+      cfg,
+      sampler,
+      scheduler,
+      seed: seed ?? Math.floor(Math.random() * 1000000),
+      feedback,
+    };
+    setMessage("");
+    dispatch(jobsActions.start(activeWorld, targetSlug, payload));
+  };
 
+  const run = async (work: () => Promise<string | undefined>) => {
     try {
-      const payload: GenerateAssetInput = {
-        type: activeType,
-        name: activeName,
-        targetPath: detail?.targetPath,
-        positivePrompt,
-        negativePrompt,
-        steps,
-        cfg,
-        sampler,
-        scheduler,
-        seed: seed ?? Math.floor(Math.random() * 1000000),
-        feedback,
-      };
-
-      const res = await act(() => api.generateVnAsset(activeWorld, targetSlug, payload));
-      if (res && res.ok) {
-        setPreviewUrl(res.assetUrl);
-        setPositivePrompt(res.positivePrompt);
-        setNegativePrompt(res.negativePrompt);
-        setStatusText("Generation complete!");
-
-        // Refresh detail to get latest dataset history
-        const refreshed = await api.vnAssetDetail(activeWorld, activeSlug, activeType, activeName);
-        if (refreshed) {
-          setDetail(refreshed);
-          setHistory(refreshed.datasetHistory || []);
-        }
-      }
+      const text = await work();
+      if (text) setMessage(text);
     } catch (e) {
-      setStatusText((e as Error).message);
-    } finally {
-      setGenerating(false);
+      setMessage((e as Error).message);
     }
   };
 
-  const handleArchiveOne = async () => {
-    if (!activeWorld || !activeSlug || !activeName) return;
-    try {
-      const res = await act(() => api.archiveOneVnAsset(activeWorld, activeSlug, activeType, activeName));
-      if (res && res.ok) {
-        setStatusText("Asset archived to dataset history.");
-        const refreshed = await api.vnAssetDetail(activeWorld, activeSlug, activeType, activeName);
-        if (refreshed) {
-          setDetail(refreshed);
-          setHistory(refreshed.datasetHistory || []);
-        }
-      }
-    } catch (e) {
-      setStatusText((e as Error).message);
-    }
+  const refreshAfterChange = async () => {
+    await Promise.all([loadAssets(), loadDetail(false)]);
   };
 
-  const handleDeleteOne = async () => {
-    if (!activeWorld || !activeSlug || !activeName) return;
-    if (!window.confirm(`Delete rendered file for ${activeName}? It will be reset to Pending.`)) return;
-    try {
-      const res = await act(() => api.deleteOneVnAsset(activeWorld, activeSlug, activeType, activeName));
-      if (res && res.ok) {
-        setStatusText(`Deleted ${activeName}. Asset reset to Pending.`);
-        setPreviewUrl(undefined);
-        const [refreshedAssets, refreshedDetail] = await Promise.all([
-          api.vnAssets(activeWorld, activeSlug),
-          api.vnAssetDetail(activeWorld, activeSlug, activeType, activeName),
-        ]);
-        if (refreshedAssets) setAssets(refreshedAssets);
-        if (refreshedDetail) {
-          setDetail(refreshedDetail);
-          setPreviewUrl(refreshedDetail.url);
-        }
-      }
-    } catch (e) {
-      setStatusText((e as Error).message);
-    }
-  };
+  const handleArchiveOne = () =>
+    run(async () => {
+      if (!activeWorld || !activeSlug || !activeName) return;
+      const res = await act(() =>
+        api.archiveOneVnAsset(activeWorld, activeSlug, activeType, activeName),
+      );
+      if (!res?.ok) return;
+      await loadDetail(false);
+      return bilingual("Archived to dataset history.");
+    });
 
-  const handleArchiveAll = async () => {
-    if (!activeWorld || !activeSlug) return;
-    try {
+  const handleDeleteOne = () =>
+    run(async () => {
+      if (!activeWorld || !activeSlug || !activeName) return;
+      if (!window.confirm(`Delete rendered file for ${activeName}? It will be reset to Pending.`))
+        return;
+      const res = await act(() =>
+        api.deleteOneVnAsset(activeWorld, activeSlug, activeType, activeName),
+      );
+      if (!res?.ok) return;
+      setPreviewUrl(undefined);
+      await refreshAfterChange();
+      return bilingual("Deleted {name}; back to Pending.", { name: activeName });
+    });
+
+  const handleArchiveAll = () =>
+    run(async () => {
+      if (!activeWorld || !activeSlug) return;
       const res = await act(() => api.archiveAllVnAssets(activeWorld, activeSlug));
-      if (res && res.ok) {
-        setStatusText(`Archived ${res.archivedCount} assets to dataset history.`);
-        if (activeName) {
-          const refreshed = await api.vnAssetDetail(activeWorld, activeSlug, activeType, activeName);
-          if (refreshed) {
-            setDetail(refreshed);
-            setHistory(refreshed.datasetHistory || []);
-          }
-        }
-      }
-    } catch (e) {
-      setStatusText((e as Error).message);
-    }
-  };
+      if (!res?.ok) return;
+      await loadDetail(false);
+      return bilingual("Archived {count} assets.", { count: res.archivedCount });
+    });
 
-  const handleDeleteAll = async () => {
-    if (!activeWorld || !activeSlug) return;
-    if (!window.confirm(`Delete all rendered assets for ${activeSlug}? They will be reset to Pending.`)) return;
-    try {
+  const handleDeleteAll = () =>
+    run(async () => {
+      if (!activeWorld || !activeSlug) return;
+      if (
+        !window.confirm(
+          `Delete all rendered assets for ${activeSlug}? They will be reset to Pending.`,
+        )
+      )
+        return;
       const res = await act(() => api.deleteAllVnAssets(activeWorld, activeSlug));
-      if (res && res.ok) {
-        setStatusText(`Deleted ${res.deletedCount} rendered files. All assets reset to Pending.`);
-        setPreviewUrl(undefined);
-        const [refreshedAssets, refreshedDetail] = await Promise.all([
-          api.vnAssets(activeWorld, activeSlug),
-          activeName ? api.vnAssetDetail(activeWorld, activeSlug, activeType, activeName) : Promise.resolve(null),
-        ]);
-        if (refreshedAssets) setAssets(refreshedAssets);
-        if (refreshedDetail) {
-          setDetail(refreshedDetail);
-          setPreviewUrl(refreshedDetail.url);
-        }
-      }
-    } catch (e) {
-      setStatusText((e as Error).message);
-    }
+      if (!res?.ok) return;
+      setPreviewUrl(undefined);
+      await refreshAfterChange();
+      return bilingual("Deleted {count} rendered files.", { count: res.deletedCount });
+    });
+
+  const vnValue =
+    activeSlug === "_all" || activeSlug === "_shared" ? activeSlug : `${activeWorld}:${activeSlug}`;
+  const onPickVn = (value: string) => {
+    if (!activeWorld) return;
+    if (value === "_all" || value === "_shared") return nav.toVn(activeWorld, value);
+    const [world, ...rest] = value.split(":");
+    if (world) nav.toVn(world, rest.join(":"));
   };
 
   return (
-    <section className="vn-studio">
-      <header className="hero">
-        <p className="eyebrow">
-          <T>ComfyUI Visual Novel Asset Studio</T>
-        </p>
+    <section className="vs">
+      <header className="vs-top">
         <h1>
-          <T>Asset Feedback & Reinforcement Studio</T>
+          <T>Asset Studio</T>
         </h1>
-        <p className="lede">
-          <T>
-            Inspect visual novel asset budgets, tokenize prompt tags into Danbooru badges, tune attention weights
-            interactively, and archive feedback training sets.
-          </T>
-        </p>
+        <label className="vs-pick">
+          <small>
+            <T>Visual novel</T>
+          </small>
+          <select
+            value={vnValue}
+            onChange={(e) => onPickVn(e.target.value)}
+            disabled={allVns.length === 0}
+          >
+            <option value="_all">{bilingual("All assets")}</option>
+            <option value="_shared">{bilingual("Shared pool")}</option>
+            {allVns.map((vn) => (
+              <option key={`${vn.worldName}:${vn.slug}`} value={`${vn.worldName}:${vn.slug}`}>
+                {vn.worldTitle} — {vn.title || vn.slug}
+              </option>
+            ))}
+          </select>
+        </label>
       </header>
 
-      {/* Top Selector: Choose Visual Novel */}
-      <nav className="vn-selector-bar">
-        <strong className="vn-selector-label">
-          <T>Visual Novel:</T>
-        </strong>
-        {activeWorld && (
-          <>
-            <button
-              type="button"
-              className="vn-pill-btn"
-              aria-pressed={activeSlug === "_all"}
-              onClick={() => nav.toVn(activeWorld, "_all")}
-            >
-              <T>All Assets</T>
-            </button>
-            <button
-              type="button"
-              className="vn-pill-btn"
-              aria-pressed={activeSlug === "_shared"}
-              onClick={() => nav.toVn(activeWorld, "_shared")}
-            >
-              <T>Shared Pool</T>
-            </button>
-          </>
-        )}
-        {allVns.length === 0 ? (
-          <Empty>
-            <T>No visual novels found. Adapt a chapter first.</T>
-          </Empty>
-        ) : (
-          allVns.map((vn) => {
-            const isSelected = vn.worldName === activeWorld && vn.slug === activeSlug;
-            return (
-              <button
-                key={`${vn.worldName}:${vn.slug}`}
-                type="button"
-                className="vn-pill-btn"
-                aria-pressed={isSelected}
-                onClick={() => nav.toVn(vn.worldName, vn.slug)}
-              >
-                {vn.worldTitle} — {vn.title || vn.slug} ({vn.tier || "short"})
-              </button>
-            );
-          })
-        )}
-      </nav>
+      {allVns.length === 0 && (
+        <p className="vs-muted">
+          <T>No visual novels found. Adapt a chapter first.</T>
+        </p>
+      )}
 
-      <section className="vn-studio-grid">
-        {/* Left Column: Asset Explorer List with Targeted Search and Scroll */}
-        <aside className="vn-asset-col">
-          <Panel title="VN Assets">
+      <section className="vs-layout">
+        {/* ---- asset list ---- */}
+        <aside className="vs-list vs-card">
+          <form
+            className="vs-search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const first = groups[0]?.items[0];
+              if (first && activeWorld && activeSlug)
+                nav.toVn(activeWorld, activeSlug, first.type, first.name);
+            }}
+          >
+            <input
+              type="search"
+              placeholder="Search assets"
+              aria-label="Search assets"
+              value={assetSearch}
+              onChange={(e) => setAssetSearch(e.target.value)}
+            />
+            <select
+              aria-label="Show"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as Filter)}
+            >
+              <option value="all">{bilingual("All")}</option>
+              <option value="shared">{bilingual("Shared")}</option>
+              <option value="sprite">{bilingual("Sprites")}</option>
+              <option value="cg">{bilingual("Event CGs")}</option>
+              <option value="bg">{bilingual("Backgrounds")}</option>
+            </select>
+          </form>
+
+          <nav className="vs-scroll">
             {!assets ? (
-              <Empty>
+              <p className="vs-muted">
                 <T>Loading assets…</T>
-              </Empty>
+              </p>
+            ) : totalVisible === 0 ? (
+              <p className="vs-muted">
+                <T>Nothing matches.</T>
+              </p>
             ) : (
-              <section className="vn-asset-col">
-                {/* Search & Filter Header */}
-                <form
-                  className="vn-asset-search-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSelectFirstMatch();
-                  }}
-                >
-                  <label className="vn-search-input-wrap">
-                    <input
-                      type="search"
-                      className="vn-asset-search-input"
-                      placeholder="Search assets..."
-                      value={assetSearch}
-                      onChange={(e) => setAssetSearch(e.target.value)}
-                      aria-label="Search assets"
-                    />
-                    {assetSearch && (
-                      <button
-                        type="button"
-                        className="vn-search-clear-btn"
-                        aria-label="Clear search"
-                        onClick={() => setAssetSearch("")}
-                      >
-                        ×
-                      </button>
-                    )}
-                  </label>
-
-                  <nav className="vn-filter-tabs">
-                    <button
-                      type="button"
-                      className="vn-filter-tab"
-                      aria-pressed={typeFilter === "all"}
-                      onClick={() => setTypeFilter("all")}
-                    >
-                      <T>All</T> (
-                      {assets.sprites.length + assets.cgs.length + assets.backgrounds.length})
-                    </button>
-                    <button
-                      type="button"
-                      className="vn-filter-tab"
-                      aria-pressed={typeFilter === "shared"}
-                      onClick={() => setTypeFilter("shared")}
-                    >
-                      <T>Shared</T> ({sharedCount})
-                    </button>
-                    <button
-                      type="button"
-                      className="vn-filter-tab"
-                      aria-pressed={typeFilter === "sprite"}
-                      onClick={() => setTypeFilter("sprite")}
-                    >
-                      <T>Sprites</T> ({assets.sprites.length})
-                    </button>
-                    <button
-                      type="button"
-                      className="vn-filter-tab"
-                      aria-pressed={typeFilter === "cg"}
-                      onClick={() => setTypeFilter("cg")}
-                    >
-                      <T>Event CGs</T> ({assets.cgs.length})
-                    </button>
-                    <button
-                      type="button"
-                      className="vn-filter-tab"
-                      aria-pressed={typeFilter === "bg"}
-                      onClick={() => setTypeFilter("bg")}
-                    >
-                      <T>Backgrounds</T> ({assets.backgrounds.length})
-                    </button>
-                  </nav>
-                </form>
-
-                <nav className="vn-batch-actions">
-                  <button
-                    type="button"
-                    className="button button-subtle vn-batch-btn"
-                    onClick={handleArchiveAll}
-                    title="Archive all rendered assets to dataset history"
-                  >
-                    <T>Archive All</T>
-                  </button>
-                  <button
-                    type="button"
-                    className="button button-subtle button-danger-text vn-batch-btn"
-                    onClick={handleDeleteAll}
-                    title="Delete all rendered asset files and reset to pending"
-                  >
-                    <T>Delete All</T>
-                  </button>
-                </nav>
-
-                {/* Scrollable Asset List */}
-                <nav className="vn-asset-scroll-area">
-                  {totalVisible === 0 ? (
-                    <Empty>
-                      <T>Nothing matches.</T>
-                    </Empty>
-                  ) : (
-                    <>
-                      {/* Sprites */}
-                      {filteredSprites.length > 0 && (
-                        <section className="vn-category-group">
-                          <h4 className="vn-category-title">
-                            <T>Character Sprites</T> ({filteredSprites.length})
-                          </h4>
-                          <ul className="vn-asset-list">
-                            {filteredSprites.map((s) => {
-                              const isSel = activeType === "sprite" && activeName === s.name;
-                              return (
-                                <li key={s.id}>
-                                  <button
-                                    type="button"
-                                    className="vn-asset-btn"
-                                    aria-current={isSel}
-                                    onClick={() => nav.toVn(activeWorld, activeSlug, "sprite", s.name)}
-                                  >
-                                    <label>{s.name}</label>
-                                    {s.isShared && (
-                                      <small className="badge-shared">
-                                        <T>Shared</T>
-                                      </small>
-                                    )}
-                                    {s.vnSlug && s.vnSlug !== "_shared" && activeSlug === "_all" && (
-                                      <small className="badge-vn">{s.vnSlug}</small>
-                                    )}
-                                    <small className="vn-asset-status">
-                                      {s.exists ? "✓ " : "○ "}
-                                      <T>{s.exists ? "Rendered" : "Pending"}</T>
-                                    </small>
-                                  </button>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </section>
-                      )}
-
-                      {/* Event CGs */}
-                      {filteredCgs.length > 0 && (
-                        <section className="vn-category-group">
-                          <h4 className="vn-category-title">
-                            <T>Event CG Scenes</T> ({filteredCgs.length})
-                          </h4>
-                          <ul className="vn-asset-list">
-                            {filteredCgs.map((cg) => {
-                              const isSel = activeType === "cg" && activeName === cg.name;
-                              return (
-                                <li key={cg.id}>
-                                  <button
-                                    type="button"
-                                    className="vn-asset-btn"
-                                    aria-current={isSel}
-                                    onClick={() => nav.toVn(activeWorld, activeSlug, "cg", cg.name)}
-                                  >
-                                    <label>{cg.name}</label>
-                                    {cg.isShared && (
-                                      <small className="badge-shared">
-                                        <T>Shared</T>
-                                      </small>
-                                    )}
-                                    {cg.vnSlug && cg.vnSlug !== "_shared" && activeSlug === "_all" && (
-                                      <small className="badge-vn">{cg.vnSlug}</small>
-                                    )}
-                                    <small className="vn-asset-status">
-                                      {cg.exists ? "✓ " : "○ "}
-                                      <T>{cg.exists ? "Rendered" : "Pending"}</T>
-                                    </small>
-                                  </button>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </section>
-                      )}
-
-                      {/* Backgrounds */}
-                      {filteredBackgrounds.length > 0 && (
-                        <section className="vn-category-group">
-                          <h4 className="vn-category-title">
-                            <T>Backgrounds</T> ({filteredBackgrounds.length})
-                          </h4>
-                          <ul className="vn-asset-list">
-                            {filteredBackgrounds.map((bg) => {
-                              const isSel = activeType === "bg" && activeName === bg.name;
-                              return (
-                                <li key={bg.id}>
-                                  <button
-                                    type="button"
-                                    className="vn-asset-btn"
-                                    aria-current={isSel}
-                                    onClick={() => nav.toVn(activeWorld, activeSlug, "bg", bg.name)}
-                                  >
-                                    <label>{bg.name}</label>
-                                    {bg.isShared && (
-                                      <small className="badge-shared">
-                                        <T>Shared</T>
-                                      </small>
-                                    )}
-                                    {bg.vnSlug && bg.vnSlug !== "_shared" && activeSlug === "_all" && (
-                                      <small className="badge-vn">{bg.vnSlug}</small>
-                                    )}
-                                    <small className="vn-asset-status">
-                                      {bg.exists ? "✓ " : "○ "}
-                                      <T>{bg.exists ? "Rendered" : "Pending"}</T>
-                                    </small>
-                                  </button>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </section>
-                      )}
-                    </>
-                  )}
-                </nav>
-              </section>
-            )}
-          </Panel>
-        </aside>
-
-        {/* Center Column: Inspector, Preview, Badges, and Feedback Questionnaire */}
-        <article className="vn-workspace-col">
-          <Panel title={`Asset Studio: ${activeType.toUpperCase()} — ${activeName || "Select an asset"}`}>
-            {!activeName ? (
-              <Empty>
-                <T>Select an asset from the left to view prompt inputs and trigger generation.</T>
-              </Empty>
-            ) : (
-              <section className="vn-workspace-col">
-                {/* Image Stage Preview */}
-                <figure className="vn-stage-preview">
-                  {previewUrl ? (
-                    <img
-                      src={previewUrl}
-                      alt={activeName}
-                      className="vn-stage-img"
-                    />
-                  ) : (
-                    <section className="vn-stage-placeholder">
-                      <p>
-                        <T>Asset Pending Generation</T>
-                      </p>
-                      <p className="sub">
-                        <T>Use the questionnaire below and click Trigger Generation.</T>
-                      </p>
-                    </section>
-                  )}
-
-                  {generating && (
-                    <section className="vn-stage-overlay">
-                      <output className="boot">
-                        <T>{statusText || "Rendering through ComfyUI..."}</T>
-                      </output>
-                    </section>
-                  )}
-                </figure>
-
-                {/* Danbooru Tag Badges Cloud */}
-                <section className="vn-tags-section">
-                  <h4 className="vn-tags-title">
-                    <T>Danbooru Tag Badges (Click to Add to Attention Adjustment Questionnaire):</T>
-                  </h4>
-                  <ul className="vn-tags-cloud">
-                    {parsedTags.map((t, idx) => {
-                      const clean = (t.replace(/^\(+/, "").replace(/\)+$/, "").split(":")[0] ?? "").trim();
-                      const isSelected = selectedBadges.includes(clean);
+              groups.map((g) => (
+                <section key={g.kind}>
+                  <h3 className="vs-group">
+                    <T>{KIND_LABEL[g.kind]}</T> <small>{g.items.length}</small>
+                  </h3>
+                  <ul>
+                    {g.items.map((item) => {
+                      const running = Object.values(jobsState.byId).some(
+                        (j) => isActive(j) && j.type === item.type && j.name === item.name,
+                      );
                       return (
-                        <li key={`${clean}-${idx}`}>
+                        <li key={item.id}>
                           <button
                             type="button"
-                            className="vn-tag-chip"
-                            aria-pressed={isSelected}
-                            onClick={() => toggleBadge(clean)}
+                            className="vs-item"
+                            aria-current={activeType === item.type && activeName === item.name}
+                            onClick={() =>
+                              activeWorld &&
+                              activeSlug &&
+                              nav.toVn(activeWorld, activeSlug, item.type, item.name)
+                            }
                           >
-                            {isSelected ? `✓ ${t}` : `+ ${t}`}
+                            <small className="vs-item-name" title={item.name}>
+                              {item.name}
+                            </small>
+                            <small className="vs-item-meta">
+                              {item.isShared && <em>shared</em>}
+                              {item.vnSlug &&
+                                item.vnSlug !== "_shared" &&
+                                activeSlug === "_all" && <em>{item.vnSlug}</em>}
+                              <i data-on={running ? "running" : item.exists ? "done" : "pending"}>
+                                {running ? "…" : item.exists ? "✓" : "○"}
+                              </i>
+                            </small>
                           </button>
                         </li>
                       );
                     })}
                   </ul>
                 </section>
+              ))
+            )}
+          </nav>
 
-                {/* Attention Adjustment Questionnaire */}
-                {selectedBadges.length > 0 && (
-                  <section className="vn-feedback-box">
-                    <h4 className="vn-feedback-title">
-                      <T>Attention Adjustment Questionnaire</T>
-                    </h4>
-                    <p className="vn-feedback-desc">
-                      <T>
-                        Select feedback for each active tag. "Make better" reinforces weights (+0.2); "Make worse"
-                        penalizes or negates.
-                      </T>
+          <details className="vs-menu">
+            <summary>
+              <T>Batch actions</T>
+            </summary>
+            <nav className="vs-menu-body">
+              <button type="button" className="vs-btn" onClick={handleArchiveAll}>
+                <T>Archive all</T>
+              </button>
+              <button type="button" className="vs-btn vs-btn-danger" onClick={handleDeleteAll}>
+                <T>Delete all</T>
+              </button>
+            </nav>
+          </details>
+        </aside>
+
+        {/* ---- workspace ---- */}
+        <main className="vs-main">
+          {!activeName ? (
+            <p className="vs-card vs-muted">
+              <T>Select an asset from the list to edit its prompt and generate it.</T>
+            </p>
+          ) : (
+            <>
+              <header className="vs-asset-head">
+                <hgroup>
+                  <p className="vs-kicker">
+                    <T>{KIND_LABEL[activeType]}</T>
+                  </p>
+                  <h2 title={activeName}>{activeName}</h2>
+                </hgroup>
+                <nav className="vs-head-actions">
+                  <button
+                    type="button"
+                    className="vs-btn"
+                    disabled={!detail?.exists}
+                    onClick={handleArchiveOne}
+                  >
+                    <T>Archive</T>
+                  </button>
+                  <button
+                    type="button"
+                    className="vs-btn vs-btn-danger"
+                    disabled={!detail?.exists}
+                    onClick={handleDeleteOne}
+                  >
+                    <T>Delete</T>
+                  </button>
+                </nav>
+              </header>
+
+              <section className="vs-stage-row">
+                <figure className="vs-preview vs-card">
+                  {previewUrl ? (
+                    <img src={previewUrl} alt={activeName} />
+                  ) : (
+                    <figcaption>
+                      <T>Not generated yet</T>
+                    </figcaption>
+                  )}
+                </figure>
+                {job ? (
+                  <JobStatus job={job} onCancel={() => dispatch(jobsActions.cancel(job.id))} />
+                ) : (
+                  <section className="vs-card vs-job vs-idle">
+                    <p className="vs-muted">
+                      <T>No render running. Adjust the tags below, then Generate.</T>
                     </p>
-                    <ul className="vn-feedback-list">
-                      {selectedBadges.map((tag) => {
-                        const currentChoice = feedback[tag] || "keep";
-                        return (
-                          <li key={tag} className="vn-feedback-row">
-                            <label className="vn-feedback-tag">{tag}</label>
-                            <nav className="vn-feedback-btn-group">
-                              <button
-                                type="button"
-                                className="btn-action action-better"
-                                aria-pressed={currentChoice === "better"}
-                                onClick={() => setTagAction(tag, "better")}
-                              >
-                                <T>▲ Make better</T>
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-action action-keep"
-                                aria-pressed={currentChoice === "keep"}
-                                onClick={() => setTagAction(tag, "keep")}
-                              >
-                                <T>● Keep as is</T>
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-action action-worse"
-                                aria-pressed={currentChoice === "worse"}
-                                onClick={() => setTagAction(tag, "worse")}
-                              >
-                                <T>▼ Make worse</T>
-                              </button>
-                            </nav>
-                          </li>
-                        );
-                      })}
-                    </ul>
                   </section>
                 )}
+              </section>
 
-                {/* Quick Tag Adder */}
+              <details className="vs-card vs-fold" open>
+                <summary>
+                  <T>Tags and feedback</T>
+                  {selectedBadges.length > 0 && (
+                    <small className="vs-count">{selectedBadges.length}</small>
+                  )}
+                </summary>
+                <p className="vs-hint">
+                  <T>Pick tags to steer. Better adds attention, Worse lowers it.</T>
+                </p>
+                <ul className="vs-chips">
+                  {parsedTags.map((t) => {
+                    const clean = baseTag(t);
+                    const on = selectedBadges.includes(clean);
+                    return (
+                      <li key={t}>
+                        <button
+                          type="button"
+                          className="vs-chip"
+                          aria-pressed={on}
+                          onClick={() => toggleBadge(clean)}
+                          title={t}
+                        >
+                          {t}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {selectedBadges.length > 0 && (
+                  <ul className="vs-feedback">
+                    {selectedBadges.map((tag) => (
+                      <li key={tag}>
+                        <fieldset>
+                          <legend title={tag}>{tag}</legend>
+                          <p className="vs-seg">
+                            {CHOICES.map((c) => (
+                              <label key={c.id} data-choice={c.id}>
+                                <input
+                                  type="radio"
+                                  name={`fb-${tag}`}
+                                  checked={(feedback[tag] || "keep") === c.id}
+                                  onChange={() => setFeedback((prev) => ({ ...prev, [tag]: c.id }))}
+                                />
+                                <small>
+                                  <b aria-hidden="true">{c.mark}</b> <T>{c.label}</T>
+                                </small>
+                              </label>
+                            ))}
+                          </p>
+                        </fieldset>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
                 <form
-                  className="vn-tag-form"
+                  className="vs-add"
                   onSubmit={(e) => {
                     e.preventDefault();
                     handleAddCustomTag();
@@ -749,242 +667,163 @@ export function VnStudio() {
                 >
                   <input
                     type="text"
-                    className="vn-tag-input"
-                    placeholder="Add custom Danbooru tag (e.g. ribbon, blush, twintails)..."
+                    placeholder="Add a tag (ribbon, blush…)"
+                    aria-label="Add a tag"
                     value={newTagInput}
                     onChange={(e) => setNewTagInput(e.target.value)}
                   />
-                  <button type="submit" className="button">
-                    <T>Add Tag</T>
+                  <button type="submit" className="vs-btn">
+                    <T>Add</T>
                   </button>
                 </form>
+              </details>
 
-                {/* Positive Prompt Textarea */}
-                <fieldset className="vn-field-group">
-                  <label className="vn-field-label">
-                    <T>Positive Prompt:</T>
-                  </label>
+              <details className="vs-card vs-fold" open>
+                <summary>
+                  <T>Prompts</T>
+                </summary>
+                <label className="vs-field">
+                  <small>
+                    <T>Positive</T>
+                  </small>
                   <textarea
                     rows={4}
                     value={positivePrompt}
                     onChange={(e) => setPositivePrompt(e.target.value)}
-                    className="vn-textarea"
                   />
-                </fieldset>
-
-                {/* Negative Prompt Textarea */}
-                <fieldset className="vn-field-group">
-                  <label className="vn-field-label">
-                    <T>Negative Prompt:</T>
-                  </label>
+                </label>
+                <label className="vs-field">
+                  <small>
+                    <T>Negative</T>
+                  </small>
                   <textarea
                     rows={2}
                     value={negativePrompt}
                     onChange={(e) => setNegativePrompt(e.target.value)}
-                    className="vn-textarea"
                   />
-                </fieldset>
+                </label>
+              </details>
 
-                {/* Execution Button */}
-                <footer className="vn-action-bar">
-                  <button
-                    type="button"
-                    className="button button-primary vn-generate-btn"
-                    disabled={generating}
-                    onClick={handleGenerate}
-                  >
-                    {generating ? <T>Generating via ComfyUI...</T> : <T>Trigger Generation with Feedback</T>}
-                  </button>
-                  <button
-                    type="button"
-                    className="button button-subtle vn-action-btn"
-                    disabled={!detail?.exists}
-                    onClick={handleArchiveOne}
-                    title="Archive current asset version to dataset history"
-                  >
-                    <T>Archive Asset</T>
-                  </button>
-                  <button
-                    type="button"
-                    className="button button-subtle button-danger-text vn-action-btn"
-                    disabled={!detail?.exists}
-                    onClick={handleDeleteOne}
-                    title="Delete rendered asset file and reset to pending"
-                  >
-                    <T>Delete Asset</T>
-                  </button>
-                  {statusText && <output className="vn-status-msg">{statusText}</output>}
-                </footer>
-              </section>
-            )}
-          </Panel>
-        </article>
+              <details className="vs-card vs-fold">
+                <summary>
+                  <T>Sampler</T>
+                  <small className="vs-muted">
+                    {sampler} · {steps} <T>steps</T> · <T>guidance</T> {cfg}
+                  </small>
+                </summary>
+                <form className="vs-params">
+                  <label>
+                    <small>
+                      <T>Steps</T>
+                    </small>
+                    <input
+                      type="number"
+                      min={1}
+                      max={60}
+                      value={steps}
+                      onChange={(e) => setSteps(Number(e.target.value))}
+                    />
+                  </label>
+                  <label>
+                    <small>
+                      <T>Guidance</T>
+                    </small>
+                    <input
+                      type="number"
+                      step={0.5}
+                      min={1}
+                      max={20}
+                      value={cfg}
+                      onChange={(e) => setCfg(Number(e.target.value))}
+                    />
+                  </label>
+                  <label>
+                    <small>
+                      <T>Sampler</T>
+                    </small>
+                    <select value={sampler} onChange={(e) => setSampler(e.target.value)}>
+                      <option value="dpmpp_2m">dpmpp_2m</option>
+                      <option value="euler">euler</option>
+                      <option value="euler_ancestral">euler_ancestral</option>
+                      <option value="heun">heun</option>
+                    </select>
+                  </label>
+                  <label>
+                    <small>
+                      <T>Scheduler</T>
+                    </small>
+                    <select value={scheduler} onChange={(e) => setScheduler(e.target.value)}>
+                      <option value="karras">karras</option>
+                      <option value="normal">normal</option>
+                      <option value="exponential">exponential</option>
+                    </select>
+                  </label>
+                  <label>
+                    <small>
+                      <T>Seed</T>
+                    </small>
+                    <input
+                      type="number"
+                      placeholder="Random"
+                      value={seed ?? ""}
+                      onChange={(e) => setSeed(e.target.value ? Number(e.target.value) : undefined)}
+                    />
+                  </label>
+                </form>
+              </details>
 
-        {/* Right Column: Sampler Settings & Feedback Dataset History */}
-        <aside className="vn-sampler-col">
-          <Panel title="Sampler Parameters">
-            <form className="vn-param-form">
-              <label className="vn-param-label">
-                <T>Steps:</T>
-                <input
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={steps}
-                  onChange={(e) => setSteps(Number(e.target.value))}
-                  className="vn-param-input"
-                />
-              </label>
-              <label className="vn-param-label">
-                <T>CFG Scale:</T>
-                <input
-                  type="number"
-                  step={0.5}
-                  min={1}
-                  max={20}
-                  value={cfg}
-                  onChange={(e) => setCfg(Number(e.target.value))}
-                  className="vn-param-input"
-                />
-              </label>
-              <label className="vn-param-label">
-                <T>Sampler:</T>
-                <select
-                  value={sampler}
-                  onChange={(e) => setSampler(e.target.value)}
-                  className="vn-param-input"
-                >
-                  <option value="dpmpp_2m">dpmpp_2m</option>
-                  <option value="euler">euler</option>
-                  <option value="euler_ancestral">euler_ancestral</option>
-                  <option value="heun">heun</option>
-                </select>
-              </label>
-              <label className="vn-param-label">
-                <T>Scheduler:</T>
-                <select
-                  value={scheduler}
-                  onChange={(e) => setScheduler(e.target.value)}
-                  className="vn-param-input"
-                >
-                  <option value="karras">karras</option>
-                  <option value="normal">normal</option>
-                  <option value="exponential">exponential</option>
-                </select>
-              </label>
-              <label className="vn-param-label">
-                <T>Seed (optional):</T>
-                <input
-                  type="number"
-                  placeholder="Randomize"
-                  value={seed ?? ""}
-                  onChange={(e) => setSeed(e.target.value ? Number(e.target.value) : undefined)}
-                  className="vn-param-input"
-                />
-              </label>
-            </form>
-          </Panel>
-
-          {/* Dataset & Archival History / Gallery */}
-          <Panel title={`Dataset History (${history.length})`}>
-            {history.length === 0 ? (
-              <Empty>
-                <T>No archived passes yet. Previous runs will be preserved here automatically.</T>
-              </Empty>
-            ) : (
-              <section className="vn-gallery-container">
-                <nav className="vn-gallery-toggle">
-                  <button
-                    type="button"
-                    className="vn-gallery-tab"
-                    aria-pressed={galleryMode === "gallery"}
-                    onClick={() => setGalleryMode("gallery")}
-                  >
-                    <T>Gallery</T>
-                  </button>
-                  <button
-                    type="button"
-                    className="vn-gallery-tab"
-                    aria-pressed={galleryMode === "list"}
-                    onClick={() => setGalleryMode("list")}
-                  >
-                    <T>List</T>
-                  </button>
-                </nav>
-
-                {galleryMode === "gallery" ? (
-                  <ul className="vn-gallery-grid">
-                    {history.map((h) => (
-                      <li key={h.timestamp} className="vn-gallery-card">
-                        {h.imageUrl && (
-                          <figure
-                            className="vn-gallery-thumb-wrap"
-                            onClick={() => handleRestoreRun(h)}
-                          >
-                            <img
-                              src={h.imageUrl}
-                              alt={h.timestamp}
-                              className="vn-gallery-thumb"
-                              loading="lazy"
-                            />
-                          </figure>
-                        )}
-                        <section className="vn-gallery-info">
-                          <time className="vn-history-time">{h.timestamp}</time>
-                          <p className="vn-gallery-prompt">{h.prompt}</p>
-                          {h.feedback && Object.keys(h.feedback).length > 0 && (
-                            <ul className="vn-history-tags">
-                              {Object.entries(h.feedback).map(([k, v]) => (
-                                <li key={k} className={`vn-history-tag ${v}`}>
-                                  {k}: {v}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                          <button
-                            type="button"
-                            className="vn-restore-btn"
-                            onClick={() => handleRestoreRun(h)}
-                          >
-                            <T>Restore Run</T>
-                          </button>
-                        </section>
-                      </li>
-                    ))}
-                  </ul>
+              <details className="vs-card vs-fold">
+                <summary>
+                  <T>History</T>
+                  <small className="vs-count">{history.length}</small>
+                </summary>
+                {history.length === 0 ? (
+                  <p className="vs-muted">
+                    <T>No archived passes yet. Earlier renders are kept here automatically.</T>
+                  </p>
                 ) : (
-                  <ul className="vn-history-container">
+                  <ul className="vs-gallery">
                     {history.map((h) => (
-                      <li key={h.timestamp} className="vn-history-card">
-                        <time className="vn-history-time">{h.timestamp}</time>
-                        <p className="vn-history-prompt">{h.prompt}</p>
-                        {h.feedback && Object.keys(h.feedback).length > 0 && (
-                          <ul className="vn-history-tags">
-                            {Object.entries(h.feedback).map(([k, v]) => (
-                              <li
-                                key={k}
-                                className={`vn-history-tag ${v}`}
-                              >
-                                {k}: {v}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
+                      <li key={h.timestamp}>
                         <button
                           type="button"
-                          className="vn-restore-btn"
+                          className="vs-shot"
                           onClick={() => handleRestoreRun(h)}
+                          title={h.prompt}
                         >
-                          <T>Restore Run</T>
+                          {h.imageUrl && <img src={h.imageUrl} alt={h.timestamp} loading="lazy" />}
+                          <time>{h.timestamp}</time>
+                          {h.feedback && Object.keys(h.feedback).length > 0 && (
+                            <small className="vs-shot-fb">
+                              {Object.entries(h.feedback)
+                                .filter(([, v]) => v !== "keep")
+                                .map(([k, v]) => `${v === "better" ? "▲" : "▼"} ${k}`)
+                                .join(" · ")}
+                            </small>
+                          )}
                         </button>
                       </li>
                     ))}
                   </ul>
                 )}
-              </section>
-            )}
-          </Panel>
-        </aside>
+              </details>
+
+              <footer className="vs-actions">
+                <button
+                  type="button"
+                  className="vs-btn vs-btn-primary"
+                  disabled={generating}
+                  onClick={handleGenerate}
+                >
+                  {generating ? <T>Generating…</T> : <T>Generate</T>}
+                </button>
+                <output className="vs-message">
+                  {jobsState.startError ? bilingual(jobsState.startError) : message}
+                </output>
+              </footer>
+            </>
+          )}
+        </main>
       </section>
     </section>
   );

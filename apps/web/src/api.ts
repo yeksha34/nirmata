@@ -3,6 +3,7 @@ import type {
   CardTemplate,
   ComfyUiStatus,
   GenerateAssetInput,
+  GenerationJob,
   Mode,
   Perspective,
   RecentStory,
@@ -228,15 +229,15 @@ export const api = {
     get<VnAssetDetail>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}`,
     ),
+  /** Starts a generation and returns at once; follow it with `vnJob`. */
   generateVnAsset: (worldName: string, slug: string, body: GenerateAssetInput) =>
-    post<{
-      ok: boolean;
-      promptId: string;
-      assetUrl: string;
-      archivedTo: string;
-      positivePrompt: string;
-      negativePrompt: string;
-    }>(`/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/generate`, body),
+    post<GenerationJob>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/generate`,
+      body,
+    ),
+  vnJobs: () => get<{ jobs: GenerationJob[] }>("/api/vn-jobs").then((r) => r.jobs),
+  vnJob: (id: string) => get<GenerationJob>(`/api/vn-jobs/${encodeURIComponent(id)}`),
+  cancelVnJob: (id: string) => post<GenerationJob>(`/api/vn-jobs/${encodeURIComponent(id)}/cancel`),
   archiveAllVnAssets: (worldName: string, slug: string) =>
     post<{ ok: boolean; archivedCount: number }>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/archive-all`,

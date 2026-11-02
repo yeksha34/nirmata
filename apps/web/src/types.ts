@@ -468,3 +468,24 @@ export interface GenerateAssetInput {
   feedback?: Record<string, "better" | "keep" | "worse">;
   workflowOverride?: Record<string, unknown>;
 }
+
+export type GenerationJobState = "queued" | "running" | "saving" | "done" | "error" | "cancelled";
+
+export interface GenerationJob {
+  id: string;
+  world: string;
+  slug: string;
+  type: "sprite" | "cg" | "bg";
+  name: string;
+  state: GenerationJobState;
+  stages: Array<{ id: "prepare" | "queue" | "render" | "save"; label: string; state: "pending" | "active" | "done" | "error" }>;
+  /** The workflow's own steps, as ComfyUI reports them. */
+  nodes: Array<{ id: string; title: string; state: "pending" | "active" | "done" | "cached" }>;
+  progress?: { value: number; max: number };
+  queuePosition?: number;
+  promptId?: string;
+  error?: string;
+  result?: { assetUrl: string; positivePrompt: string; negativePrompt: string };
+  startedAt: number;
+  updatedAt: number;
+}
