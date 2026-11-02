@@ -3,6 +3,8 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
+import { connectDb } from "@nirmata/db";
+import { storesFromEnv } from "@nirmata/storage";
 import { createApp } from "./app";
 import { ConfigError, loadConfig } from "./config";
 import { Library } from "./files";
@@ -65,7 +67,10 @@ async function main(): Promise<void> {
   const uiDir = join(here, "..", "..", "web", "dist");
   const ui = existsSync(join(uiDir, "index.html")) ? uiDir : undefined;
 
-  const app = createApp({ table, log, ui });
+  const db = await connectDb(process.env);
+  const data = db ? { db, stores: storesFromEnv(process.env) } : undefined;
+  if (data) console.log("Database connected: asset files are served through it.");
+  const app = createApp({ table, log, ui, data });
   const server = serve({ fetch: app.fetch, port: config.port, hostname: config.bind }, (info) => {
     const host = config.bind === "0.0.0.0" ? "localhost" : info.address;
     const link = `http://${host}:${info.port}/`;

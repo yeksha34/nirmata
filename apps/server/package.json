@@ -12,8 +12,10 @@
   "dependencies": {
     "@hono/node-server": "^1.13.0",
     "@nirmata/core": "workspace:*",
+    "@nirmata/db": "workspace:*",
     "@nirmata/host": "workspace:*",
     "@nirmata/llm": "workspace:*",
+    "@nirmata/storage": "workspace:*",
     "hono": "^4.6.0",
     "zod": "^3.24.0"
   },
