@@ -7,6 +7,7 @@ Nirmata: build worlds, then host stories in them. Start at [docs/README.md](docs
 - Before changing behaviour read [docs/lifecycle.md](docs/lifecycle.md); after changing it, follow `track-feature`.
 - Record bugs in [docs/bugs.md](docs/bugs.md) (`log-bug`) and choices in [docs/decisions/](docs/decisions/) (`record-decision`).
 - Never commit secrets, and never copy private story content into this repo ([ADR-0005](docs/decisions/0005-scaffold-content-neutral.md)).
+- Agents never access the database. Use the Nirmata backend endpoints only. Do not write a bypass API (an endpoint, script, function or credential) that lets an agent read from the database.
 - Do only what was asked. Never inspect, query git, or explore directories outside this workspace (e.g. external repos) unless explicitly told to do so. Do not invent side tasks or preemptive investigations that waste tokens.
 - Strict path and boundary discipline: Always respect the given file path or folder path. When a task specifies a directory or file, absolute path or relative path, strictly confine all inspection, file reads, listings, and changes within that specific path. Never cross boundaries or snoop into sibling or unrelated folders unless the user explicitly asks for them.
 - Git deliverable workflow: for every deliverable step, create a dedicated branch, commit on that branch, and merge it back into the current working branch. Do this for all deliverables steps.
