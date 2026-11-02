@@ -13,7 +13,7 @@ db/
 | Command | Does |
 |---|---|
 | `node tools/db-build.mjs` | copies the migrations, in order, to `supabase/migrations/` (generated, git-ignored) |
-| `node tools/db-apply.mjs [--dry]` | human-run: applies unapplied migrations via `DATABASE_URL_BOOTSTRAP`, then sets the app role passwords (needs `cd tools/db-deps && npm install`) |
+| `node tools/db-apply.mjs [--dry] [--passwords]` | human-run: applies unapplied migrations via `DATABASE_URL_BOOTSTRAP`; `--passwords` also sets the app role passwords (the pooler caches the old hash for a minute or two) (needs `cd tools/db-deps && npm install`) |
 | `node tools/db-apply.mjs --reset --yes` | development only: drops the nine schemas and forgets applied files, then run `db-apply` again |
 | `node tools/db-build.mjs --check` | verifies order, names and that every file is listed |
 | `FORBIDDEN_TERMS_FILE=<path outside the repo> node tools/db-check-neutral.mjs` | fails if any line contains a forbidden term; fails closed if the file is missing |
@@ -51,7 +51,8 @@ every provider except the SSO one, and set the before-user-created hook to
 | 011b | membership path and channel helpers | applied |
 | 012 | storage buckets and policies, realtime channel policy (bootstrap) | applied |
 | 013 | seeds: default workflow and VN templates | applied |
-| 014 | server grants (service_role may run the generation worker) | written, syntax-checked |
+| 014 | server grants (service_role may run the generation worker) | applied |
+| 015 | repair: platform.uid() and jwt() executable by signed-in roles | written, syntax-checked |
 
 "Applied" means a person ran it with `tools/db-apply.mjs` against the project. "Written, syntax-checked" means the file
 parses with the Postgres parser (every PL/pgSQL body included) but has not been run. `db/tests` has not been run.

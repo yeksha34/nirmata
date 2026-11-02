@@ -109,4 +109,8 @@ select is(membership.is_host('00000000-0000-0000-0000-0000000000b1'), true, 'the
 reset request.jwt.claims;
 
 select * from finish();
+-- the editor shows the last result: list what failed
+select coalesce(string_agg(numb || ': ' || descr || coalesce('  -- ' || nullif(reason, ''), ''), E'
+' order by numb), 'all passed') as failures
+  from __tresults__ where not aok;
 rollback;

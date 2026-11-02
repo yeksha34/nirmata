@@ -231,4 +231,8 @@ select throws_ok('select membership.is_host(gen_random_uuid())', '42501', null, 
 
 reset role;
 select * from finish();
+-- the editor shows the last result: list what failed
+select coalesce(string_agg(numb || ': ' || descr || coalesce('  -- ' || nullif(reason, ''), ''), E'
+' order by numb), 'all passed') as failures
+  from __tresults__ where not aok;
 rollback;
