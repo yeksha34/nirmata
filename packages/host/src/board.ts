@@ -124,13 +124,38 @@ export class Board {
   private variant = 0;
   private readonly ports: Ports;
   readonly requiresAdultConfirmation: boolean;
-  private readonly hostNick: string;
+  private hostNick: string;
 
   constructor(private readonly options: BoardOptions) {
     this.ports = options.ports ?? defaultPorts;
     this.requiresAdultConfirmation = options.requireAdultConfirmation ?? isProduction();
     this.hostNick = this.validNick(options.host);
     this.people.set(key(this.hostNick), { nick: this.hostNick, seat: "host", muted: false });
+  }
+
+  /** The host is a signed-in person who goes by their own name: seat them under it. */
+  setHost(nick: string): string {
+    const clean = this.validNick(nick);
+    if (key(clean) === key(this.hostNick)) {
+      (this.people.get(key(this.hostNick)) as Person).nick = clean;
+      this.hostNick = clean;
+      return clean;
+    }
+    if (this.people.has(key(clean))) {
+      fail("bad_nickname", `The nickname "${clean}" is already taken at this table.`);
+    }
+    const old = key(this.hostNick);
+    const person = this.people.get(old) as Person;
+    this.people.delete(old);
+    person.nick = clean;
+    this.people.set(key(clean), person);
+    const draft = this.drafts.get(old);
+    if (draft) {
+      this.drafts.delete(old);
+      this.drafts.set(key(clean), { ...draft, nick: clean });
+    }
+    this.hostNick = clean;
+    return clean;
   }
 
   // ---- joining ------------------------------------------------------------------------------

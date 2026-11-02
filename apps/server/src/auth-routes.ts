@@ -101,6 +101,35 @@ async function invitationEmail(db: Db, token: string): Promise<string> {
   return row.email;
 }
 
+export interface Profile {
+  displayName: string;
+  /** May found worlds: the host (invited with invite-host). */
+  canFoundWorlds: boolean;
+  ageConfirmed: boolean;
+}
+
+/** The signed-in person's profile, or null before they have finished onboarding. */
+export async function readProfile(db: Db, session: AuthSession): Promise<Profile | null> {
+  const row = (
+    await db.asUser(
+      session.user.id,
+      (q) =>
+        q(
+          `select p.display_name, p.can_found_worlds, coalesce(a.age_confirmed, false) as age_confirmed
+             from identity.profiles p left join identity.profile_age a using (user_id) where p.user_id = $1`,
+          [session.user.id],
+        ),
+      { email: session.user.email },
+    )
+  ).rows[0];
+  if (!row) return null;
+  return {
+    displayName: String(row.display_name),
+    canFoundWorlds: row.can_found_worlds === true,
+    ageConfirmed: row.age_confirmed === true,
+  };
+}
+
 /**
  * Adds /api/auth/* and /auth/callback. Returns a function that finds who is signed in for a
  * request, for the routes that will need a person (it refreshes the Supabase token when due).
@@ -215,29 +244,10 @@ export function registerAuthRoutes(
 
   app.get("/api/auth/me", async (c) => {
     const session = await requireUser(c);
-    let profile: { displayName: string; canFoundWorlds: boolean; ageConfirmed: boolean } | null =
-      null;
+    let profile: Profile | null = null;
     if (db) {
       try {
-        const row = (
-          await db.asUser(
-            session.user.id,
-            (q) =>
-              q(
-                `select p.display_name, p.can_found_worlds, coalesce(a.age_confirmed, false) as age_confirmed
-                   from identity.profiles p left join identity.profile_age a using (user_id) where p.user_id = $1`,
-                [session.user.id],
-              ),
-            { email: session.user.email },
-          )
-        ).rows[0];
-        if (row) {
-          profile = {
-            displayName: String(row.display_name),
-            canFoundWorlds: row.can_found_worlds === true,
-            ageConfirmed: row.age_confirmed === true,
-          };
-        }
+        profile = await readProfile(db, session);
       } catch {
         profile = null; // signed in, but the profile cannot be read right now
       }

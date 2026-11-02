@@ -256,6 +256,54 @@ describe("auth routes", () => {
     expect((await r.app.request("/api/auth/invitation?token=x")).status).toBe(404);
   });
 
+  describe("seating a signed-in person", () => {
+    const profile = (host: boolean, age = true) => [
+      { display_name: "Ann Host", can_found_worlds: host, age_confirmed: age },
+    ];
+    const signedIn = async (rows: Record<string, unknown>[]) => {
+      const { auth } = setup([{ status: 200, body: TOKEN }], rows);
+      const r = await rig([], { auth });
+      const login = await post(r.app, "/api/auth/login", {
+        email: "ann@example.test",
+        password: "pw",
+      });
+      return { r, cookie: cookieOf(login) };
+    };
+
+    it("seats an invited host as the table's host under their own name", async () => {
+      const { r, cookie } = await signedIn(profile(true));
+      const res = await post(r.app, "/api/join/session", {}, cookie);
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.you).toMatchObject({ nick: "Ann_Host", seat: "host", host: true, account: true });
+      expect((await (await r.app.request("/api/table")).json()).host).toBe("Ann_Host");
+      // the same person gets the same seat back, not a second one
+      const again = await (await post(r.app, "/api/join/session", {}, cookie)).json();
+      expect(again.token).toBe(body.token);
+    });
+
+    it("seats anyone else as a spectator, never as the host", async () => {
+      const { r, cookie } = await signedIn(profile(false));
+      const body = await (await post(r.app, "/api/join/session", {}, cookie)).json();
+      expect(body.you).toMatchObject({ seat: "spectator", host: false, account: true });
+    });
+
+    it("needs a sign-in and a finished onboarding", async () => {
+      const { auth } = setup([], profile(true));
+      const anon = await rig([], { auth });
+      expect((await post(anon.app, "/api/join/session", {})).status).toBe(401);
+      const { r, cookie } = await signedIn(profile(true, false));
+      const res = await post(r.app, "/api/join/session", {}, cookie);
+      expect(res.status).toBe(409);
+      expect((await res.json()).error.code).toBe("onboarding_required");
+    });
+
+    it("is absent when sign-in is not configured, and the host key still works", async () => {
+      const r = await rig([]);
+      expect((await post(r.app, "/api/join/session", {})).status).toBe(404);
+    });
+  });
+
   it("refuse a change that comes from another site", async () => {
     const { auth } = setup([{ status: 200, body: TOKEN }]);
     const r = await rig([], { auth });

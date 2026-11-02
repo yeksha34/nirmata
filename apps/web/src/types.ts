@@ -10,6 +10,8 @@ export interface You {
   seat: SeatKind;
   muted: boolean;
   host: boolean;
+  /** True when the seat comes from a signed-in account. */
+  account?: boolean;
 }
 
 export interface WorldInfo {

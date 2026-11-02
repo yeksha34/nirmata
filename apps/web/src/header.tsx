@@ -127,12 +127,19 @@ export function HeaderBar() {
                 type="button"
                 onClick={() =>
                   act(async () => {
+                    if (you.account) {
+                      // the seat is the account's: signing out ends both
+                      await api.logout().catch(() => undefined);
+                      leave();
+                      window.location.assign("/login");
+                      return;
+                    }
                     await api.leave().catch(() => undefined);
                     leave();
                   })
                 }
               >
-                <T>Leave the table</T>
+                {you.account ? <T>Sign out</T> : <T>Leave the table</T>}
               </button>
             </li>
           </menu>
