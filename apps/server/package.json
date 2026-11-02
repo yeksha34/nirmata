@@ -13,6 +13,7 @@
     "@hono/node-server": "^1.13.0",
     "@nirmata/core": "workspace:*",
     "@nirmata/db": "workspace:*",
+    "@nirmata/gen": "workspace:*",
     "@nirmata/host": "workspace:*",
     "@nirmata/llm": "workspace:*",
     "@nirmata/storage": "workspace:*",

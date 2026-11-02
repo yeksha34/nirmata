@@ -44,7 +44,7 @@ import {
   synthesizeBackgroundDanbooruPrompt,
   synthesizeCgDanbooruPrompt,
   synthesizeSpriteDanbooruPrompt,
-} from "./danbooru-prompt";
+} from "@nirmata/gen";
 import { HttpError } from "./errors";
 
 export interface VnAssetItem {

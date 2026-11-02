@@ -77,3 +77,7 @@ The server also reads asset files through two small packages, `@nirmata/db` (`ap
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | the private `vn-assets` bucket (the key stays on the server) |
 
 Routes (host only for now): `GET /api/health/db`, `GET /api/assets/renders/:id/file`. The second looks up the render with `assets.render_file`, then streams it from the store the row names (ADR-0028). Run `pnpm install` once so `pg` is installed.
+
+## Generation (`apps/gen`)
+
+`@nirmata/gen` holds the asset generation code that used to live in this package: the ComfyUI client, workflow parameter injection, prompt synthesis, sprite transparency and the job tracker. The server imports it; its failures are `GenError`s, which the server turns into the same plain error replies as before.
