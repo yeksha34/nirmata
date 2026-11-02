@@ -25,6 +25,12 @@ services/rules-gatekeeper/data/dataset.jsonl
 services/rules-gatekeeper/data/rule_groups.json
 services/rules-gatekeeper/data/rule_scopes.json
 
+# worlds: only the shipped scaffold and example are versioned; any other world is private (ADR-0005)
+worlds/*
+!worlds/_template/
+!worlds/_shared/
+!worlds/example-world/
+
 # story saves are personal by default; remove this line to version them
 worlds/*/stories/*
 !worlds/*/stories/.gitkeep
@@ -34,4 +40,4 @@ worlds/**/assets/workflow/
 worlds/**/assets/dataset/
 
 .claude/worktrees/
-worlds/supabase/migrations/
+supabase/migrations/
