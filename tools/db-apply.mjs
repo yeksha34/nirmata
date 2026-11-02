@@ -32,12 +32,15 @@ try { pg = (await import(pathToFileURL(createRequire(join(root, 'tools', 'db-dep
 const c = new pg.Client({ connectionString: env.DATABASE_URL_BOOTSTRAP, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 10000 });
 try { await c.connect(); } catch (e) { console.error('cannot connect as bootstrap:', e.code || e.message); process.exit(1); }
 
-const fail = (what, e) => { console.error(`FAIL ${what}: ${e.code ?? ''} ${e.message}${e.position ? ` (char ${e.position})` : ''}`); process.exit(1); };
+c.on('notice', (n) => console.log(`  ${(n.severity ?? 'notice').toLowerCase()}: ${n.message}`));
+const fail =(what, e) => { console.error(`FAIL ${what}: ${e.code ?? ''} ${e.message}${e.position ? ` (char ${e.position})` : ''}`); process.exit(1); };
 
 try {
   await c.query(`create schema if not exists supabase_migrations;
     create table if not exists supabase_migrations.schema_migrations (version text primary key, name text, statements text[])`);
 } catch (e) { fail('tracking table', e); }
+const redo = process.argv.find((a) => a.startsWith('--reapply='))?.split('=')[1];
+if (redo) await c.query('delete from supabase_migrations.schema_migrations where version = $1', [redo]);
 const done = new Set((await c.query('select version from supabase_migrations.schema_migrations')).rows.map((r) => r.version));
 
 for (const [i, f] of files.entries()) {
