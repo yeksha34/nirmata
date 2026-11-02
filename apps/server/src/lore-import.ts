@@ -4,10 +4,14 @@ import {
   CARD_SLUG,
   type CardRow,
   cardRow,
+  contentHash,
+  contentOf,
+  IMPORTED,
   SLUG,
   slugFor,
   stable,
   upsertCard,
+  withoutStamp,
   writeDraft,
 } from "./lore-rows";
 
@@ -23,6 +27,8 @@ export interface LoreImportOptions {
   slug?: string | undefined;
   /** Publish the draft as a new version when something changed (or nothing is published yet). */
   publish?: boolean | undefined;
+  /** Overwrite cards that were changed in the database since they were imported. */
+  force?: boolean | undefined;
   /** Check everything and write nothing. */
   dryRun?: boolean | undefined;
   log?: ((message: string) => void) | undefined;
@@ -33,6 +39,8 @@ export interface LoreImportReport {
   slug: string;
   worldCreated: boolean;
   cards: { found: number; added: number; updated: number; unchanged: number };
+  /** Cards changed in the database since they were imported, so left as they are (use force). */
+  conflicts: string[];
   /** Files that could not be read as cards, or whose names the database cannot hold. */
   skipped: string[];
   publishedVersion: string | undefined;
@@ -78,6 +86,7 @@ export async function importWorldLore(options: LoreImportOptions): Promise<LoreI
     slug,
     worldCreated: false,
     cards: { found: rows.length, added: 0, updated: 0, unchanged: 0 },
+    conflicts: [],
     skipped,
     publishedVersion: undefined,
   };
@@ -121,19 +130,31 @@ export async function importWorldLore(options: LoreImportOptions): Promise<LoreI
             [line, card],
           )
         ).rows;
-        const same =
-          had.title === row.title &&
-          had.body === row.body &&
-          stable(had.meta) === stable(row.meta) &&
-          stable(parts.map((p) => [p.part_key, p.body])) ===
-            stable(row.parts.map((p) => [p.key, p.body])) &&
-          stable(secrets.map((s) => s.body)) === stable(row.secrets);
-        if (same) {
+        const had_ = {
+          title: String(had.title),
+          body: String(had.body),
+          meta: withoutStamp((had.meta as Record<string, unknown> | null) ?? {}),
+          parts: parts.map((p): [string, string] => [String(p.part_key), String(p.body)]),
+          secrets: secrets.map((x) => String(x.body)),
+        };
+        const wanted = contentOf(row);
+        if (stable(had_) === stable(wanted)) {
           report.cards.unchanged++;
           continue;
         }
+        // The importer stamped what it wrote. If the stored content no longer matches its stamp,
+        // someone edited the card in the app: keep that edit unless told to overwrite it.
+        const stamp = (had.meta as Record<string, unknown> | null)?.[IMPORTED];
+        if (stamp !== contentHash(had_) && !options.force) {
+          report.conflicts.push(row.meta.path ? String(row.meta.path) : row.slug);
+          continue;
+        }
       }
-      await writeDraft(q, { worldId, line, card, userId }, row);
+      const stamped: CardRow = {
+        ...row,
+        meta: { ...row.meta, [IMPORTED]: contentHash(contentOf(row)) },
+      };
+      await writeDraft(q, { worldId, line, card, userId }, stamped);
       if (had) report.cards.updated++;
       else report.cards.added++;
     }

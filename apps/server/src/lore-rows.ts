@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Card } from "@nirmata/core";
 import type { Query } from "@nirmata/db";
 
@@ -110,4 +111,36 @@ export async function writeDraft(
       [line, card, worldId, i, body],
     );
   }
+}
+
+/** The `meta` key where the importer records the hash of the content it wrote. */
+export const IMPORTED = "imported";
+
+/** A card's content as the importer sees it, without its own stamp. */
+export interface CardContent {
+  title: string;
+  body: string;
+  meta: Record<string, unknown>;
+  parts: Array<[string, string]>;
+  secrets: string[];
+}
+
+export function contentOf(row: CardRow): CardContent {
+  return {
+    title: row.title,
+    body: row.body,
+    meta: withoutStamp(row.meta),
+    parts: row.parts.map((p) => [p.key, p.body]),
+    secrets: row.secrets,
+  };
+}
+
+export function withoutStamp(meta: Record<string, unknown>): Record<string, unknown> {
+  const { [IMPORTED]: _stamp, ...rest } = meta;
+  return rest;
+}
+
+/** A hash of a card's content: equal when nothing the importer writes has changed. */
+export function contentHash(content: CardContent): string {
+  return createHash("sha256").update(stable(content)).digest("hex");
 }
