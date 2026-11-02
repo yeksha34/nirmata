@@ -17,3 +17,4 @@ generation/migrations/20261102001100_generation.sql
 membership/migrations/20261102001150_path_helpers.sql
 _bootstrap/migrations/20261102001200_storage_realtime.sql
 platform/migrations/20261102001300_seed_templates.sql
+platform/migrations/20261102001400_server_grants.sql

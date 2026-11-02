@@ -50,7 +50,20 @@ every provider except the SSO one, and set the before-user-created hook to
 | 011 | generation | applied |
 | 011b | membership path and channel helpers | applied |
 | 012 | storage buckets and policies, realtime channel policy (bootstrap) | applied |
-| 013 | seeds: default workflow and VN templates | written, syntax-checked |
+| 013 | seeds: default workflow and VN templates | applied |
+| 014 | server grants (service_role may run the generation worker) | written, syntax-checked |
 
 "Applied" means a person ran it with `tools/db-apply.mjs` against the project. "Written, syntax-checked" means the file
 parses with the Postgres parser (every PL/pgSQL body included) but has not been run. `db/tests` has not been run.
+
+## Tests
+
+pgTAP, in `db/tests/`. Enable the `pgtap` extension (Dashboard, Database, Extensions), then paste a file into the
+SQL editor (runs as `postgres`). Each file ends in `rollback`, so nothing is left behind.
+
+| File | Covers |
+|---|---|
+| `001_baseline.sql` | anon holds nothing, `app_ro` cannot write, views use the caller's rights, RLS on every table, invitation state machine |
+| `002_flows.sql` | the main flows as host, moderator, player, outsider and the server: roles, lore and secrets, stories and moderation, chapters, VNs and pins, assets and jobs, templates and validation, file and channel helpers, anon |
+
+Both files parse with the Postgres parser; neither has been run yet.

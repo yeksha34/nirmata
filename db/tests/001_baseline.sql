@@ -73,6 +73,8 @@ insert into identity.profiles (user_id, display_name, can_found_worlds) values
 insert into identity.profile_age (user_id, age_confirmed, age_confirmed_at, source_key) values
   ('00000000-0000-0000-0000-0000000000a1', true, now(), 'idp_attestation'),
   ('00000000-0000-0000-0000-0000000000a2', true, now(), 'idp_attestation');
+insert into world_lore.worlds (id, slug, title, created_by) values
+  ('00000000-0000-0000-0000-0000000000b1', 'baseline-world', 'Baseline', '00000000-0000-0000-0000-0000000000a1');
 insert into membership.world_members (world_id, user_id, role_key, granted_by) values
   ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000a1', 'host',
    '00000000-0000-0000-0000-0000000000a1');
