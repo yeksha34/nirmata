@@ -82,6 +82,17 @@ Routes (host only for now): `GET /api/health/db`, `GET /api/assets/renders/:id/f
 
 `@nirmata/gen` holds the asset generation code that used to live in this package: the ComfyUI client, workflow parameter injection, prompt synthesis, sprite transparency and the job tracker. The server imports it; its failures are `GenError`s, which the server turns into the same plain error replies as before.
 
+## Importing a world's lore
+
+Do this before importing its images: the world has to exist in the database. A person runs it; it needs `DATABASE_URL_RW`, and `--user` is the id of an author (an account that may found worlds; your id is in `/api/auth/me` once signed in):
+
+```bash
+pnpm --filter @nirmata/server import:world worlds/<world> --user=<author uuid> --dry
+pnpm --filter @nirmata/server import:world worlds/<world> --user=<author uuid>
+```
+
+It reads `world.json` and the card folders, creates the world if its name is not in the database yet (the name is the `world.json` name as lowercase letters and hyphens; `--slug=` overrides it), and writes each card as the author's draft: title, body, a `meta` object that keeps the card's id and path, its named parts, and the `secrets` part into the host-only Secrets table. A card id such as `character.ada` becomes the slug `character-ada`. Files that are not valid cards are listed and skipped. Nothing is published unless you add `--publish`, which freezes the draft as a new version when something changed or nothing is published yet. Run it again after editing: a card that has not changed is left alone, so nothing is marked as edited. It prints the world's id, which `import:assets` needs as `--world`. The folder is only read.
+
 ## Importing dataset images
 
 A person runs this; it needs `DATABASE_URL_RW` and, for `--target=supabase`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (or `NIRMATA_ASSET_DIR` for `--target=local`):
