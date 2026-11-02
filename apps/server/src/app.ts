@@ -4,6 +4,7 @@ import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { type DataDeps, registerAssetRoutes } from "./asset-routes";
+import { type AuthDeps, registerAuthRoutes } from "./auth-routes";
 import { describeError, HttpError } from "./errors";
 import { type CardInput, WORLD_NAME } from "./files";
 import type { Seat, Send, Table } from "./table";
@@ -108,6 +109,8 @@ export interface AppOptions {
   ui?: string | undefined;
   /** The database and file stores; without them the server runs from files alone. */
   data?: DataDeps | undefined;
+  /** Sign-in through Supabase Auth; without it only the host-key login works. */
+  auth?: AuthDeps | undefined;
 }
 
 const PING_MS = 15_000;
@@ -120,7 +123,7 @@ const PING_MS = 15_000;
  * progress arrives on `GET /api/events` like everything else, so that every connection sees the
  * same story at the same moment.
  */
-export function createApp({ table, log, ui, data }: AppOptions): Hono {
+export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
   const app = new Hono();
 
   app.use("/api/*", bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json(tooBig(), 400) }));
@@ -153,6 +156,7 @@ export function createApp({ table, log, ui, data }: AppOptions): Hono {
 
   app.get("/api/health", (c) => c.json({ ok: true }));
   if (data) registerAssetRoutes(app, data, seatOf);
+  if (auth) registerAuthRoutes(app, auth);
   app.get("/api/comfyui/status", async (c) => c.json(await table.comfyStatus()));
   app.get("/api/table", async (c) => c.json(await table.info()));
 
@@ -176,16 +180,23 @@ export function createApp({ table, log, ui, data }: AppOptions): Hono {
   app.post("/api/worlds/:name/vns/:slug/assets/generate", async (c) => {
     const seat = seatOf(c);
     const body = await json(c, GenerateAsset);
-    return c.json(table.startWorldVnAsset(seat, c.req.param("name"), c.req.param("slug"), body), 202);
+    return c.json(
+      table.startWorldVnAsset(seat, c.req.param("name"), c.req.param("slug"), body),
+      202,
+    );
   });
   // follow generations (survives a page refresh: the server holds the record)
   app.get("/api/vn-jobs", (c) => c.json({ jobs: table.listGenerationJobs(seatOf(c)) }));
   app.get("/api/vn-jobs/:id", (c) => c.json(table.getGenerationJob(seatOf(c), c.req.param("id"))));
-  app.post("/api/vn-jobs/:id/cancel", async (c) => c.json(await table.cancelGenerationJob(seatOf(c), c.req.param("id"))));
+  app.post("/api/vn-jobs/:id/cancel", async (c) =>
+    c.json(await table.cancelGenerationJob(seatOf(c), c.req.param("id"))),
+  );
 
   // archive all assets in a vn or shared pool
   app.post("/api/worlds/:name/vns/:slug/assets/archive-all", async (c) =>
-    c.json(await table.archiveAllWorldVnAssets(seatOf(c), c.req.param("name"), c.req.param("slug"))),
+    c.json(
+      await table.archiveAllWorldVnAssets(seatOf(c), c.req.param("name"), c.req.param("slug")),
+    ),
   );
 
   // delete all rendered assets in a vn or shared pool
@@ -313,9 +324,7 @@ export function createApp({ table, log, ui, data }: AppOptions): Hono {
     c.json(await table.compileWorldVn(seatOf(c), c.req.param("name"), c.req.param("slug"))),
   );
   // list all visual novels across worlds (for /vn index)
-  app.get("/api/vns", async (c) =>
-    c.json({ vns: await table.listAllVns(seatOf(c)) }),
-  );
+  app.get("/api/vns", async (c) => c.json({ vns: await table.listAllVns(seatOf(c)) }));
   app.patch("/api/worlds/:name", async (c) => {
     const seat = seatOf(c);
     const body = await json(

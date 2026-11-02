@@ -37,6 +37,13 @@ describe("Db", () => {
     expect(log.slice(-2)).toEqual(["commit", "release"]);
   });
 
+  it("puts the person's address in the claims when given", async () => {
+    const { pool, log } = fakePool();
+    await new Db(pool).asUser(USER, (q) => q("select 1"), { email: "Ann@Example.test" });
+    expect(log[1]).toContain("email");
+    expect(log[1]).toContain("ann@example.test");
+  });
+
   it("refuses a user id that is not a uuid, before touching the database", async () => {
     const { pool, log } = fakePool();
     await expect(new Db(pool).asUser("x'; drop table", async () => 1)).rejects.toThrow(/uuid/);

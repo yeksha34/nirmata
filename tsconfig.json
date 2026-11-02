@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
   "files": [],
-  "references": [{ "path": "packages/core" }, { "path": "packages/llm" }, { "path": "packages/host" }, { "path": "apps/db" }, { "path": "apps/gen" }, { "path": "apps/storage" }, { "path": "apps/server" }]
+  "references": [{ "path": "packages/core" }, { "path": "packages/llm" }, { "path": "packages/host" }, { "path": "apps/auth" }, { "path": "apps/db" }, { "path": "apps/gen" }, { "path": "apps/storage" }, { "path": "apps/server" }]
 }

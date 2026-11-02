@@ -18,6 +18,7 @@ db/
 | `node tools/db-build.mjs --check` | verifies order, names and that every file is listed |
 | `FORBIDDEN_TERMS_FILE=<path outside the repo> node tools/db-check-neutral.mjs` | fails if any line contains a forbidden term; fails closed if the file is missing |
 | `node tools/assets-import-dry-run.mjs <world> [--select=latest or all] [--used-bytes=N] [--hash]` | read-only: counts dataset files and bytes an upload would use, finds identical files, and shows the quota level it would reach (no database or storage access) |
+| `node tools/invite-host.mjs <email> [--days=7]` | human-run: invites the first host (or anyone who may found worlds) and prints the one-time link; uses `DATABASE_URL_BOOTSTRAP` |
 
 ## Running migrations
 

@@ -38,11 +38,20 @@ export class Db {
     return this.transaction(async (q) => work(q));
   }
 
-  async asUser<T>(userId: string, work: (q: Query) => Promise<T>): Promise<T> {
+  /** `who.email` is needed by anything that checks the person's address (accepting an invitation). */
+  async asUser<T>(
+    userId: string,
+    work: (q: Query) => Promise<T>,
+    who: { email?: string } = {},
+  ): Promise<T> {
     if (!isUuid(userId)) throw new Error("asUser needs a user id (a uuid).");
     return this.transaction(async (q) => {
       await q("select set_config('request.jwt.claims', $1, true)", [
-        JSON.stringify({ sub: userId, role: "authenticated" }),
+        JSON.stringify({
+          sub: userId,
+          role: "authenticated",
+          ...(who.email ? { email: who.email.toLowerCase() } : {}),
+        }),
       ]);
       await q("set local role authenticated");
       return work(q);
