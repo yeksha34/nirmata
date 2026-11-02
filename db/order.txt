@@ -8,3 +8,4 @@ membership/migrations/20261102000400_membership.sql
 identity/migrations/20261102000450_accept_invitation.sql
 world_lore/migrations/20261102000500_world_lore.sql
 story_run/migrations/20261102000600_story_run.sql
+reader/migrations/20261102000700_reader.sql
