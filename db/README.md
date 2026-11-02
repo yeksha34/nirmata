@@ -41,7 +41,8 @@ every provider except the SSO one, and set the before-user-created hook to
 | 003 | identity | written, syntax-checked |
 | 004 | membership, accept_invitation | written, syntax-checked |
 | 005 | world_lore | written, syntax-checked |
-| 006+ | story_run, reader, templates, vn_content, assets, generation, storage | not started |
+| 006 | story_run | written, syntax-checked |
+| 007+ | reader, templates, vn_content, assets, generation, storage | not started |
 
 "Syntax-checked" means the files parse with the Postgres parser, including every PL/pgSQL body. They
 have **not** been run against a database, and `db/tests` has not been run.
