@@ -74,6 +74,25 @@ describe("GoTrue", () => {
   });
 });
 
+describe("GoTrue.createUser", () => {
+  const withKey = (f: typeof fetch) =>
+    new GoTrue({ url: "https://p.supabase.co", publishableKey: "pub", serviceRoleKey: "service-key", fetch: f });
+
+  it("creates a confirmed account with the service role key, sending no email", async () => {
+    const { f, calls } = fake([{ status: 200, body: { id: "x" } }]);
+    await withKey(f).createUser("a@b.test", "longenough");
+    expect(calls[0]?.url).toBe("https://p.supabase.co/auth/v1/admin/users");
+    expect(calls[0]?.body).toEqual({ email: "a@b.test", password: "longenough", email_confirm: true });
+    expect(calls[0]?.headers.Authorization).toBe("Bearer service-key");
+  });
+
+  it("says when the address already has an account, and refuses without the key", async () => {
+    const { f } = fake([{ status: 422, body: { error_code: "email_exists", msg: "A user with this email address has already been registered" } }]);
+    await expect(withKey(f).createUser("a@b.test", "longenough")).rejects.toMatchObject({ failure: "exists" });
+    await expect(client(fake([]).f).createUser("a@b.test", "longenough")).rejects.toMatchObject({ failure: "unavailable" });
+  });
+});
+
 describe("SessionStore", () => {
   const session = (expiresAt: number) => ({
     accessToken: "a",

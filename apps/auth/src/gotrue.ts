@@ -11,7 +11,12 @@ export interface AuthSession {
   user: AuthUser;
 }
 
-export type AuthFailure = "bad_credentials" | "invitation_required" | "rejected" | "unavailable";
+export type AuthFailure =
+  | "bad_credentials"
+  | "invitation_required"
+  | "exists"
+  | "rejected"
+  | "unavailable";
 
 /** Why a call to Supabase Auth failed, in terms the server can turn into a plain message. */
 export class AuthError extends Error {
@@ -29,6 +34,8 @@ export interface GoTrueOptions {
   url: string;
   /** The publishable (anon) key. It is sent with every call; it grants nothing by itself. */
   publishableKey: string;
+  /** The service role key, for creating accounts directly. Server side only; it bypasses every access rule. */
+  serviceRoleKey?: string | undefined;
   /** For tests. */
   fetch?: typeof fetch;
   /** For tests. */
@@ -53,12 +60,14 @@ interface TokenBody {
 export class GoTrue {
   private readonly base: string;
   private readonly key: string;
+  private readonly serviceKey: string | undefined;
   private readonly http: typeof fetch;
   private readonly now: () => number;
 
   constructor(options: GoTrueOptions) {
     this.base = `${options.url.replace(/\/+$/, "")}/auth/v1`;
     this.key = options.publishableKey;
+    this.serviceKey = options.serviceRoleKey;
     this.http = options.fetch ?? fetch;
     this.now = options.now ?? Date.now;
   }
@@ -78,6 +87,19 @@ export class GoTrue {
       password,
     });
     return body.access_token ? this.toSession(body) : undefined;
+  }
+
+  /**
+   * Creates an account that is already confirmed, with no email sent (needs the service role key).
+   * The caller must have checked the person is allowed one (they hold a valid invitation).
+   */
+  async createUser(email: string, password: string): Promise<void> {
+    if (!this.serviceKey) throw new AuthError("unavailable", "No service role key is set.");
+    await this.call(
+      "/admin/users",
+      { email, password, email_confirm: true },
+      { apikey: this.serviceKey, Authorization: `Bearer ${this.serviceKey}` },
+    );
   }
 
   /** Turns the `token_hash` from an email link into a session. */
@@ -101,12 +123,16 @@ export class GoTrue {
     }
   }
 
-  private async call(path: string, payload: Record<string, unknown>): Promise<TokenBody> {
+  private async call(
+    path: string,
+    payload: Record<string, unknown>,
+    headers: Record<string, string> = { apikey: this.key },
+  ): Promise<TokenBody> {
     let res: Response;
     try {
       res = await this.http(`${this.base}${path}`, {
         method: "POST",
-        headers: { apikey: this.key, "Content-Type": "application/json" },
+        headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
     } catch {
@@ -116,6 +142,9 @@ export class GoTrue {
     if (res.ok) return body;
     const text = `${body.msg ?? body.message ?? body.error_description ?? ""} ${body.error_code ?? body.code ?? ""}`;
     if (res.status >= 500) throw new AuthError("unavailable", "Supabase Auth failed.");
+    if (/already (been )?registered|email_exists|user_already_exists/i.test(text)) {
+      throw new AuthError("exists", "That address already has an account.");
+    }
     if (/invitation is required/i.test(text)) throw new AuthError("invitation_required", "An invitation is required.");
     if (res.status === 400 && /invalid login|invalid_credentials/i.test(text)) {
       throw new AuthError("bad_credentials", "Wrong email or password.");

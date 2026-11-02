@@ -38,7 +38,11 @@ function authFromEnv(
   const url = env.SUPABASE_URL?.trim();
   const key = env.SUPABASE_PUBLISHABLE_KEY?.trim();
   if (!url || !key) return undefined;
-  const gotrue = new GoTrue({ url, publishableKey: key });
+  const gotrue = new GoTrue({
+    url,
+    publishableKey: key,
+    serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY?.trim() || undefined,
+  });
   return {
     gotrue,
     sessions: new SessionStore(gotrue),

@@ -362,9 +362,7 @@ export class Table {
   }
 
   /** List all visual novels across worlds with asset completion status. Host only. */
-  async listAllVns(
-    seat: Seat,
-  ): Promise<
+  async listAllVns(seat: Seat): Promise<
     Array<
       VnSummary & {
         worldName: string;
