@@ -48,9 +48,9 @@ every provider except the SSO one, and set the before-user-created hook to
 | 009b | platform server guard (is_server) | applied |
 | 010 | assets | applied |
 | 011 | generation | applied |
-| 011b | membership path and channel helpers | written, syntax-checked |
-| 012 | storage buckets and policies, realtime channel policy (bootstrap) | written, syntax-checked |
-| 013 | seeds (default workflow and VN templates) | not started |
+| 011b | membership path and channel helpers | applied |
+| 012 | storage buckets and policies, realtime channel policy (bootstrap) | applied |
+| 013 | seeds: default workflow and VN templates | written, syntax-checked |
 
 "Syntax-checked" means the files parse with the Postgres parser, including every PL/pgSQL body. They
 have **not** been run against a database, and `db/tests` has not been run.
