@@ -34,6 +34,6 @@ Use `.agents/skills/record-decision`.
 | [0027](0027-database-is-lore-source-of-truth.md) | Database is the lore source of truth; exports separate | Accepted |
 | [0028](0028-asset-files-served-by-backend-from-any-store.md) | Asset files served by the backend from any store | Proposed |
 | [0029](0029-roles-admin-author-moderator-player.md) | Four roles: admin, author, moderator, player | Proposed |
-| [0030](0030-imported-worlds-read-lore-from-the-database.md) | An imported world reads and writes its cards in the database | Proposed |
+| [0030](0030-imported-worlds-read-lore-from-the-database.md) | An imported world reads its cards and images from the database | Proposed |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.

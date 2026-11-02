@@ -244,16 +244,20 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
   });
 
   app.get("/api/worlds/:name/dataset/:slug/:assetName/:timestamp/image", async (c) => {
+    // the database copy is private: only the signed-in host's own cookie reaches it
+    const host = table.hostUserId();
+    const fromDatabase = host !== undefined && (await userOf?.(c))?.user.id === host;
     const asset = await table.readDatasetImage(
       c.req.param("name"),
       c.req.param("slug"),
       c.req.param("assetName"),
       c.req.param("timestamp"),
+      fromDatabase,
     );
     if (!asset) throw new HttpError(404, "not_found", "Asset not found.");
     return c.body(new Uint8Array(asset.data), 200, {
       "Content-Type": asset.contentType,
-      "Cache-Control": "public, max-age=86400",
+      "Cache-Control": fromDatabase ? "private, max-age=300" : "public, max-age=86400",
     });
   });
 

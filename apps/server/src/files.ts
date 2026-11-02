@@ -199,6 +199,16 @@ export interface CardFile {
   problems?: string[];
 }
 
+/** Dataset images of an imported world, from the database and its stores (see `DbImages`). */
+export interface DatasetImages {
+  read(
+    worldName: string,
+    scope: string,
+    assetName: string,
+    run: string,
+  ): Promise<{ data: Buffer; contentType: string } | "gone" | undefined>;
+}
+
 /** Where a world's cards are read from. */
 export type CardSource = "database" | "files";
 
@@ -1617,7 +1627,10 @@ export class Library {
 
   constructor(
     root: string,
-    private readonly options: { lore?: LoreCards | undefined } = {},
+    private readonly options: {
+      lore?: LoreCards | undefined;
+      images?: DatasetImages | undefined;
+    } = {},
   ) {
     this.root = resolve(root);
   }
@@ -1892,7 +1905,20 @@ export class Library {
     slug: string,
     assetName: string,
     timestamp: string,
+    /** True only when the request is the signed-in host's own: the database copy is private. */
+    fromDatabase = false,
   ): Promise<{ data: Buffer; contentType: string } | undefined> {
+    const images = fromDatabase ? this.options.images : undefined;
+    if (images) {
+      const found = await images.read(
+        name,
+        sanitizeSlug(slug),
+        sanitizeSlug(assetName),
+        sanitizeSlug(timestamp),
+      );
+      if (found === "gone") return undefined;
+      if (found) return found;
+    }
     return this.open(name).readDatasetImage(slug, assetName, timestamp);
   }
 
