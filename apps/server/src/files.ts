@@ -445,6 +445,15 @@ export class WorldFiles implements SourceBackend {
     return summaries;
   }
 
+  /** One visual novel's manifest as written, without working out its order or what comes next. */
+  private async vnManifest(safeSlug: string): Promise<VnManifest> {
+    const text = await readIfThere(join(inside(this.root, `vns/${safeSlug}`), "manifest.json"));
+    if (!text) {
+      throw new HostError("nothing_to_do", `There is no visual novel adaptation "${safeSlug}".`);
+    }
+    return VnManifestSchema.parse(JSON.parse(text));
+  }
+
   async vn(
     slug: string,
   ): Promise<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck }> {
@@ -673,13 +682,19 @@ export class WorldFiles implements SourceBackend {
     return {};
   }
 
+  /**
+   * The assets of a visual novel. `prompts: false` skips the default prompts (which read every
+   * card and the prompt specs), for callers that only count or list them.
+   */
   async listVnAssets(
     slug: string,
+    options: { prompts?: boolean } = {},
   ): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+    const withPrompts = options.prompts !== false;
     const safeSlug = sanitizeSlug(slug);
 
     if (safeSlug === "_all" || safeSlug === "all") {
-      const shared = await this.listVnAssets("_shared");
+      const shared = await this.listVnAssets("_shared", options);
       const allSprites: VnAssetItem[] = [
         ...shared.sprites.map((s) => ({ ...s, isShared: true, vnSlug: "_shared" })),
       ];
@@ -693,7 +708,7 @@ export class WorldFiles implements SourceBackend {
       const vns = await this.vns();
       for (const v of vns) {
         if (v.slug === "_shared") continue;
-        const vAssets = await this.listVnAssets(v.slug);
+        const vAssets = await this.listVnAssets(v.slug, options);
         for (const s of vAssets.sprites) {
           if (!allSprites.some((existing) => existing.name === s.name)) {
             allSprites.push({ ...s, vnSlug: v.slug });
@@ -716,8 +731,13 @@ export class WorldFiles implements SourceBackend {
     const sprites: VnAssetItem[] = [];
     const cgs: VnAssetItem[] = [];
     const backgrounds: VnAssetItem[] = [];
-    const promptSpecs = await this.loadPromptSpecs();
-    const cardFiles = await this.cardFiles().catch(() => []);
+    const promptSpecs = withPrompts ? await this.loadPromptSpecs() : {};
+    const cardFiles = withPrompts ? await this.cardFiles().catch(() => []) : [];
+    const sprite = (n: string) =>
+      withPrompts ? synthesizeSpriteDanbooruPrompt(n, cardFiles) : undefined;
+    const cg = (n: string) => (withPrompts ? synthesizeCgDanbooruPrompt(n, cardFiles) : undefined);
+    const bg = (n: string) =>
+      withPrompts ? synthesizeBackgroundDanbooruPrompt(n, cardFiles) : undefined;
 
     const checkAsset = async (subPath: string): Promise<{ exists: boolean; fullPath?: string }> => {
       const candidates = [
@@ -781,8 +801,7 @@ export class WorldFiles implements SourceBackend {
     await scanDir("backgrounds", "bg");
 
     try {
-      const vnData = await this.vn(slug);
-      const manifestAssets = vnData.manifest.assets;
+      const manifestAssets = (await this.vnManifest(safeSlug)).assets;
       if (manifestAssets?.characters) {
         for (const [charName, expressions] of Object.entries(manifestAssets.characters)) {
           const exprList =
@@ -801,7 +820,7 @@ export class WorldFiles implements SourceBackend {
                 url: check.exists
                   ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
                   : undefined,
-                defaultPrompt: synthesizeSpriteDanbooruPrompt(spriteName, cardFiles),
+                defaultPrompt: sprite(spriteName),
               });
             }
           }
@@ -821,7 +840,7 @@ export class WorldFiles implements SourceBackend {
               url: check.exists
                 ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
                 : undefined,
-              defaultPrompt: synthesizeCgDanbooruPrompt(cgName, cardFiles),
+              defaultPrompt: cg(cgName),
             });
           }
         }
@@ -840,7 +859,7 @@ export class WorldFiles implements SourceBackend {
               url: check.exists
                 ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
                 : undefined,
-              defaultPrompt: synthesizeBackgroundDanbooruPrompt(bgName, cardFiles),
+              defaultPrompt: bg(bgName),
             });
           }
         }
@@ -850,17 +869,17 @@ export class WorldFiles implements SourceBackend {
     // Populate any disk-scanned items that did not have default prompts
     for (const s of sprites) {
       if (!s.defaultPrompt) {
-        s.defaultPrompt = synthesizeSpriteDanbooruPrompt(s.name, cardFiles);
+        s.defaultPrompt = sprite(s.name);
       }
     }
     for (const c of cgs) {
       if (!c.defaultPrompt) {
-        c.defaultPrompt = synthesizeCgDanbooruPrompt(c.name, cardFiles);
+        c.defaultPrompt = cg(c.name);
       }
     }
     for (const b of backgrounds) {
       if (!b.defaultPrompt) {
-        b.defaultPrompt = synthesizeBackgroundDanbooruPrompt(b.name, cardFiles);
+        b.defaultPrompt = bg(b.name);
       }
     }
 
@@ -871,7 +890,7 @@ export class WorldFiles implements SourceBackend {
         name: "main_character_neutral",
         targetPath: "sprites/main_character_neutral.png",
         exists: false,
-        defaultPrompt: synthesizeSpriteDanbooruPrompt("main_character_neutral", cardFiles),
+        defaultPrompt: sprite("main_character_neutral"),
       });
     }
     if (cgs.length === 0) {
@@ -881,7 +900,7 @@ export class WorldFiles implements SourceBackend {
         name: "scene_01_climax",
         targetPath: "cgs/scene_01_climax.png",
         exists: false,
-        defaultPrompt: synthesizeCgDanbooruPrompt("scene_01_climax", cardFiles),
+        defaultPrompt: cg("scene_01_climax"),
       });
     }
     if (backgrounds.length === 0) {
@@ -891,7 +910,7 @@ export class WorldFiles implements SourceBackend {
         name: "main_setting_day",
         targetPath: "backgrounds/main_setting_day.png",
         exists: false,
-        defaultPrompt: synthesizeBackgroundDanbooruPrompt("main_setting_day", cardFiles),
+        defaultPrompt: bg("main_setting_day"),
       });
     }
 
@@ -1778,7 +1797,7 @@ export class Library {
       try {
         const vns = await this.vns(w.name);
         for (const vn of vns) {
-          const assets = await this.open(w.name).listVnAssets(vn.slug);
+          const assets = await this.open(w.name).listVnAssets(vn.slug, { prompts: false });
           result.push({
             ...vn,
             worldName: w.name,
