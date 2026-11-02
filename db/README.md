@@ -36,11 +36,11 @@ every provider except the SSO one, and set the before-user-created hook to
 
 | # | Migration | State |
 |---|---|---|
-| 001 | roles and schemas | written, syntax-checked |
-| 002 | platform core | written, syntax-checked |
-| 003 | identity | written, syntax-checked |
-| 004 | membership, accept_invitation | written, syntax-checked |
-| 005 | world_lore | written, syntax-checked |
+| 001 | roles and schemas | applied |
+| 002 | platform core | applied |
+| 003 | identity | applied |
+| 004 | membership, accept_invitation | applied |
+| 005 | world_lore | applied |
 | 006 | story_run | applied |
 | 007 | reader | applied |
 | 008 | platform templates | applied |
@@ -52,5 +52,5 @@ every provider except the SSO one, and set the before-user-created hook to
 | 012 | storage buckets and policies, realtime channel policy (bootstrap) | applied |
 | 013 | seeds: default workflow and VN templates | written, syntax-checked |
 
-"Syntax-checked" means the files parse with the Postgres parser, including every PL/pgSQL body. They
-have **not** been run against a database, and `db/tests` has not been run.
+"Applied" means a person ran it with `tools/db-apply.mjs` against the project. "Written, syntax-checked" means the file
+parses with the Postgres parser (every PL/pgSQL body included) but has not been run. `db/tests` has not been run.
