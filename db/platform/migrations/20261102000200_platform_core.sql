@@ -213,6 +213,7 @@ create table platform.outbox (
 );
 create index outbox_pending on platform.outbox (id) where delivered_at is null;
 alter table platform.outbox enable row level security;   -- no policy: only definer functions and service_role
+alter table platform.publish_status_history enable row level security;   -- no policy: written by the transition trigger, read by the owner
 
 create function platform.emit(p_topic text, p_aggregate uuid, p_payload jsonb, p_key text) returns void
 language sql security definer set search_path = '' as $$
