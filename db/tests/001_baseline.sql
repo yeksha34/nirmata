@@ -108,9 +108,9 @@ set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-0000000000a1","r
 select is(membership.is_host('00000000-0000-0000-0000-0000000000b1'), true, 'the host is a host');
 reset request.jwt.claims;
 
+create temp table _fails as select numb, descr, reason from __tresults__ where not aok;   -- finish() drops the results
 select * from finish();
 -- the editor shows the last result: list what failed
-select coalesce(string_agg(numb || ': ' || descr || coalesce('  -- ' || nullif(reason, ''), ''), E'
-' order by numb), 'all passed') as failures
-  from __tresults__ where not aok;
+select coalesce(string_agg(numb || ': ' || descr || coalesce('  -- ' || nullif(reason, ''), ''), chr(10) order by numb), 'all passed') as failures
+  from _fails;
 rollback;

@@ -230,9 +230,9 @@ select throws_ok('select * from story_run.turns', '42501', null, 'anon cannot re
 select throws_ok('select membership.is_host(gen_random_uuid())', '42501', null, 'anon cannot call helpers');
 
 reset role;
+create temp table _fails as select numb, descr, reason from __tresults__ where not aok;   -- finish() drops the results
 select * from finish();
 -- the editor shows the last result: list what failed
-select coalesce(string_agg(numb || ': ' || descr || coalesce('  -- ' || nullif(reason, ''), ''), E'
-' order by numb), 'all passed') as failures
-  from __tresults__ where not aok;
+select coalesce(string_agg(numb || ': ' || descr || coalesce('  -- ' || nullif(reason, ''), ''), chr(10) order by numb), 'all passed') as failures
+  from _fails;
 rollback;
