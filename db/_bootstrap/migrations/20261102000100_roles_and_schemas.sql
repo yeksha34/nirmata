@@ -66,7 +66,7 @@ declare
   o text;
 begin
   if exists (select 1 from pg_roles where rolname = 'postgres') then
-    owners := owners || 'postgres';       -- in case a migration is ever run as postgres by mistake
+    owners := array_append(owners, 'postgres');     -- in case a migration is ever run as postgres by mistake
   end if;
 
   foreach s in array array['identity', 'membership', 'world_lore', 'story_run', 'reader',
