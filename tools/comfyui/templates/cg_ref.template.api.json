@@ -1,0 +1,168 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "AOM3A1B_orangemixs.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "9": {
+    "inputs": {
+      "device": "GPU",
+      "model": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "TorchCompileDiffusionOpenVINO",
+    "_meta": {
+      "title": "OpenVINO Acceleration"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "masterpiece, best quality, ultra-detailed, cinematic narrative event CG, 16:9 widescreen composition, dramatic atmospheric lighting, emotional narrative focal point, highly detailed background scenery, deep depth of field, high aesthetic anime illustration",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive CG Prompt"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "lowres, bad anatomy, bad hands, missing fingers, extra digits, cropped, worst quality, low quality, normal quality, signature, watermark, blurry, deformed, censored, bar censor, mosaic censor",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative CG Prompt"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 960,
+      "height": 540,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent (16:9 Widescreen)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "seed": 777777,
+      "steps": 22,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": [
+        "9",
+        0
+      ],
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "4",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": [
+        "6",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "cgs/cg_scene_asset",
+      "images": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save CG Image"
+    }
+  },
+  "11": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "reference.png"
+    },
+    "_meta": {
+      "title": "Reference Image (identity)"
+    }
+  },
+  "12": {
+    "class_type": "IPAdapterUnifiedLoader",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "preset": "PLUS (high strength)"
+    },
+    "_meta": {
+      "title": "IPAdapter Loader"
+    }
+  },
+  "13": {
+    "class_type": "IPAdapterAdvanced",
+    "inputs": {
+      "model": [
+        "12",
+        0
+      ],
+      "ipadapter": [
+        "12",
+        1
+      ],
+      "image": [
+        "11",
+        0
+      ],
+      "weight": 0.7,
+      "weight_type": "linear",
+      "combine_embeds": "concat",
+      "start_at": 0.0,
+      "end_at": 1.0,
+      "embeds_scaling": "V only"
+    },
+    "_meta": {
+      "title": "IPAdapter (identity)"
+    }
+  }
+}

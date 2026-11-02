@@ -35,5 +35,6 @@ Use `.agents/skills/record-decision`.
 | [0028](0028-asset-files-served-by-backend-from-any-store.md) | Asset files served by the backend from any store | Proposed |
 | [0029](0029-roles-admin-author-moderator-player.md) | Four roles: admin, author, moderator, player | Proposed |
 | [0030](0030-imported-worlds-read-lore-from-the-database.md) | An imported world reads its cards and images from the database | Proposed |
+| [0031](0031-reference-images-in-generation.md) | Reference images in generation | Proposed |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.

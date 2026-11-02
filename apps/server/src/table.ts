@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   type Action,
   type Actor,
@@ -38,6 +38,7 @@ import {
   ensureTransparentSpritePng,
   type GenerationJob,
   GenerationJobs,
+  injectReferences,
   injectWorkflowParams,
 } from "@nirmata/gen";
 import { HttpError } from "./errors";
@@ -83,6 +84,10 @@ export interface GenerateAssetInput {
   seed?: number;
   feedback?: Record<string, "better" | "keep" | "worse">;
   workflowOverride?: Record<string, unknown>;
+  /** Names of sprites whose images should influence this one (see reference-rules). */
+  references?: string[];
+  /** How strongly they count: the sampler's denoise (image-to-image) or the adapter's weight (identity). */
+  referenceStrength?: number;
 }
 
 export interface TableOptions {
@@ -510,6 +515,28 @@ export class Table {
     }
   }
 
+  /** The images of the reference sprites a generation asked for; a missing one stops it. */
+  private async readReferences(
+    worldName: string,
+    slug: string,
+    body: GenerateAssetInput,
+  ): Promise<Buffer[]> {
+    if (!body.references?.length || body.type === "bg") return [];
+    const images: Buffer[] = [];
+    for (const name of body.references.slice(0, 6)) {
+      const found = await this.options.library.readVnAsset(worldName, slug, `sprites/${name}.png`);
+      if (!found) {
+        throw new HttpError(
+          409,
+          "reference_missing",
+          "A reference sprite does not exist yet. Generate it first, or remove it from the references.",
+        );
+      }
+      images.push(found.data);
+    }
+    return images;
+  }
+
   private async generateWorldVnAsset(
     jobId: string,
     signal: AbortSignal,
@@ -527,6 +554,9 @@ export class Table {
       negative = updated.negativePrompt;
     }
 
+    // reference sprites are read first: a missing one stops the job before anything is archived
+    const references = await this.readReferences(worldName, slug, body);
+
     const archivedDir = await this.options.library.archiveVnAsset(
       worldName,
       slug,
@@ -541,12 +571,13 @@ export class Table {
     );
 
     const template = (body.workflowOverride ||
-      (await this.options.library.loadWorkflowTemplate(worldName, body.type))) as Record<
-      string,
-      any
-    >;
+      (await this.options.library.loadWorkflowTemplate(
+        worldName,
+        body.type,
+        references.length > 0 ? "ref" : undefined,
+      ))) as Record<string, any>;
 
-    const injected = injectWorkflowParams(template, {
+    let injected = injectWorkflowParams(template, {
       positivePrompt: positive,
       negativePrompt: negative,
       steps: body.steps,
@@ -556,6 +587,25 @@ export class Table {
       seed: body.seed,
       filenamePrefix: `${body.type}s/${body.name}`,
     });
+
+    if (references.length > 0) {
+      const uploaded: string[] = [];
+      for (const image of references) {
+        const hash = createHash("sha256").update(image).digest("hex").slice(0, 16);
+        uploaded.push(await this.comfy.uploadImage(`nirmata_ref_${hash}.png`, image));
+      }
+      const used = injectReferences(injected as any, uploaded, {
+        strength: body.referenceStrength,
+      });
+      if (used.applied === 0) {
+        throw new HttpError(
+          409,
+          "no_reference_slot",
+          "This workflow has no place for a reference image. Use a workflow with a Reference Image node.",
+        );
+      }
+      injected = used.workflow as typeof injected;
+    }
 
     await this.options.recorder?.begin({
       key: jobId,

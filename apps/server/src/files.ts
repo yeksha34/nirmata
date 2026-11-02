@@ -47,6 +47,12 @@ import {
 } from "@nirmata/gen";
 import { HttpError } from "./errors";
 import { slugFor } from "./lore-rows";
+import {
+  parseReferenceSettings,
+  type ReferenceSettings,
+  type Suggested,
+  suggestReferences,
+} from "./reference-rules";
 
 export interface VnAssetItem {
   id: string;
@@ -105,6 +111,8 @@ export interface VnAssetDetail {
   aspectRatio?: string;
   width?: number;
   height?: number;
+  /** Sprites that should influence this image, and every sprite that could (see reference-rules). */
+  references?: Suggested;
 }
 
 /** Where a world keeps its cards. Same layout the editor and the linter use. */
@@ -1029,6 +1037,14 @@ export class WorldFiles implements SourceBackend {
     }
     datasetHistory.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
+    const references = suggestReferences({
+      type,
+      name,
+      positivePrompt,
+      sprites: list.sprites.filter((a) => a.exists).map((a) => a.name),
+      settings: await this.referenceSettings(),
+    });
+
     return {
       id: item.id,
       type,
@@ -1039,6 +1055,7 @@ export class WorldFiles implements SourceBackend {
       positivePrompt,
       negativePrompt,
       templateClass: type,
+      references,
       datasetHistory,
       steps: spec?.steps,
       cfg: spec?.cfg,
@@ -1194,11 +1211,24 @@ export class WorldFiles implements SourceBackend {
     return dest;
   }
 
-  async loadWorkflowTemplate(type: "sprite" | "cg" | "bg"): Promise<Record<string, unknown>> {
+  /** Which expression is a character's base sprite, from the world's own folder (it is private). */
+  async referenceSettings(): Promise<ReferenceSettings> {
+    return parseReferenceSettings(
+      await readIfThere(inside(this.root, "assets/workflow/references.json")),
+    );
+  }
+
+  /** A world's own workflow wins over the bundled one; `ref` is the variant that takes reference images. */
+  async loadWorkflowTemplate(
+    type: "sprite" | "cg" | "bg",
+    variant?: "ref",
+  ): Promise<Record<string, unknown>> {
+    const key = variant ? `${type}_${variant}` : type;
+    const bundled = type === "bg" && !variant ? "background" : key;
     const candidates = [
-      inside(this.root, `assets/workflow/${type}.json`),
-      inside(this.root, `assets/workflow/${type}.api.json`),
-      resolve(process.cwd(), `tools/comfyui/templates/${type}.template.api.json`),
+      inside(this.root, `assets/workflow/${key}.json`),
+      inside(this.root, `assets/workflow/${key}.api.json`),
+      resolve(process.cwd(), `tools/comfyui/templates/${bundled}.template.api.json`),
     ];
     for (const cand of candidates) {
       const content = await readIfThere(cand);
@@ -1971,8 +2001,9 @@ export class Library {
   async loadWorkflowTemplate(
     name: string,
     type: "sprite" | "cg" | "bg",
+    variant?: "ref",
   ): Promise<Record<string, unknown>> {
-    return this.open(name).loadWorkflowTemplate(type);
+    return this.open(name).loadWorkflowTemplate(type, variant);
   }
 
   /** One chapter or draft of a world, in full, for reading. */
