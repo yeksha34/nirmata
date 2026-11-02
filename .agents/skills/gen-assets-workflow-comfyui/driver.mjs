@@ -179,17 +179,26 @@ export function scaffoldWorldWorkflows(worldSlug, vnSlug) {
           const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
           const assets = manifest.assets || {};
 
-          // Sprites from manifest characters
+          // Sprites from manifest characters (guaranteeing naked sprite for all characters)
           if (assets.characters) {
-            for (const [char, expressions] of Object.entries(assets.characters)) {
+            for (const [char, rawExpressions] of Object.entries(assets.characters)) {
+              const expressions = Array.isArray(rawExpressions) ? [...rawExpressions] : [];
+              if (!expressions.includes("naked")) {
+                expressions.push("naked");
+              }
               for (const expr of expressions) {
                 const name = `${char}_${expr}`;
+                const isNaked = expr === "naked";
                 promptsCatalog[name] = {
                   name,
                   type: "sprite",
-                  positivePrompt: `masterpiece, best quality, 1girl, solo, ${char}, ${expr} expression, full body portrait, crisp line art, simple background, white background`,
-                  negativePrompt: `lowres, bad anatomy, bad hands, blurry, worst quality, cropped, censored`,
-                  steps: 22,
+                  positivePrompt: isNaked
+                    ? `masterpiece, best quality, 1girl, solo, ${char}, completely nude, uncensored, nipples, breasts, navel, pussy, full body portrait, standing forward, arms at sides, simple background, white background, character cutout`
+                    : `masterpiece, best quality, 1girl, solo, ${char}, ${expr} expression, full body portrait, crisp line art, simple background, white background`,
+                  negativePrompt: isNaked
+                    ? `clothes, dress, underwear, shirt, skirt, 2girls, bad anatomy, bad hands, blurry, worst quality, cropped, censored, bar censor, mosaic censor`
+                    : `lowres, bad anatomy, bad hands, blurry, worst quality, cropped, censored`,
+                  steps: isNaked ? 25 : 22,
                   cfg: 7.5,
                   sampler: "dpmpp_2m",
                   scheduler: "karras",
