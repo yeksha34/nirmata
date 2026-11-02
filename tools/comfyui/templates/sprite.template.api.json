@@ -1,0 +1,108 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "AOM3A1B_orangemixs.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "9": {
+    "inputs": {
+      "device": "GPU",
+      "model": ["1", 0]
+    },
+    "class_type": "TorchCompileDiffusionOpenVINO",
+    "_meta": {
+      "title": "OpenVINO Acceleration"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "masterpiece, best quality, ultra-detailed, 1girl, solo, anime sprite portrait, standing forward, full body, uncensored, simple background, white background",
+      "clip": ["1", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "2girls, multiple girls, 2bodies, bad anatomy, bad hands, missing fingers, extra digits, blurry, worst quality, low quality, normal quality, signature, watermark, cropped, censored, bar censor, mosaic censor",
+      "clip": ["1", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 512,
+      "height": 768,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent (Portrait)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "seed": 555555,
+      "steps": 22,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": ["9", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["5", 0]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": ["6", 0],
+      "vae": ["1", 2]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "8": {
+    "inputs": {
+      "image": ["7", 0],
+      "model": "RMBG-2.0",
+      "sensitivity": 1.0,
+      "process_res": 1024,
+      "mask_blur": 0,
+      "mask_offset": 0,
+      "background": "Alpha",
+      "background_color": "#000000",
+      "invert_output": false,
+      "refine_foreground": true
+    },
+    "class_type": "RMBG",
+    "_meta": {
+      "title": "RMBG Background Removal (Alpha Transparency)"
+    }
+  },
+  "10": {
+    "inputs": {
+      "filename_prefix": "sprites/sprite_asset",
+      "images": ["8", 0]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Transparent Sprite Image (RGBA PNG)"
+    }
+  }
+}

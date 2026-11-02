@@ -12,6 +12,7 @@ Nirmata: build worlds, then host stories in them. Start at [docs/README.md](docs
 - Git deliverable workflow: for every deliverable step, create a dedicated branch, commit on that branch, and merge it back into the current working branch. Do this for all deliverables steps.
 - Tagging rule: tag important deliverable milestones with an annotated git tag (e.g. `git tag -a <tag-name> -m "<description>"`). Follow the `release-tag` skill for release milestones.
 - Check a world: `node .agents/skills/world-lint/driver.mjs check`.
+- Check VN asset workflows: `node .agents/skills/gen-assets-workflow-comfyui/driver.mjs check <world>`.
 
 | Skill | Use for |
 |---|---|
@@ -26,4 +27,5 @@ Nirmata: build worlds, then host stories in them. Start at [docs/README.md](docs
 | `record-decision` | ADRs |
 | `log-bug` | Bug and tech-debt register |
 | `native-html-first` | Check for built-in HTML elements/attributes before writing custom JS components |
+| `gen-assets-workflow-comfyui` | Scaffold customized ComfyUI workflows (sprites, CGs, backgrounds) for VN assets |
 | `release-tag` | Cut a tagged release |

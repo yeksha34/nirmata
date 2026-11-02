@@ -1,17 +1,23 @@
 import type {
   CardForm,
   CardTemplate,
+  ComfyUiStatus,
+  GenerateAssetInput,
+  GenerationJob,
   Mode,
   Perspective,
   RecentStory,
   Snapshot,
   TableInfo,
+  VnAssetDetail,
+  VnAssetItem,
   VnDiagnostic,
   VnManifest,
   VnMode,
   VnSlideDeck,
   VnSummary,
   VnTier,
+  VnWithAssetsSummary,
   WorldDetail,
   WorldInfo,
   WorldSummary,
@@ -90,6 +96,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 const get = <T>(path: string) => request<T>("GET", path);
 const post = <T = { ok: true }>(path: string, body: unknown = {}) => request<T>("POST", path, body);
 const put = <T = { ok: true }>(path: string, body: unknown) => request<T>("PUT", path, body);
+const del = <T = { ok: true }>(path: string) => request<T>("DELETE", path);
 
 export const api = {
   table: () => get<TableInfo>("/api/table"),
@@ -211,5 +218,43 @@ export const api = {
   compileVn: (worldName: string, slug: string) =>
     post<{ slides: VnSlideDeck; diagnostics: VnDiagnostic[] }>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/compile`,
+    ),
+  comfyStatus: () => get<ComfyUiStatus>("/api/comfyui/status"),
+  allVns: () => get<{ vns: VnWithAssetsSummary[] }>("/api/vns").then((r) => r.vns),
+  vnAssets: (worldName: string, slug: string) =>
+    get<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets`,
+    ),
+  vnAssetDetail: (worldName: string, slug: string, type: "sprite" | "cg" | "bg", name: string) =>
+    get<VnAssetDetail>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}`,
+    ),
+  /** Starts a generation and returns at once; follow it with `vnJob`. */
+  generateVnAsset: (worldName: string, slug: string, body: GenerateAssetInput) =>
+    post<GenerationJob>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/generate`,
+      body,
+    ),
+  vnJobs: () => get<{ jobs: GenerationJob[] }>("/api/vn-jobs").then((r) => r.jobs),
+  vnJob: (id: string) => get<GenerationJob>(`/api/vn-jobs/${encodeURIComponent(id)}`),
+  cancelVnJob: (id: string) => post<GenerationJob>(`/api/vn-jobs/${encodeURIComponent(id)}/cancel`),
+  archiveAllVnAssets: (worldName: string, slug: string) =>
+    post<{ ok: boolean; archivedCount: number }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/archive-all`,
+      {},
+    ),
+  deleteAllVnAssets: (worldName: string, slug: string) =>
+    post<{ ok: boolean; deletedCount: number }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/delete-all`,
+      {},
+    ),
+  archiveOneVnAsset: (worldName: string, slug: string, type: "sprite" | "cg" | "bg", name: string) =>
+    post<{ ok: boolean; timestamp: string }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}/archive`,
+      {},
+    ),
+  deleteOneVnAsset: (worldName: string, slug: string, type: "sprite" | "cg" | "bg", name: string) =>
+    del<{ ok: boolean; name: string }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}`,
     ),
 };

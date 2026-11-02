@@ -1,0 +1,258 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "AOM3A1B_orangemixs.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint (AOM3 Uncensored Anime SD 1.5)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "device": "GPU"
+    },
+    "class_type": "TorchCompileDiffusionOpenVINO",
+    "_meta": {
+      "title": "OpenVINO Diffusion (Intel Iris Xe GPU)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "masterpiece, best quality, ultra-detailed, 1girl, solo, anime sprite portrait, standing forward, full body, uncensored, simple background, white background",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "detailed anime face, expressive eyes, parted lips, long hair, beautiful detailed anime face, high aesthetic",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Region 1 (Head & Expression) Prompt"
+    }
+  },
+  "11": {
+    "inputs": {
+      "width": 512,
+      "height": 256,
+      "x": 0,
+      "y": 0,
+      "strength": 1.0,
+      "conditioning": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "ConditioningSetArea",
+    "_meta": {
+      "title": "Set Area: Top Tier (Head y=0-256)"
+    }
+  },
+  "5": {
+    "inputs": {
+      "text": "detailed anime upper torso, slender build, collarbone, detailed costume, elegant attire, uncensored",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Region 2 (Upper Torso & Attire) Prompt"
+    }
+  },
+  "12": {
+    "inputs": {
+      "width": 512,
+      "height": 280,
+      "x": 0,
+      "y": 220,
+      "strength": 1.0,
+      "conditioning": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "ConditioningSetArea",
+    "_meta": {
+      "title": "Set Area: Mid Tier (Chest y=220-500)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "detailed lower body, slender legs, anime character portrait, uncensored",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Region 3 (Lower Body & Legs) Prompt"
+    }
+  },
+  "13": {
+    "inputs": {
+      "width": 512,
+      "height": 308,
+      "x": 0,
+      "y": 460,
+      "strength": 1.0,
+      "conditioning": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "ConditioningSetArea",
+    "_meta": {
+      "title": "Set Area: Bottom Tier (Pelvis & Legs y=460-768)"
+    }
+  },
+  "14": {
+    "inputs": {
+      "conditioning_1": [
+        "11",
+        0
+      ],
+      "conditioning_2": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "ConditioningCombine",
+    "_meta": {
+      "title": "Combine (Head + Torso)"
+    }
+  },
+  "15": {
+    "inputs": {
+      "conditioning_1": [
+        "14",
+        0
+      ],
+      "conditioning_2": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "ConditioningCombine",
+    "_meta": {
+      "title": "Combine (All 3 Regions)"
+    }
+  },
+  "16": {
+    "inputs": {
+      "conditioning_1": [
+        "3",
+        0
+      ],
+      "conditioning_2": [
+        "15",
+        0
+      ]
+    },
+    "class_type": "ConditioningCombine",
+    "_meta": {
+      "title": "Combine (Global + Regional Composite)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "lowres, bad anatomy, bad hands, missing fingers, extra digits, cropped, worst quality, low quality, normal quality, signature, watermark, blurry, deformed, censored, bar censor, mosaic censor",
+      "clip": [
+        "1",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Negative Prompt"
+    }
+  },
+  "8": {
+    "inputs": {
+      "width": 512,
+      "height": 768,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent (512x768 Portrait)"
+    }
+  },
+  "9": {
+    "inputs": {
+      "seed": 31415,
+      "steps": 25,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": [
+        "2",
+        0
+      ],
+      "positive": [
+        "16",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler (SD 1.5 GPU Regional)"
+    }
+  },
+  "10": {
+    "inputs": {
+      "samples": [
+        "9",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "17": {
+    "inputs": {
+      "filename_prefix": "sprites/chimeric_hybrid_walking_sprite_sd15_regional",
+      "images": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Character Sprite"
+    }
+  }
+}

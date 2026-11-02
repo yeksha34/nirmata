@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { api } from "./api";
 import { useAct, useApp } from "./app-context";
 import { Tip } from "./controls";
@@ -12,6 +13,23 @@ export function HeaderBar() {
   const jump = useJump();
   const you = state.you;
   const isHost = you?.seat === "host";
+  const [comfyOnline, setComfyOnline] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void api
+      .comfyStatus()
+      .then((s) => {
+        if (active) setComfyOnline(s.online);
+      })
+      .catch(() => {
+        if (active) setComfyOnline(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <header className="topbar">
       <Brand />
@@ -20,10 +38,26 @@ export function HeaderBar() {
           <button
             type="button"
             className="navlink"
-            aria-current={nav.world === undefined ? "page" : undefined}
-            onClick={nav.home}
+            aria-current={nav.route === "worlds" ? "page" : undefined}
+            onClick={() => nav.toWorlds()}
           >
             <T>Worlds</T>
+          </button>
+          <button
+            type="button"
+            className="navlink"
+            aria-current={nav.route === "vn" ? "page" : undefined}
+            onClick={() => nav.toVn()}
+          >
+            <T>Visual Novels</T>
+          </button>
+          <button
+            type="button"
+            className="navlink"
+            aria-current={nav.route === "dataset" ? "page" : undefined}
+            onClick={() => nav.toDataset()}
+          >
+            <T>Dataset</T>
           </button>
         </nav>
       )}
@@ -31,6 +65,13 @@ export function HeaderBar() {
         <p className="world-name" title={state.world.tagline}>
           {state.world.title}
         </p>
+      )}
+      {comfyOnline !== null && (
+        <Tip below text={comfyOnline ? "ComfyUI Online (:8188)" : "ComfyUI Offline"}>
+          <output className={`comfy-pill ${comfyOnline ? "online" : "offline"}`}>
+            <T>● ComfyUI</T>
+          </output>
+        </Tip>
       )}
       {isHost && (
         <button

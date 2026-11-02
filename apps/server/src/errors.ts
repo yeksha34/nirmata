@@ -2,10 +2,12 @@ import { formatIssues, PermissionError } from "@nirmata/core";
 import { HostError } from "@nirmata/host";
 import { ZodError } from "zod";
 
+export type HttpStatusCode = 400 | 401 | 403 | 404 | 409 | 500 | 502 | 503 | 504;
+
 /** A problem with the request itself, not with the story. */
 export class HttpError extends Error {
   constructor(
-    readonly status: 400 | 401 | 403 | 404 | 409,
+    readonly status: HttpStatusCode,
     readonly code: string,
     message: string,
   ) {
@@ -38,7 +40,7 @@ const STATUS: Record<HostError["code"], 400 | 403 | 409 | 500> = {
  * (stack traces, file paths, provider responses) leaves the server.
  */
 export function describeError(e: unknown): {
-  status: 400 | 401 | 403 | 404 | 409 | 500;
+  status: HttpStatusCode;
   body: ErrorBody;
 } {
   if (e instanceof HttpError) return { status: e.status, body: fail(e.code, e.message) };

@@ -84,6 +84,21 @@ const SaveVn = z.object({
   slides: z.any().optional(),
 });
 
+const GenerateAsset = z.object({
+  type: z.enum(["sprite", "cg", "bg"]),
+  name: z.string().trim().min(1),
+  targetPath: z.string().optional(),
+  positivePrompt: z.string().trim().min(1),
+  negativePrompt: z.string().optional(),
+  steps: z.number().int().min(1).max(100).optional(),
+  cfg: z.number().min(1).max(30).optional(),
+  sampler: z.string().optional(),
+  scheduler: z.string().optional(),
+  seed: z.number().int().optional(),
+  feedback: z.record(z.enum(["better", "keep", "worse"])).optional(),
+  workflowOverride: z.record(z.unknown()).optional(),
+});
+
 export interface AppOptions {
   table: Table;
   /** Called with the cause of any failure the caller is only told "went wrong" about. */
@@ -134,7 +149,71 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
   // ---- open to anyone -----------------------------------------------------------------------
 
   app.get("/api/health", (c) => c.json({ ok: true }));
+  app.get("/api/comfyui/status", async (c) => c.json(await table.comfyStatus()));
   app.get("/api/table", async (c) => c.json(await table.info()));
+
+  // visual novel assets list (must precede wildcard /assets/*)
+  app.get("/api/worlds/:name/vns/:slug/assets", async (c) =>
+    c.json(await table.listWorldVnAssets(seatOf(c), c.req.param("name"), c.req.param("slug"))),
+  );
+  // detailed asset view & prompt parameters
+  app.get("/api/worlds/:name/vns/:slug/asset-meta/:type/:assetName", async (c) =>
+    c.json(
+      await table.getWorldVnAssetDetail(
+        seatOf(c),
+        c.req.param("name"),
+        c.req.param("slug"),
+        c.req.param("type") as "sprite" | "cg" | "bg",
+        c.req.param("assetName"),
+      ),
+    ),
+  );
+  // trigger comfyui asset generation with feedback
+  app.post("/api/worlds/:name/vns/:slug/assets/generate", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(c, GenerateAsset);
+    return c.json(table.startWorldVnAsset(seat, c.req.param("name"), c.req.param("slug"), body), 202);
+  });
+  // follow generations (survives a page refresh: the server holds the record)
+  app.get("/api/vn-jobs", (c) => c.json({ jobs: table.listGenerationJobs(seatOf(c)) }));
+  app.get("/api/vn-jobs/:id", (c) => c.json(table.getGenerationJob(seatOf(c), c.req.param("id"))));
+  app.post("/api/vn-jobs/:id/cancel", async (c) => c.json(await table.cancelGenerationJob(seatOf(c), c.req.param("id"))));
+
+  // archive all assets in a vn or shared pool
+  app.post("/api/worlds/:name/vns/:slug/assets/archive-all", async (c) =>
+    c.json(await table.archiveAllWorldVnAssets(seatOf(c), c.req.param("name"), c.req.param("slug"))),
+  );
+
+  // delete all rendered assets in a vn or shared pool
+  app.post("/api/worlds/:name/vns/:slug/assets/delete-all", async (c) =>
+    c.json(await table.deleteAllWorldVnAssets(seatOf(c), c.req.param("name"), c.req.param("slug"))),
+  );
+
+  // archive a single asset
+  app.post("/api/worlds/:name/vns/:slug/asset-meta/:type/:assetName/archive", async (c) =>
+    c.json(
+      await table.archiveWorldVnAsset(
+        seatOf(c),
+        c.req.param("name"),
+        c.req.param("slug"),
+        c.req.param("type") as "sprite" | "cg" | "bg",
+        c.req.param("assetName"),
+      ),
+    ),
+  );
+
+  // delete a single asset
+  app.delete("/api/worlds/:name/vns/:slug/asset-meta/:type/:assetName", async (c) =>
+    c.json(
+      await table.deleteWorldVnAsset(
+        seatOf(c),
+        c.req.param("name"),
+        c.req.param("slug"),
+        c.req.param("type") as "sprite" | "cg" | "bg",
+        c.req.param("assetName"),
+      ),
+    ),
+  );
 
   app.get("/api/worlds/:name/vns/:slug/assets/*", async (c) => {
     const worldName = c.req.param("name");
@@ -142,6 +221,20 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
     const prefix = `/api/worlds/${worldName}/vns/${slug}/assets/`;
     const assetPath = c.req.path.startsWith(prefix) ? c.req.path.slice(prefix.length) : "";
     const asset = await table.readWorldVnAsset(worldName, slug, assetPath);
+    if (!asset) throw new HttpError(404, "not_found", "Asset not found.");
+    return c.body(new Uint8Array(asset.data), 200, {
+      "Content-Type": asset.contentType,
+      "Cache-Control": "public, max-age=86400",
+    });
+  });
+
+  app.get("/api/worlds/:name/dataset/:slug/:assetName/:timestamp/image", async (c) => {
+    const asset = await table.readDatasetImage(
+      c.req.param("name"),
+      c.req.param("slug"),
+      c.req.param("assetName"),
+      c.req.param("timestamp"),
+    );
     if (!asset) throw new HttpError(404, "not_found", "Asset not found.");
     return c.body(new Uint8Array(asset.data), 200, {
       "Content-Type": asset.contentType,
@@ -214,6 +307,10 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
   });
   app.post("/api/worlds/:name/vns/:slug/compile", async (c) =>
     c.json(await table.compileWorldVn(seatOf(c), c.req.param("name"), c.req.param("slug"))),
+  );
+  // list all visual novels across worlds (for /vn index)
+  app.get("/api/vns", async (c) =>
+    c.json({ vns: await table.listAllVns(seatOf(c)) }),
   );
   app.patch("/api/worlds/:name", async (c) => {
     const seat = seatOf(c);

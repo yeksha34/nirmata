@@ -65,7 +65,7 @@ export function openAmbience(mood: Mood): Ambience | null {
   limiter.ratio.value = 8;
   limiter.attack.value = 0.005;
   limiter.release.value = 0.25;
-  limiter.connect(ctx.desheroinetion);
+  limiter.connect(ctx.destination);
 
   const master = ctx.createGain();
   master.gain.value = 0;
