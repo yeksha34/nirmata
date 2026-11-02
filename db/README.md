@@ -27,10 +27,14 @@ Migrations run as a login that is a member of `migration_owner` and does `set ro
 first, so every object is owned by it. The app never uses that role. `_bootstrap` runs once as a
 superuser (or Supabase's `postgres`).
 
-Set role passwords (`app_rw`, `app_ro`) outside the repo. In the Auth settings turn off sign-ups and
-every provider except the SSO one, and set the before-user-created hook to
-`pg-functions://postgres/identity/hook_before_user_created`. Add the provider's adult-claim rule to
-`identity.idp_age_rules` as configuration (no rows ship).
+Set role passwords (`app_rw`, `app_ro`) outside the repo (`node tools/db-apply.mjs --passwords`).
+
+Sign-in is email and password for now; SSO is a separate scope. In the Auth settings leave email sign-up on, turn
+"Confirm email" on, turn every other provider off, and set the before-user-created hook to
+`pg-functions://postgres/identity/hook_before_user_created`. The hook refuses any email without a pending
+invitation, so sign-up stays invitation-only. With no SSO there is no provider claim, so each person confirms
+they are an adult after sign-in (`identity.attest_adult`). When SSO is added later, its adult-claim rule goes
+in `identity.idp_age_rules` as configuration (no rows ship).
 
 ## Status
 
