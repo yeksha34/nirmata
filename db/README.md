@@ -62,7 +62,7 @@ in `identity.idp_age_rules` as configuration (no rows ship).
 | 017 | repair: row level security on platform.publish_status_history | applied |
 | 018 | renders record their store (supabase/local/none), size and hash; `set_render_store`; `v_store_usage` | applied |
 | 019 | storage quota: editable limits and `assets.storage_status` (server only: used, level ok/warn/block, daily alert) | applied |
-| 020 | `assets.render_file`: where a render's file is, for the backend (the server sees all; a person must be a member) | written, not applied |
+| 020 | `assets.render_file`: where a render's file is, for the backend (the server sees all; a person must be a member) | applied |
 
 "Applied" means a person ran it with `tools/db-apply.mjs` against the project. "Written, syntax-checked" means the file
 parses with the Postgres parser (every PL/pgSQL body included) but has not been run. `db/tests` has not been run.
@@ -80,4 +80,4 @@ SQL editor (runs as `postgres`). Each file ends in `rollback`, so nothing is lef
 | `004_quota.sql` | the quota check: what counts, the levels, the daily alert, who may call it |
 | `005_render_file.sql` | the file lookup: member, outsider, server, anon, unknown id |
 
-Pass on the project: `001_baseline.sql` 16 of 16, `002_flows.sql` 69 of 69. `003_render_store.sql` 27 of 27. `004_quota.sql` 12 of 12. `005_render_file.sql` is written but not run yet. Not covered yet: invitation acceptance end to end, the Auth hook, rebase and rollback, the dataset views.
+Pass on the project: `001_baseline.sql` 16 of 16, `002_flows.sql` 69 of 69. `003_render_store.sql` 27 of 27. `004_quota.sql` 12 of 12. `005_render_file.sql` 6 of 6. Not covered yet: invitation acceptance end to end, the Auth hook, rebase and rollback, the dataset views.
