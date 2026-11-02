@@ -43,8 +43,9 @@ every provider except the SSO one, and set the before-user-created hook to
 | 005 | world_lore | written, syntax-checked |
 | 006 | story_run | applied |
 | 007 | reader | applied |
-| 008 | platform templates | written, syntax-checked |
-| 009+ | vn_content, assets, generation, storage, seeds | not started |
+| 008 | platform templates | applied |
+| 009 | vn_content | written, syntax-checked |
+| 010+ | assets, generation, storage, seeds | not started |
 
 "Syntax-checked" means the files parse with the Postgres parser, including every PL/pgSQL body. They
 have **not** been run against a database, and `db/tests` has not been run.
