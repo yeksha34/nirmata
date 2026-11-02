@@ -244,6 +244,9 @@ export const api = {
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/compile`,
     ),
   comfyStatus: () => get<ComfyUiStatus>("/api/comfyui/status"),
+  /** Delete one dataset run, given the address of its image (`…/image` is dropped). */
+  deleteDatasetRun: (imageUrl: string) =>
+    del<{ ok: true; database: boolean; files: boolean }>(imageUrl.replace(/\/image$/, "")),
   allVns: () => get<{ vns: VnWithAssetsSummary[] }>("/api/vns").then((r) => r.vns),
   vnAssets: (worldName: string, slug: string) =>
     get<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }>(

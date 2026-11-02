@@ -316,6 +316,8 @@ export const HI_TEXT: Record<string, string> = {
   "Delete all": "सभी हटाएँ",
   Archive: "संग्रहित करें",
   Delete: "हटाएँ",
+  "Delete this render of {name}? Its image file is removed and cannot be brought back.":
+    "{name} का यह चित्र हटाएँ? इसकी चित्र-फ़ाइल हट जाएगी और वापस नहीं आएगी।",
   "Select an asset from the list to edit its prompt and generate it.":
     "सूची से कोई संसाधन चुनें, उसका प्रॉम्प्ट बदलें और उसे बनाएँ।",
   "Not generated yet": "अभी बना नहीं है",

@@ -612,6 +612,29 @@ export class Table {
     return { assetUrl, positivePrompt: positive, negativePrompt: negative };
   }
 
+  /**
+   * Delete one run from the dataset gallery. Host only. For an imported world, the database copy
+   * goes with it (and its stored file is removed, freeing quota) when the request is the signed-in
+   * host's own; an asset's current image is refused.
+   */
+  async deleteDatasetRun(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+    assetName: string,
+    timestamp: string,
+    fromDatabase = false,
+  ): Promise<{ database: boolean; files: boolean }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.deleteDatasetRun(
+      worldName,
+      slug,
+      assetName,
+      timestamp,
+      fromDatabase,
+    );
+  }
+
   /** The database copy of a new generation. The file is already saved, so a failure is only logged. */
   private async recordGeneration(image: GeneratedImage): Promise<void> {
     try {

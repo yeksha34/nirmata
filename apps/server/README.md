@@ -97,6 +97,8 @@ After the import, an imported world's cards are read and written in the database
 
 A new generation of an imported world is kept twice: the file is saved on disk as before, and when the host is signed in the image is also uploaded to Supabase storage (or `NIRMATA_ASSET_DIR` when Supabase is not set up or the quota is at "block") and recorded as an asset, spec and render, the same rows the importer writes. A failure to record is logged and does not fail the generation. Archive and delete still change files only.
 
+The dataset gallery can delete one run (`DELETE /api/worlds/:name/dataset/:slug/:asset/:run`, host only; the screen asks first). It removes the run's folder on disk and, for an imported world and the signed-in host's own request, sets the render's store to `none` (audited) and removes its file from the store, which frees quota. The database refuses an asset's current image, and then nothing is deleted. The VN-image archive and delete buttons are unchanged: they act on the visual novel's current image files, not on the dataset.
+
 ## Importing dataset images
 
 A person runs this; it needs `DATABASE_URL_RW` and, for `--target=supabase`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (or `NIRMATA_ASSET_DIR` for `--target=local`):
