@@ -7,6 +7,7 @@ export * from "./files";
 export * from "./image-store";
 export * from "./lore-import";
 export * from "./lore-store";
+export * from "./render-recorder";
 export * from "./table";
 export * from "./ui";
 export * from "./views";

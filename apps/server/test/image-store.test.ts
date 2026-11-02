@@ -31,7 +31,7 @@ function fakeDb(opts: { store?: string; hasRender?: boolean } = {}) {
   const client: Client = {
     async query(text, params = []) {
       if (text.includes("from world_lore.worlds")) return { rows: [{ id: WORLD_ID }] };
-      if (text.includes("from assets.renders where storage_path")) {
+      if (text.includes("from assets.renders where lower(storage_path)")) {
         asked.push(String(params[0]));
         return { rows: opts.hasRender === false ? [] : [{ id: RENDER }] };
       }
@@ -70,6 +70,13 @@ describe("dataset images of an imported world", () => {
       "db-bytes",
     );
     expect(f.asked).toEqual([`${WORLD_ID}/scene1/ada/run1.png`]);
+  });
+
+  it("find a run named by its time, whose capital letters must not be lowered", async () => {
+    const f = fakeDb();
+    const lib = library(new DbImages(f.db, stores, () => USER));
+    await lib.readDatasetImage("sample", "scene1", "ada", "2026-11-03T10-00-00-000Z", true);
+    expect(f.asked).toEqual([`${WORLD_ID}/scene1/ada/2026-11-03T10-00-00-000Z.png`]);
   });
 
   it("come from the folder for anyone else, and when the world has no such render", async () => {

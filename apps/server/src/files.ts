@@ -142,6 +142,9 @@ export function inside(root: string, rel: string): string {
 }
 
 /** Validates and normalizes an adaptation slug (e.g. "ch01-first-contact"). */
+/** One folder name of a stored file's path, as the importer and the recorder write it. */
+export const STORED_PART = /^[A-Za-z0-9._-]{1,120}$/;
+
 export function sanitizeSlug(raw: string): string {
   const s = raw
     .toLowerCase()
@@ -1909,13 +1912,9 @@ export class Library {
     fromDatabase = false,
   ): Promise<{ data: Buffer; contentType: string } | undefined> {
     const images = fromDatabase ? this.options.images : undefined;
-    if (images) {
-      const found = await images.read(
-        name,
-        sanitizeSlug(slug),
-        sanitizeSlug(assetName),
-        sanitizeSlug(timestamp),
-      );
+    // the run folder is named by its time ("…T10-00-00-000Z"): keep its case, only check it is safe
+    if (images && [slug, assetName, timestamp].every((part) => STORED_PART.test(part))) {
+      const found = await images.read(name, slug, assetName, timestamp);
       if (found === "gone") return undefined;
       if (found) return found;
     }

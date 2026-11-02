@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   type Action,
@@ -40,6 +41,7 @@ import {
   injectWorkflowParams,
 } from "@nirmata/gen";
 import { HttpError } from "./errors";
+import type { GeneratedImage, RenderRecorder } from "./render-recorder";
 import { type PlatformRole, seatKindOf } from "./roles";
 import {
   type CardInput,
@@ -97,6 +99,8 @@ export interface TableOptions {
   requireAdultConfirmation?: boolean | undefined;
   /** Called for problems worth a line in the host's console. */
   log?: ((message: string) => void) | undefined;
+  /** Keeps a new generation in the database too, for an imported world. */
+  recorder?: RenderRecorder | undefined;
 }
 
 /** Someone who has joined: the token they present, and the nickname it speaks for. */
@@ -587,10 +591,36 @@ export class Table {
     const targetPath = body.targetPath || `${dirName}/${body.name}.png`;
     await this.options.library.saveGeneratedVnAsset(worldName, slug, targetPath, imageBytes);
     await this.options.library.saveDatasetGeneratedImage(worldName, archivedDir, imageBytes);
+    await this.recordGeneration({
+      worldName,
+      scope: slug,
+      run: basename(archivedDir),
+      type: body.type,
+      name: body.name,
+      image: Buffer.from(imageBytes),
+      positive,
+      negative,
+      steps: body.steps,
+      cfg: body.cfg,
+      sampler: body.sampler,
+      scheduler: body.scheduler,
+      seed: body.seed,
+    });
 
     const assetUrl = `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/${targetPath}?t=${Date.now()}`;
 
     return { assetUrl, positivePrompt: positive, negativePrompt: negative };
+  }
+
+  /** The database copy of a new generation. The file is already saved, so a failure is only logged. */
+  private async recordGeneration(image: GeneratedImage): Promise<void> {
+    try {
+      await this.options.recorder?.record(image);
+    } catch (e) {
+      this.options.log?.(
+        `A new image was saved on disk but not in the database: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
   }
 
   /**
