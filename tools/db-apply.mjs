@@ -21,7 +21,7 @@ const dry = process.argv.includes('--dry');
 const files = readFileSync(join(root, 'db', 'order.txt'), 'utf8').split(/\r?\n/)
   .map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
 
-if (dry) { files.forEach((f, i) => console.log(`${i === 0 ? 'bootstrap' : 'owner    '}  ${f}`)); process.exit(0); }
+if (dry) { files.forEach((f, i) => console.log(`${f.startsWith('_bootstrap/') ? 'bootstrap' : 'owner    '}  ${f}`)); process.exit(0); }
 
 for (const k of ['DATABASE_URL_BOOTSTRAP', 'APP_RW_PASSWORD', 'APP_RO_PASSWORD'])
   if (!env[k]) { console.error(`${k} is empty`); process.exit(2); }
@@ -47,10 +47,10 @@ for (const [i, f] of files.entries()) {
   const sql = readFileSync(join(root, 'db', f), 'utf8');
   try {
     await c.query('begin');
-    if (i > 0) await c.query('set role migration_owner');
+    if (!f.startsWith('_bootstrap/')) await c.query('set role migration_owner');
     await c.query(sql);
     await c.query('reset role');
-    if (i === 0) {
+    if (f === files.find((x) => x.startsWith('_bootstrap/'))) {
       // let the bootstrap login assume migration_owner (newer Postgres does not grant SET to the creator)
       try { await c.query('grant migration_owner to current_user with set true'); }
       catch { await c.query('grant migration_owner to current_user'); }
