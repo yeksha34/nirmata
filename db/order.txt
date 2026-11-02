@@ -13,3 +13,4 @@ platform/migrations/20261102000800_templates.sql
 vn_content/migrations/20261102000900_vn_content.sql
 platform/migrations/20261102000950_server_guard.sql
 assets/migrations/20261102001000_assets.sql
+generation/migrations/20261102001100_generation.sql
