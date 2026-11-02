@@ -22,6 +22,8 @@ const NOT_SHOWN: string[] = [
   "{newName}",
   // the story importer, run from the command line
   "x already holds a world; choose a new folder",
+  // the lore importer, run from the command line
+  '"x" cannot be a world name in the database (letters, digits, hyphens).',
 ];
 
 describe("what the server says to people", () => {
