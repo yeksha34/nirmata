@@ -19,3 +19,4 @@ _bootstrap/migrations/20261102001200_storage_realtime.sql
 platform/migrations/20261102001300_seed_templates.sql
 platform/migrations/20261102001400_server_grants.sql
 platform/migrations/20261102001500_uid_grant.sql
+assets/migrations/20261102001600_render_path_check.sql

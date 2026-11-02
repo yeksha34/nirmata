@@ -142,7 +142,7 @@ create table assets.renders (
   asset_id     uuid not null,
   world_id     uuid not null,
   spec_id      uuid not null,
-  storage_path text not null unique check (storage_path ~ '^[0-9a-f-]{36}/[A-Za-z0-9._/-]{1,300}$' and storage_path not like '%..%'),
+  storage_path text not null unique check (storage_path ~ '^[0-9a-f-]{36}/[A-Za-z0-9._/-]{1,250}$' and storage_path not like '%..%'),
   job_id       uuid,                                      -- soft reference: generation.jobs
   created_at   timestamptz not null default now(),
   archived_at  timestamptz,
