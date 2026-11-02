@@ -53,7 +53,8 @@ every provider except the SSO one, and set the before-user-created hook to
 | 013 | seeds: default workflow and VN templates | applied |
 | 014 | server grants (service_role may run the generation worker) | applied |
 | 015 | repair: platform.uid() and jwt() executable by signed-in roles | applied |
-| 016 | repair: render path check used a repetition count above the regex limit | written, syntax-checked |
+| 016 | repair: render path check used a repetition count above the regex limit | applied |
+| 017 | repair: row level security on platform.publish_status_history | written, syntax-checked |
 
 "Applied" means a person ran it with `tools/db-apply.mjs` against the project. "Written, syntax-checked" means the file
 parses with the Postgres parser (every PL/pgSQL body included) but has not been run. `db/tests` has not been run.
@@ -68,4 +69,4 @@ SQL editor (runs as `postgres`). Each file ends in `rollback`, so nothing is lef
 | `001_baseline.sql` | anon holds nothing, `app_ro` cannot write, views use the caller's rights, RLS on every table, invitation state machine |
 | `002_flows.sql` | the main flows as host, moderator, player, outsider and the server: roles, lore and secrets, stories and moderation, chapters, VNs and pins, assets and jobs, templates and validation, file and channel helpers, anon |
 
-Both files parse with the Postgres parser; neither has been run yet.
+`002_flows.sql` passes (69 of 69). `001_baseline.sql` passed 15 of 16 and found the missing RLS fixed by migration 017; run it again after applying 017.
