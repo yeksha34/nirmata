@@ -66,7 +66,7 @@ in `identity.idp_age_rules` as configuration (no rows ship).
 | 019 | storage quota: editable limits and `assets.storage_status` (server only: used, level ok/warn/block, daily alert) | applied |
 | 020 | `assets.render_file`: where a render's file is, for the backend (the server sees all; a person must be a member) | applied |
 | 021 | `identity.invitation_email`: the address a pending invitation is for, by token (server only), so the server can create the invited account | applied |
-| 022 | roles: world role `host` becomes `author` (ADR-0029), `is_host*` helpers renamed, `identity.profiles.is_admin` and `identity.set_admin`, administrators pass every role check | written, syntax-checked |
+| 022 | roles: world role `host` becomes `author` (ADR-0029), `is_host*` helpers renamed, `identity.profiles.is_admin` and `identity.set_admin`, administrators pass every role check | applied |
 
 "Applied" means a person ran it with `tools/db-apply.mjs` against the project. "Written, syntax-checked" means the file
 parses with the Postgres parser (every PL/pgSQL body included) but has not been run. `db/tests` has not been run.
