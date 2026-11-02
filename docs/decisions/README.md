@@ -28,5 +28,8 @@ Use `.agents/skills/record-decision`.
 | [0021](0021-workspace-writings-detail-panel.md) | Workspace writings navigation and detail panel split | Proposed |
 | [0022](0022-vn-dynamic-asset-loading-and-artstyle-fallback.md) | Visual novel asset serving and procedural artstyle fallbacks | Proposed |
 | [0023](0023-vn-character-state-and-costume-sprite-resolution.md) | Visual novel character state, costume, and wardrobe sprite resolution | Proposed |
+| [0024](0024-comfyui-vn-asset-generation-pipeline.md) | ComfyUI VN asset generation pipeline | see file |
+| [0025](0025-comfyui-vn-asset-studio-and-reinforcement-loop.md) | ComfyUI asset studio and feedback loop | Accepted |
+| [0026](0026-generation-jobs-and-status-store.md) | Generation as a followable job; status in a redux-saga store | Proposed |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.

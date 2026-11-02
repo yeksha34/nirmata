@@ -306,4 +306,10 @@ export const HI_SERVER: Record<string, string> = {
   "Asset path cannot be empty": "संसाधन पथ रिक्त नहीं हो सकता",
   "Template for {type} was not found.": "{type} के लिए टेम्पलेट नहीं मिला।",
   "No output images produced by ComfyUI.": "ComfyUI द्वारा कोई आउटपुट छवि नहीं बनाई गई।",
+
+  // asset studio
+  "Generation was cancelled.": "निर्माण रद्द कर दिया गया।",
+  "ComfyUI no longer has this prompt (restarted or queue cleared).": "ComfyUI के पास अब यह प्रॉम्प्ट नहीं है (पुनः आरंभ हुआ या कतार साफ़ हुई)।",
+  "Lost contact with ComfyUI at {host}.": "{host} पर ComfyUI से संपर्क टूट गया।",
+  "No such generation.": "ऐसा कोई निर्माण नहीं है।",
 };

@@ -38,10 +38,12 @@ See [ADR-0025](../decisions/0025-comfyui-vn-asset-studio-and-reinforcement-loop.
 | Date | What was run | Result |
 |---|---|---|
 | 2026-11-01 | Created feature specification | Specified & Building |
+| 2026-11-02 | Full suite 616 tests, typecheck, web build; job and saga tests added. Not yet run against a live ComfyUI or checked by eye in a browser | Re-verify |
 | 2026-11-01 | Full test suite: 544 tests across 44 test files in vitest (server, web, core, host) + TypeScript typechecks (tsc -b, tsc -p apps/web) + dom/markup rules + world-lint | Verified (100% green) |
 
 ## History
 | Date | Change |
 |---|---|
+| 2026-11-02 | Generation became a background job with no fixed timeout; per-stage and per-node status via redux-saga that survives a refresh; studio layout simplified ([ADR-0026](../decisions/0026-generation-jobs-and-status-store.md)) |
 | 2026-11-01 | Created feature specification and linked ADR-0025 |
 | 2026-11-01 | Verified full implementation: templates, skill, backend bridge, web studio, tag badges & questionnaire |

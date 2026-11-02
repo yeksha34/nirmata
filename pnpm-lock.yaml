@@ -227,6 +227,15 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.3.1(react@19.3.1)
+      react-redux:
+        specifier: ^9.3.1
+        version: 9.3.1(@types/react@19.3.0)(react@19.3.1)(redux@5.0.1)
+      redux:
+        specifier: ^5.0.1
+        version: 5.0.1
+      redux-saga:
+        specifier: ^1.5.1
+        version: 1.5.1
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -337,6 +346,10 @@ packages:
     engines: {node: '>=6.9.0'}
     peerDependencies:
       '@babel/core': ^7.0.0-0
+
+  '@babel/runtime@7.29.10':
+    resolution: {integrity: sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA==}
+    engines: {node: '>=6.9.0'}
 
   '@babel/template@7.29.7':
     resolution: {integrity: sha512-puq+Gf35oI24FeN11LkoUQFqv9uwNeWpxXZi/Ji3rRIoKAzKnxRaZ+Gkj0vKS9ZCiTESfng1N9LyOyXvo+m+Gg==}
@@ -616,6 +629,24 @@ packages:
     os: [linux]
     libc: [glibc]
 
+  '@redux-saga/core@1.5.1':
+    resolution: {integrity: sha512-Yh/eO0YBawlK5qAVXh9vSS0BDMWyFe6qIcVcKa8JtPOo3IFwRly33ZYBrsCwxu7jdSQT9QUJHChAU8fil5dRZQ==}
+
+  '@redux-saga/deferred@1.3.1':
+    resolution: {integrity: sha512-0YZ4DUivWojXBqLB/TmuRRpDDz7tyq1I0AuDV7qi01XlLhM5m51W7+xYtIckH5U2cMlv9eAuicsfRAi1XHpXIg==}
+
+  '@redux-saga/delay-p@1.3.1':
+    resolution: {integrity: sha512-597I7L5MXbD/1i3EmcaOOjL/5suxJD7p5tnbV1PiWnE28c2cYiIHqmSMK2s7us2/UrhOL2KTNBiD0qBg6KnImg==}
+
+  '@redux-saga/is@1.2.1':
+    resolution: {integrity: sha512-x3aWtX3GmQfEvn8dh0ovPbsXgK9JjpiR24wKztpGbZP8JZUWWvUgKrvnWZ/T/4iphOBftyVc9VrIwhAnsM+OFA==}
+
+  '@redux-saga/symbols@1.2.1':
+    resolution: {integrity: sha512-3dh+uDvpBXi7EUp/eO+N7eFM4xKaU4yuGBXc50KnZGzIrR/vlvkTFQsX13zsY8PB6sCFYAgROfPSRUj8331QSA==}
+
+  '@redux-saga/types@1.4.1':
+    resolution: {integrity: sha512-GSOGLWvJIjA63ywISJZr4skTjTnyQdu2WZbUeVguYNMyinEa9yTflBlVOFuBZxmyMR1dQodCE3PiKDu0BvyAHg==}
+
   '@rolldown/pluginutils@1.0.0-rc.3':
     resolution: {integrity: sha512-eybk3TjzzzV97Dlj5c+XrBFW57eTNhzod66y9HrBlzJ6NsCrWCp/2kaPS3K9wJmurBC0Tdw4yPjXKZqlznim3Q==}
 
@@ -788,6 +819,9 @@ packages:
 
   '@types/react@19.3.0':
     resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
+
+  '@types/use-sync-external-store@0.0.6':
+    resolution: {integrity: sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg==}
 
   '@vitejs/plugin-react@5.2.0':
     resolution: {integrity: sha512-YmKkfhOAi3wsB1PhJq5Scj3GXMn3WvtQ/JC0xoopuHoXSdmtdStOpFrYaT1kie2YgFBcIe64ROzMYRjCrYOdYw==}
@@ -982,6 +1016,18 @@ packages:
     peerDependencies:
       react: ^19.3.1
 
+  react-redux@9.3.1:
+    resolution: {integrity: sha512-vxMLT0lalUjbZPkoTepWyKAZbjIIFssNx/CEL9lTfwQBU6XpkGSmCNdcCIrkOBUgB68uftZMnbXVb6DwGnhRKQ==}
+    peerDependencies:
+      '@types/react': ^18.2.25 || ^19
+      react: ^18.0 || ^19
+      redux: ^5.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      redux:
+        optional: true
+
   react-refresh@0.18.0:
     resolution: {integrity: sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw==}
     engines: {node: '>=0.10.0'}
@@ -989,6 +1035,12 @@ packages:
   react@19.3.1:
     resolution: {integrity: sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==}
     engines: {node: '>=0.10.0'}
+
+  redux-saga@1.5.1:
+    resolution: {integrity: sha512-ZwnV/p+ABHoaDzyBrZshmIG/axRQG6AQJre8p9t1bPI/i6UzE5C9jGG9wgSKi8ojLMVyFLwmiDwFtuaul9c3wQ==}
+
+  redux@5.0.1:
+    resolution: {integrity: sha512-M9/ELqF6fy8FwmkpnF0S3YKOqMyoWJ4+CS5Efg2ct3oY9daQvd/Pc71FpGZsVsbl3Cpb+IIcjBDUnnyBdQbq4w==}
 
   rollup@4.65.0:
     resolution: {integrity: sha512-QVCvQUTGDN6JRwi3jVGCY3H4aTHvi9rX0LyoBMkGUvdh/Z6O51CzcLz85BWZaTCDGhl6ySGqYZs+xI1jmPqGcw==}
@@ -1058,6 +1110,11 @@ packages:
     hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
+
+  use-sync-external-store@1.7.0:
+    resolution: {integrity: sha512-6L+EeigHMQhdaIPNIFUKwfWJSwWFQ8gJbJ2DLOs5sDIegTwR9fRxvnM3uciHKjIZhFz+KAv2emhWMRvDmMcY8A==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   vite-node@3.2.4:
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
@@ -1239,6 +1296,8 @@ snapshots:
       '@babel/core': 7.29.7
       '@babel/helper-plugin-utils': 7.29.7
 
+  '@babel/runtime@7.29.10': {}
+
   '@babel/template@7.29.7':
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -1417,6 +1476,30 @@ snapshots:
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
 
+  '@redux-saga/core@1.5.1':
+    dependencies:
+      '@babel/runtime': 7.29.10
+      '@redux-saga/deferred': 1.3.1
+      '@redux-saga/delay-p': 1.3.1
+      '@redux-saga/is': 1.2.1
+      '@redux-saga/symbols': 1.2.1
+      '@redux-saga/types': 1.4.1
+
+  '@redux-saga/deferred@1.3.1': {}
+
+  '@redux-saga/delay-p@1.3.1':
+    dependencies:
+      '@redux-saga/symbols': 1.2.1
+
+  '@redux-saga/is@1.2.1':
+    dependencies:
+      '@redux-saga/symbols': 1.2.1
+      '@redux-saga/types': 1.4.1
+
+  '@redux-saga/symbols@1.2.1': {}
+
+  '@redux-saga/types@1.4.1': {}
+
   '@rolldown/pluginutils@1.0.0-rc.3': {}
 
   '@rollup/rollup-android-arm-eabi@4.65.0':
@@ -1535,6 +1618,8 @@ snapshots:
   '@types/react@19.3.0':
     dependencies:
       csstype: 3.2.3
+
+  '@types/use-sync-external-store@0.0.6': {}
 
   '@vitejs/plugin-react@5.2.0(vite@7.3.7(@types/node@22.20.5)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
@@ -1727,9 +1812,25 @@ snapshots:
       react: 19.3.1
       scheduler: 0.28.0
 
+  react-redux@9.3.1(@types/react@19.3.0)(react@19.3.1)(redux@5.0.1):
+    dependencies:
+      '@types/use-sync-external-store': 0.0.6
+      react: 19.3.1
+      use-sync-external-store: 1.7.0(react@19.3.1)
+    optionalDependencies:
+      '@types/react': 19.3.0
+      redux: 5.0.1
+
   react-refresh@0.18.0: {}
 
   react@19.3.1: {}
+
+  redux-saga@1.5.1:
+    dependencies:
+      '@babel/runtime': 7.29.10
+      '@redux-saga/core': 1.5.1
+
+  redux@5.0.1: {}
 
   rollup@4.65.0:
     dependencies:
@@ -1809,6 +1910,10 @@ snapshots:
       browserslist: 4.29.4
       escalade: 3.2.0
       picocolors: 1.1.1
+
+  use-sync-external-store@1.7.0(react@19.3.1):
+    dependencies:
+      react: 19.3.1
 
   vite-node@3.2.4(@types/node@22.20.5)(tsx@4.23.15)(yaml@2.9.1):
     dependencies:
