@@ -68,6 +68,12 @@ export const HI_TEXT: Record<string, string> = {
   "Create my account": "मेरा खाता बनाएँ",
   "Sign in": "प्रवेश करें",
   "Sign out": "बाहर निकलें",
+  Database: "आँकड़ा-भंडार",
+  Files: "फ़ाइलें",
+  "Cards are kept in the database. Edits here are saved there; the folder copy is not used.":
+    "पत्र आँकड़ा-भंडार में रखे हैं। यहाँ के सुधार वहीं सहेजे जाते हैं; फ़ोल्डर की प्रति काम में नहीं ली जाती।",
+  "Cards are read from this world's folder. Import the world to keep them in the database.":
+    "पत्र इस संसार के फ़ोल्डर से पढ़े जाते हैं। उन्हें आँकड़ा-भंडार में रखने के लिए संसार आयात करें।",
   "Have an account? Sign in.": "खाता है? प्रवेश करें।",
   "Signing in…": "प्रवेश हो रहा है…",
   Email: "ईमेल",
