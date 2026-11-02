@@ -261,6 +261,24 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
     });
   });
 
+  // delete one run from the gallery (host only); the database copy goes with it for the signed-in host
+  app.delete("/api/worlds/:name/dataset/:slug/:assetName/:timestamp", async (c) => {
+    const seat = seatOf(c);
+    const host = table.hostUserId();
+    const fromDatabase = host !== undefined && (await userOf?.(c))?.user.id === host;
+    const done = await table.deleteDatasetRun(
+      seat,
+      c.req.param("name"),
+      c.req.param("slug"),
+      c.req.param("assetName"),
+      c.req.param("timestamp"),
+      fromDatabase,
+    );
+    if (!done.database && !done.files)
+      throw new HttpError(404, "not_found", "There is no such run.");
+    return c.json({ ok: true, ...done });
+  });
+
   app.post("/api/join", async (c) => {
     const body = await json(c, Join);
     const seat = table.join(body.nick ?? "", {

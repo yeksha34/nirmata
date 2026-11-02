@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useAct } from "../app-context";
+import { useAsk } from "../controls";
 import { bilingual, T } from "../i18n";
 import { useNav } from "../nav";
 import type { VnAssetDatasetEntry, VnAssetItem, VnWithAssetsSummary } from "../types";
@@ -21,6 +22,7 @@ const BATCH = 6;
 export function DatasetGallery() {
   const nav = useNav();
   const { act } = useAct();
+  const ask = useAsk();
   const [vns, setVns] = useState<VnWithAssetsSummary[]>([]);
   const [items, setItems] = useState<VnAssetItem[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
@@ -98,6 +100,23 @@ export function DatasetGallery() {
     [runs, query],
   );
   const total = shown.reduce((n, r) => n + r.entries.length, 0);
+
+  const deleteRun = async (assetName: string, entry: VnAssetDatasetEntry) => {
+    if (!entry.imageUrl) return;
+    const url = entry.imageUrl;
+    const yes = await ask.confirm(
+      "Delete this render of {name}? Its image file is removed and cannot be brought back.",
+      { name: assetName },
+      "Delete",
+    );
+    if (!yes) return;
+    const done = await act(() => api.deleteDatasetRun(url));
+    if (done) {
+      setRuns((all) =>
+        all.map((r) => ({ ...r, entries: r.entries.filter((e) => e.imageUrl !== url) })),
+      );
+    }
+  };
 
   const vnValue = slug === "_all" || slug === "_shared" ? slug : `${world}:${slug}`;
   const pickVn = (value: string) => {
@@ -203,6 +222,15 @@ export function DatasetGallery() {
                   </p>
                 )}
                 <time>{e.timestamp}</time>
+                {e.imageUrl && (
+                  <button
+                    type="button"
+                    className="vs-btn"
+                    onClick={() => void deleteRun(r.asset.name, e)}
+                  >
+                    <T>Delete</T>
+                  </button>
+                )}
                 <p className="ds-prompt" title={e.prompt}>
                   {e.prompt}
                 </p>

@@ -210,6 +210,16 @@ export interface DatasetImages {
     assetName: string,
     run: string,
   ): Promise<{ data: Buffer; contentType: string } | "gone" | undefined>;
+  /**
+   * Take a run's file out of its store and mark the render `none`. Answers whether the run was in
+   * the database. Refuses (409) the current render of an asset: an asset keeps its file.
+   */
+  remove(
+    worldName: string,
+    scope: string,
+    assetName: string,
+    run: string,
+  ): Promise<"removed" | "absent">;
 }
 
 /** Where a world's cards are read from. */
@@ -1919,6 +1929,39 @@ export class Library {
       if (found) return found;
     }
     return this.open(name).readDatasetImage(slug, assetName, timestamp);
+  }
+
+  /**
+   * Delete one run of the dataset: its database copy (when `fromDatabase` and it is there) and its
+   * folder on disk. The database goes first, because it may refuse; then nothing is deleted.
+   * Returns what was deleted so the caller can say so.
+   */
+  async deleteDatasetRun(
+    name: string,
+    slug: string,
+    assetName: string,
+    timestamp: string,
+    fromDatabase = false,
+  ): Promise<{ database: boolean; files: boolean }> {
+    if (![slug, assetName, timestamp].every((part) => STORED_PART.test(part))) {
+      throw new HostError("nothing_to_do", "There is no such run.");
+    }
+    const images = fromDatabase ? this.options.images : undefined;
+    const database = images
+      ? (await images.remove(name, slug, assetName, timestamp)) === "removed"
+      : false;
+    const world = this.open(name);
+    const dir = inside(
+      world.root,
+      `assets/dataset/${sanitizeSlug(slug)}/${sanitizeSlug(assetName)}/${timestamp}`,
+    );
+    let files = false;
+    try {
+      await stat(dir);
+      await rm(dir, { recursive: true, force: true });
+      files = true;
+    } catch {}
+    return { database, files };
   }
 
   async saveDatasetGeneratedImage(name: string, targetDir: string, buffer: Buffer): Promise<void> {

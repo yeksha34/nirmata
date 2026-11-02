@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Client, Db, type Pool } from "@nirmata/db";
@@ -26,14 +26,34 @@ function library(images?: DbImages): Library {
   return new Library(root, { images });
 }
 
-function fakeDb(opts: { store?: string; hasRender?: boolean } = {}) {
+function fakeDb(opts: { store?: string; hasRender?: boolean; current?: boolean } = {}) {
   const asked: string[] = [];
+  const stored: string[] = [];
   const client: Client = {
     async query(text, params = []) {
       if (text.includes("from world_lore.worlds")) return { rows: [{ id: WORLD_ID }] };
-      if (text.includes("from assets.renders where lower(storage_path)")) {
+      if (
+        text.includes("from assets.renders where lower(storage_path)") &&
+        !text.includes("select id, storage_path, store")
+      ) {
         asked.push(String(params[0]));
         return { rows: opts.hasRender === false ? [] : [{ id: RENDER }] };
+      }
+      if (
+        text.includes("from assets.renders where lower(storage_path)") &&
+        text.includes("select id, storage_path, store")
+      ) {
+        asked.push(String(params[0]));
+        return opts.hasRender === false
+          ? { rows: [] }
+          : {
+              rows: [{ id: RENDER, storage_path: String(params[0]), store: opts.store ?? "local" }],
+            };
+      }
+      if (text.includes("set_render_store")) {
+        if (opts.current) throw Object.assign(new Error("must keep its file"), { code: "23514" });
+        stored.push(String(params[0]));
+        return { rows: [] };
       }
       if (text.includes("assets.render_file"))
         return {
@@ -51,7 +71,7 @@ function fakeDb(opts: { store?: string; hasRender?: boolean } = {}) {
     release() {},
   };
   const pool: Pool = { connect: async () => client, end: async () => undefined };
-  return { db: new Db(pool), asked };
+  return { db: new Db(pool), asked, stored };
 }
 
 const stores: Stores = {
@@ -77,6 +97,54 @@ describe("dataset images of an imported world", () => {
     const lib = library(new DbImages(f.db, stores, () => USER));
     await lib.readDatasetImage("sample", "scene1", "ada", "2026-11-03T10-00-00-000Z", true);
     expect(f.asked).toEqual([`${WORLD_ID}/scene1/ada/2026-11-03T10-00-00-000Z.png`]);
+  });
+
+  it("can be deleted: the row goes to none, the stored file is removed, the folder is deleted", async () => {
+    const f = fakeDb({ store: "local" });
+    const removed: string[] = [];
+    const withRemove = {
+      local: { ...(stores.local as object), remove: async (p: string) => void removed.push(p) },
+    } as unknown as Stores;
+    const lib = library(new DbImages(f.db, withRemove, () => USER));
+    const root = (lib as unknown as { root: string }).root;
+    const done = await lib.deleteDatasetRun("sample", "scene1", "ada", "run1", true);
+    expect(done).toEqual({ database: true, files: true });
+    expect(f.stored).toEqual([RENDER]);
+    expect(removed).toEqual([`${WORLD_ID}/scene1/ada/run1.png`]);
+    expect(existsSync(join(root, "sample", "assets", "dataset", "scene1", "ada", "run1"))).toBe(
+      false,
+    );
+  });
+
+  it("refuse to delete an asset's current image, and leave the folder alone", async () => {
+    const lib = library(new DbImages(fakeDb({ current: true }).db, stores, () => USER));
+    const root = (lib as unknown as { root: string }).root;
+    await expect(
+      lib.deleteDatasetRun("sample", "scene1", "ada", "run1", true),
+    ).rejects.toMatchObject({
+      status: 409,
+    });
+    expect(existsSync(join(root, "sample", "assets", "dataset", "scene1", "ada", "run1"))).toBe(
+      true,
+    );
+  });
+
+  it("delete only the folder for a request that is not the host's own, or a world not imported", async () => {
+    const f = fakeDb();
+    const lib = library(new DbImages(f.db, stores, () => USER));
+    expect(await lib.deleteDatasetRun("sample", "scene1", "ada", "run1", false)).toEqual({
+      database: false,
+      files: true,
+    });
+    expect(f.stored).toEqual([]);
+    const absent = library(new DbImages(fakeDb({ hasRender: false }).db, stores, () => USER));
+    expect(await absent.deleteDatasetRun("sample", "scene1", "ada", "run1", true)).toEqual({
+      database: false,
+      files: true,
+    });
+    await expect(lib.deleteDatasetRun("sample", "scene1", "ada", "../x", false)).rejects.toThrow(
+      "There is no such run.",
+    );
   });
 
   it("come from the folder for anyone else, and when the world has no such render", async () => {

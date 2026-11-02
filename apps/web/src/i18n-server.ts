@@ -75,6 +75,9 @@ export const HI_SERVER: Record<string, string> = {
   "Sign in first.": "पहले प्रवेश करें।",
   "This table already has a host.": "इस पटल का पहले से एक यजमान है।",
   "The database cannot be reached right now.": "आँकड़ा-भंडार अभी पहुँच में नहीं है।",
+  "That is the asset's current image, so its file is kept. Make a new image first, then delete this one.":
+    "यही इस सामग्री का वर्तमान चित्र है, इसलिए इसकी फ़ाइल रखी गई है। पहले नया चित्र बनाएँ, फिर इसे हटाएँ।",
+  "There is no such run.": "ऐसा कोई प्रयास नहीं है।",
   "Finish setting up your account first.": "पहले अपना खाता पूरा बनाएँ।",
   "Your profile cannot be read right now.": "आपका परिचय अभी पढ़ा नहीं जा सकता।",
   "An account with that address already exists. Sign in instead.":
