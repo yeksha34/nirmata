@@ -3,6 +3,7 @@ import { FLAVOR_STYLES } from "@nirmata/host";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
+import { type DataDeps, registerAssetRoutes } from "./asset-routes";
 import { describeError, HttpError } from "./errors";
 import { type CardInput, WORLD_NAME } from "./files";
 import type { Seat, Send, Table } from "./table";
@@ -105,6 +106,8 @@ export interface AppOptions {
   log?: ((message: string) => void) | undefined;
   /** The folder of built screens to serve at the front door. */
   ui?: string | undefined;
+  /** The database and file stores; without them the server runs from files alone. */
+  data?: DataDeps | undefined;
 }
 
 const PING_MS = 15_000;
@@ -117,7 +120,7 @@ const PING_MS = 15_000;
  * progress arrives on `GET /api/events` like everything else, so that every connection sees the
  * same story at the same moment.
  */
-export function createApp({ table, log, ui }: AppOptions): Hono {
+export function createApp({ table, log, ui, data }: AppOptions): Hono {
   const app = new Hono();
 
   app.use("/api/*", bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json(tooBig(), 400) }));
@@ -149,6 +152,7 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
   // ---- open to anyone -----------------------------------------------------------------------
 
   app.get("/api/health", (c) => c.json({ ok: true }));
+  if (data) registerAssetRoutes(app, data, seatOf);
   app.get("/api/comfyui/status", async (c) => c.json(await table.comfyStatus()));
   app.get("/api/table", async (c) => c.json(await table.info()));
 

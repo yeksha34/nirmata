@@ -23,3 +23,4 @@ assets/migrations/20261102001600_render_path_check.sql
 platform/migrations/20261102001700_history_rls.sql
 assets/migrations/20261102001800_render_store.sql
 assets/migrations/20261102001900_storage_quota.sql
+assets/migrations/20261102002000_render_file.sql

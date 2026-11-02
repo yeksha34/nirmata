@@ -66,6 +66,11 @@ export const HI_SERVER: Record<string, string> = {
   // permissions
   "Only the host can edit the source cards.": "केवल यजमान मूल पत्रक संपादित कर सकते हैं।",
   "Only the host can start a story.": "केवल यजमान कथा आरंभ कर सकते हैं।",
+  "Only the host may do that.": "यह केवल यजमान कर सकते हैं।",
+  "There is no such file.": "ऐसी कोई संचिका नहीं है।",
+  "The file was deleted; only its record is kept.": "संचिका मिटा दी गई है; केवल उसका अभिलेख रखा गया है।",
+  "That file's store is not set up on this server.": "उस संचिका का भंडार इस सेवक पर स्थापित नहीं है।",
+  "The file is not in its store.": "संचिका अपने भंडार में नहीं है।",
   "You can't take part in this story.": "आप इस कथा में भाग नहीं ले सकते।",
   "You can't undo in this story.": "आप इस कथा में पूर्ववत नहीं कर सकते।",
   "You can't edit turns in this story.": "आप इस कथा में बारियाँ संपादित नहीं कर सकते।",

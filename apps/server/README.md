@@ -65,3 +65,15 @@ The host sees everything about the story. Everyone else sees the story as told: 
 ## Limits worth knowing
 
 No TLS, rate limiting or accounts; assume a LAN you trust. One table per process. A connection that drops keeps its seat, and a player who wrote a turn and vanished holds the round until the host closes it.
+
+## Database and file stores (optional)
+
+The server also reads asset files through two small packages, `@nirmata/db` (`apps/db`) and `@nirmata/storage` (`apps/storage`). They switch on from the environment; without them the server runs from files alone.
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL_RW` | the `app_rw` login (pooler address) |
+| `NIRMATA_ASSET_DIR` | folder for `local` files, kept at `<dir>/<world uuid>/…` |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | the private `vn-assets` bucket (the key stays on the server) |
+
+Routes (host only for now): `GET /api/health/db`, `GET /api/assets/renders/:id/file`. The second looks up the render with `assets.render_file`, then streams it from the store the row names (ADR-0028). Run `pnpm install` once so `pg` is installed.

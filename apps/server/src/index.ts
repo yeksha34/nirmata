@@ -1,4 +1,5 @@
 export * from "./app";
+export * from "./asset-routes";
 export * from "./config";
 export * from "./errors";
 export * from "./files";
