@@ -41,3 +41,7 @@ worlds/**/assets/dataset/
 
 .claude/worktrees/
 supabase/migrations/
+
+# pg driver for the human-run db tools
+tools/db-deps/node_modules/
+tools/db-deps/package-lock.json

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // Connection and access check for the Supabase setup. A HUMAN runs this, agents do not (AGENTS.md).
 //   node tools/db-doctor.mjs            static + DNS + TCP checks (no login)
-//   node tools/db-doctor.mjs --login    also logs in as each role (needs `npm i --no-save pg`)
+//   node tools/db-doctor.mjs --login    also logs in as each role (needs `cd tools/db-deps && npm install`)
 // Prints pass/fail and counts only: never a secret, never a row.
 import { readFileSync } from 'node:fs';
 import { lookup } from 'node:dns/promises';
 import { connect } from 'node:net';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 
 const env = {};
 try {
@@ -74,7 +76,7 @@ for (const [k, u] of staticOnly ? [] : Object.entries(urls)) {
 if (process.argv.includes('--login')) {
   console.log('3. login and access');
   let pg;
-  try { pg = (await import('pg')).default; } catch { no('pg not installed', 'npm i --no-save pg'); }
+  try { pg = (await import(pathToFileURL(createRequire(new URL('./db-deps/package.json', import.meta.url)).resolve('pg')).href)).default; } catch { no('pg not installed', 'cd tools/db-deps && npm install pg'); }
   if (pg) {
     const run = async (k, label, sql, expect) => {
       const u = urls[k];
