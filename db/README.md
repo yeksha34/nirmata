@@ -13,6 +13,7 @@ db/
 | Command | Does |
 |---|---|
 | `node tools/db-build.mjs` | copies the migrations, in order, to `supabase/migrations/` (generated, git-ignored) |
+| `node tools/db-apply.mjs [--dry]` | human-run: applies unapplied migrations via `DATABASE_URL_BOOTSTRAP`, then sets the app role passwords (needs `npm i --no-save pg`) |
 | `node tools/db-build.mjs --check` | verifies order, names and that every file is listed |
 | `FORBIDDEN_TERMS_FILE=<path outside the repo> node tools/db-check-neutral.mjs` | fails if any line contains a forbidden term; fails closed if the file is missing |
 
