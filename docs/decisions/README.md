@@ -31,5 +31,6 @@ Use `.agents/skills/record-decision`.
 | [0024](0024-comfyui-vn-asset-generation-pipeline.md) | ComfyUI VN asset generation pipeline | see file |
 | [0025](0025-comfyui-vn-asset-studio-and-reinforcement-loop.md) | ComfyUI asset studio and feedback loop | Accepted |
 | [0026](0026-generation-jobs-and-status-store.md) | Generation as a followable job; status in a redux-saga store | Proposed |
+| [0027](0027-database-is-lore-source-of-truth.md) | Database is the lore source of truth; exports separate | Accepted |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.

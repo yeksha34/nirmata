@@ -18,6 +18,8 @@ db/
 
 ## Running migrations
 
+`_bootstrap` (001) runs once with `DATABASE_URL_BOOTSTRAP` (user `postgres`). Everything else uses `DATABASE_URL_MIGRATOR`.
+
 Migrations run as a login that is a member of `migration_owner` and does `set role migration_owner`
 first, so every object is owned by it. The app never uses that role. `_bootstrap` runs once as a
 superuser (or Supabase's `postgres`).
@@ -35,7 +37,8 @@ every provider except the SSO one, and set the before-user-created hook to
 | 002 | platform core | written, syntax-checked |
 | 003 | identity | written, syntax-checked |
 | 004 | membership, accept_invitation | written, syntax-checked |
-| 005+ | world_lore, story_run, reader, templates, vn_content, assets, generation, storage | not started |
+| 005 | world_lore | written, syntax-checked |
+| 006+ | story_run, reader, templates, vn_content, assets, generation, storage | not started |
 
 "Syntax-checked" means the files parse with the Postgres parser, including every PL/pgSQL body. They
 have **not** been run against a database, and `db/tests` has not been run.
