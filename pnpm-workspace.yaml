@@ -1,5 +1,6 @@
 packages:
   - packages/*
+  - apps/auth
   - apps/db
   - apps/gen
   - apps/storage

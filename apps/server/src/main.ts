@@ -3,9 +3,11 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
-import { connectDb } from "@nirmata/db";
+import { GoTrue, SessionStore } from "@nirmata/auth";
+import { connectDb, type Db } from "@nirmata/db";
 import { storesFromEnv } from "@nirmata/storage";
 import { createApp } from "./app";
+import type { AuthDeps } from "./auth-routes";
 import { ConfigError, loadConfig } from "./config";
 import { Library } from "./files";
 import { Table } from "./table";
@@ -25,6 +27,24 @@ function openBrowser(url: string): void {
   } catch {
     // the link is printed anyway
   }
+}
+
+/** Sign-in is on when the Supabase address and publishable key are set. */
+function authFromEnv(
+  env: NodeJS.ProcessEnv,
+  db: Db | undefined,
+  port: number,
+): AuthDeps | undefined {
+  const url = env.SUPABASE_URL?.trim();
+  const key = env.SUPABASE_PUBLISHABLE_KEY?.trim();
+  if (!url || !key) return undefined;
+  const gotrue = new GoTrue({ url, publishableKey: key });
+  return {
+    gotrue,
+    sessions: new SessionStore(gotrue),
+    db,
+    siteUrl: env.NIRMATA_SITE_URL?.trim() || `http://127.0.0.1:${port}`,
+  };
 }
 
 async function main(): Promise<void> {
@@ -70,7 +90,9 @@ async function main(): Promise<void> {
   const db = await connectDb(process.env);
   const data = db ? { db, stores: storesFromEnv(process.env) } : undefined;
   if (data) console.log("Database connected: asset files are served through it.");
-  const app = createApp({ table, log, ui, data });
+  const auth = authFromEnv(process.env, db, config.port);
+  if (auth) console.log("Sign-in through Supabase is on (email and password).");
+  const app = createApp({ table, log, ui, data, auth });
   const server = serve({ fetch: app.fetch, port: config.port, hostname: config.bind }, (info) => {
     const host = config.bind === "0.0.0.0" ? "localhost" : info.address;
     const link = `http://${host}:${info.port}/`;

@@ -11,7 +11,15 @@ import {
 } from "@nirmata/llm";
 import type { Hono } from "hono";
 import { afterEach } from "vitest";
-import { createApp, type DataDeps, Library, StoryFiles, Table, type WorldFiles } from "../src";
+import {
+  type AuthDeps,
+  createApp,
+  type DataDeps,
+  Library,
+  StoryFiles,
+  Table,
+  type WorldFiles,
+} from "../src";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -69,6 +77,8 @@ export async function rig(
     wrap?: (inner: FakeProvider) => Provider;
     /** The database and file stores, to try the asset routes with fakes. */
     data?: DataDeps;
+    /** Sign-in through Supabase Auth, with fakes. */
+    auth?: AuthDeps;
   } = {},
 ): Promise<Rig> {
   const library = new Library(opts.library ?? (await tempLibrary()));
@@ -93,7 +103,7 @@ export async function rig(
     log: (m) => logs.push(m),
   });
   if (opts.world !== "none") await table.useWorld(worldName);
-  const app = createApp({ table, log: (m) => logs.push(m), data: opts.data });
+  const app = createApp({ table, log: (m) => logs.push(m), data: opts.data, auth: opts.auth });
   cleanups.push(async () => {
     table.close();
     await table.idle();

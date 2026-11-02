@@ -92,3 +92,18 @@ pnpm --filter @nirmata/server import:assets worlds/<world> --world=<world uuid> 
 ```
 
 For each `assets/dataset/<scope>/<name>/<run>/generated_image.png` (newest run per name; `--select=all` takes every run) it uploads the file, then creates the asset, a spec and the render in one transaction, with store, size and hash. It acts as the host (`--user`), checks the storage quota before each upload and stops at "block", skips files whose hash the world already has, and removes an uploaded file if recording it fails. `--dry` does everything except write. Kinds come from the name: `cg_…` is a CG, `bg_…` a background, anything else a sprite. `prompt.json` supplies the prompt; the other sampler settings are placeholders (`euler`, 20 steps, cfg 7, seed 0), and the size is read from the image.
+
+## Sign-in (`apps/auth`)
+
+The browser never talks to Supabase. The server does, through `@nirmata/auth` (Supabase Auth's REST API), and keeps each person's Supabase tokens in its own memory; the browser holds only an `httpOnly`, `SameSite=Lax` cookie (`nirmata_session`). Restarting the server signs everyone out. Switch it on with `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`; set `NIRMATA_SITE_URL` (default `http://127.0.0.1:<port>`) to where people reach the server.
+
+| Route | What it does |
+|---|---|
+| `POST /api/auth/login` | email and password; sets the cookie |
+| `POST /api/auth/signup` | email and password; Supabase refuses an address with no pending invitation, then emails a link |
+| `GET /auth/callback?token_hash=&type=&next=` | the email link: finishes sign-in, sets the cookie, redirects to `next` (a path on this site only) |
+| `POST /api/auth/logout` | ends the session |
+| `GET /api/auth/me` | who is signed in, with the profile |
+| `POST /api/auth/onboard` | `{ attestAdult?, token? }`: makes the profile, confirms adulthood, accepts the invitation, all in one transaction as that person |
+
+Add the callback to Supabase (Authentication, URL Configuration, Redirect URLs) and make the email templates link to `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup` (`invite`, `recovery` and `email` for the others), so the token reaches the server and not the browser. The first host is invited with `node tools/invite-host.mjs <email>`. The old host-key login still works alongside this until the screens replace it. Supabase applies its own rate limits to password attempts.

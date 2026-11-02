@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
+    "@nirmata/auth": "workspace:*",
     "@nirmata/core": "workspace:*",
     "@nirmata/db": "workspace:*",
     "@nirmata/gen": "workspace:*",
