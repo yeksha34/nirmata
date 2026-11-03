@@ -73,6 +73,10 @@ export interface VnAssetItem {
   defaultPrompt?: string;
   isShared?: boolean;
   vnSlug?: string;
+  /** Clothes, adornments and objects: the characters this asset is locked to (from the manifest). */
+  lockedTo?: string[];
+  /** Objects: the CGs this asset is linked to. */
+  linkedCgs?: string[];
 }
 
 export interface VnAssetLists {
@@ -966,13 +970,23 @@ export class WorldFiles implements SourceBackend {
     try {
       const m = (await this.vnManifest(safeSlug)).assets;
       const planned: Array<{ kind: LinkedKind; name: string; owner?: string }> = [];
+      const links = new Map<string, { owners: string[]; cgs: string[] }>();
       for (const [owner, names] of Object.entries(m?.clothes ?? {})) {
-        for (const n of names) planned.push({ kind: "clothes", name: `${owner}_${n}`, owner });
+        for (const n of names) {
+          planned.push({ kind: "clothes", name: `${owner}_${n}`, owner });
+          links.set(`clothes:${owner}_${n}`, { owners: [owner], cgs: [] });
+        }
       }
       for (const [owner, names] of Object.entries(m?.adornments ?? {})) {
-        for (const n of names) planned.push({ kind: "adornment", name: `${owner}_${n}`, owner });
+        for (const n of names) {
+          planned.push({ kind: "adornment", name: `${owner}_${n}`, owner });
+          links.set(`adornment:${owner}_${n}`, { owners: [owner], cgs: [] });
+        }
       }
-      for (const o of m?.objects ?? []) planned.push({ kind: "object", name: o.name, owner: o.owners?.[0] });
+      for (const o of m?.objects ?? []) {
+        planned.push({ kind: "object", name: o.name, owner: o.owners?.[0] });
+        links.set(`object:${o.name}`, { owners: o.owners ?? [], cgs: o.cgs ?? [] });
+      }
       for (const { kind, name, owner } of planned) {
         if (linked[kind].some((a) => a.name === name)) continue;
         const targetPath = `${assetDir(kind)}/${name}.png`;
@@ -988,6 +1002,15 @@ export class WorldFiles implements SourceBackend {
             : undefined,
           defaultPrompt: linkedPrompt(kind, name, owner),
         });
+      }
+      for (const kind of LINKED_KINDS) {
+        for (const item of linked[kind]) {
+          const link = links.get(`${kind}:${item.name}`);
+          if (link) {
+            item.lockedTo = link.owners;
+            if (link.cgs.length > 0) item.linkedCgs = link.cgs;
+          }
+        }
       }
     } catch {}
     for (const kind of LINKED_KINDS) {

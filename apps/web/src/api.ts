@@ -23,6 +23,8 @@ import type {
   WorldSummary,
   Writing,
   You,
+  AssetKind,
+  VnAssetLists,
 } from "./types";
 
 /** A problem the server explained in plain words (or a lost connection). */
@@ -249,10 +251,10 @@ export const api = {
     del<{ ok: true; database: boolean; files: boolean }>(imageUrl.replace(/\/image$/, "")),
   allVns: () => get<{ vns: VnWithAssetsSummary[] }>("/api/vns").then((r) => r.vns),
   vnAssets: (worldName: string, slug: string) =>
-    get<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }>(
+    get<VnAssetLists>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets`,
     ),
-  vnAssetDetail: (worldName: string, slug: string, type: "sprite" | "cg" | "bg", name: string) =>
+  vnAssetDetail: (worldName: string, slug: string, type: AssetKind, name: string) =>
     get<VnAssetDetail>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}`,
     ),
@@ -260,7 +262,7 @@ export const api = {
   saveAssetPrompt: (
     worldName: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
     body: {
       positivePrompt: string;
@@ -297,14 +299,14 @@ export const api = {
   archiveOneVnAsset: (
     worldName: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
   ) =>
     post<{ ok: boolean; timestamp: string }>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}/archive`,
       {},
     ),
-  deleteOneVnAsset: (worldName: string, slug: string, type: "sprite" | "cg" | "bg", name: string) =>
+  deleteOneVnAsset: (worldName: string, slug: string, type: AssetKind, name: string) =>
     del<{ ok: boolean; name: string }>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}`,
     ),

@@ -389,9 +389,12 @@ export interface ComfyUiStatus {
   devices: ComfyUiDevice[];
 }
 
+/** Stage art (sprite, cg, bg) and character-linked art: clothes and adornments are locked to one character, objects to characters and/or CGs. */
+export type AssetKind = "sprite" | "cg" | "bg" | "clothes" | "adornment" | "object";
+
 export interface VnAssetItem {
   id: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath: string;
   exists: boolean;
@@ -399,6 +402,17 @@ export interface VnAssetItem {
   defaultPrompt?: string;
   isShared?: boolean;
   vnSlug?: string;
+  lockedTo?: string[];
+  linkedCgs?: string[];
+}
+
+export interface VnAssetLists {
+  sprites: VnAssetItem[];
+  cgs: VnAssetItem[];
+  backgrounds: VnAssetItem[];
+  clothes: VnAssetItem[];
+  adornments: VnAssetItem[];
+  objects: VnAssetItem[];
 }
 
 export interface VnAssetDatasetEntry {
@@ -412,7 +426,7 @@ export interface VnAssetDatasetEntry {
 
 export interface VnAssetPromptSpec {
   name: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   positivePrompt: string;
   negativePrompt?: string;
   aspectRatio?: string;
@@ -429,7 +443,7 @@ export interface VnAssetPromptSpec {
 
 export interface VnAssetDetail {
   id: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath: string;
   exists: boolean;
@@ -461,7 +475,7 @@ export interface VnWithAssetsSummary extends VnSummary {
 }
 
 export interface GenerateAssetInput {
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath?: string;
   positivePrompt: string;
@@ -483,7 +497,7 @@ export interface GenerationJob {
   id: string;
   world: string;
   slug: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   state: GenerationJobState;
   stages: Array<{ id: "prepare" | "queue" | "render" | "save"; label: string; state: "pending" | "active" | "done" | "error" }>;

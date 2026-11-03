@@ -53,7 +53,7 @@ export interface ObjectSpec {
 export interface VnAssetLinkIssue {
   kind: VnAssetKind;
   name: string;
-  message: string;
+  detail: string;
 }
 
 const isBase = (name: string) => name === VN_BASE_UNCLAD || name.endsWith(`_${VN_BASE_UNCLAD}`);
@@ -68,19 +68,19 @@ export function checkAssetLinks(input: {
   for (const [kind, list] of [["clothes", input.clothes], ["adornment", input.adornments]] as const) {
     for (const a of list ?? []) {
       if (!a.owner?.trim() && !isBase(a.name)) {
-        issues.push({ kind, name: a.name, message: `${kind} "${a.name}" must be locked to a character (owner)` });
+        issues.push({ kind, name: a.name, detail: `${kind} "${a.name}" must be locked to a character (owner)` });
       }
     }
   }
   for (const o of input.objects ?? []) {
     if (!o.owners?.length && !o.cgs?.length) {
-      issues.push({ kind: "object", name: o.name, message: `object "${o.name}" must link to a character or a CG` });
+      issues.push({ kind: "object", name: o.name, detail: `object "${o.name}" must link to a character or a CG` });
     }
     if (!o.interaction?.trim()) {
-      issues.push({ kind: "object", name: o.name, message: `object "${o.name}" needs an interaction (how a character uses it)` });
+      issues.push({ kind: "object", name: o.name, detail: `object "${o.name}" needs an interaction (how a character uses it)` });
     }
     if (!o.whyCustom?.trim()) {
-      issues.push({ kind: "object", name: o.name, message: `object "${o.name}" needs why_custom (why a generic prompt fails)` });
+      issues.push({ kind: "object", name: o.name, detail: `object "${o.name}" needs why_custom (why a generic prompt fails)` });
     }
   }
   return issues;

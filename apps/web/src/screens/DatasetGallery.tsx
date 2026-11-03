@@ -4,9 +4,9 @@ import { useAct } from "../app-context";
 import { useAsk } from "../controls";
 import { bilingual, T } from "../i18n";
 import { useNav } from "../nav";
-import type { VnAssetDatasetEntry, VnAssetItem, VnWithAssetsSummary } from "../types";
+import type { AssetKind, VnAssetDatasetEntry, VnAssetItem, VnWithAssetsSummary } from "../types";
 
-type Kind = "sprite" | "cg" | "bg";
+type Kind = AssetKind;
 
 interface Run {
   asset: VnAssetItem;

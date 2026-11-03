@@ -7,6 +7,7 @@ import { isActive, type JobsState, jobForAsset, jobsActions } from "../jobs/stor
 import { useNav } from "../nav";
 import type {
   GenerateAssetInput,
+  AssetKind,
   GenerationJob,
   VnAssetDatasetEntry,
   VnAssetDetail,
@@ -24,7 +25,6 @@ interface SavedPrompt {
   scheduler: string;
 }
 
-type AssetKind = "sprite" | "cg" | "bg";
 type Filter = "all" | "shared" | AssetKind;
 
 const CHOICES: Array<{ id: Choice; mark: string; label: string }> = [
@@ -37,7 +37,18 @@ const KIND_LABEL: Record<AssetKind, string> = {
   sprite: "Sprites",
   cg: "Event CGs",
   bg: "Backgrounds",
+  clothes: "Clothes",
+  adornment: "Adornments",
+  object: "Objects",
 };
+
+/** Clothes and adornments are locked to one character (the unclad base `naked` is the exception); objects link to characters and/or CGs. */
+function lockLabel(item: VnAssetItem): string | null {
+  if (item.type !== "clothes" && item.type !== "adornment" && item.type !== "object") return null;
+  const to = [...(item.lockedTo ?? []), ...(item.linkedCgs ?? [])];
+  if (to.length > 0) return to.join(", ");
+  return /(^|_)naked$/i.test(item.name) && item.type !== "object" ? "" : null;
+}
 
 const baseTag = (tag: string) =>
   (tag.replace(/^\(+/, "").replace(/\)+$/, "").split(":")[0] ?? "").trim();
@@ -145,6 +156,9 @@ export function VnStudio() {
     sprites: VnAssetItem[];
     cgs: VnAssetItem[];
     backgrounds: VnAssetItem[];
+    clothes: VnAssetItem[];
+    adornments: VnAssetItem[];
+    objects: VnAssetItem[];
   } | null>(null);
 
   const activeWorld = nav.vnWorld || allVns[0]?.worldName;
@@ -369,6 +383,9 @@ export function VnStudio() {
       { kind: "sprite" as const, items: pick("sprite", assets.sprites) },
       { kind: "cg" as const, items: pick("cg", assets.cgs) },
       { kind: "bg" as const, items: pick("bg", assets.backgrounds) },
+      { kind: "clothes" as const, items: pick("clothes", assets.clothes ?? []) },
+      { kind: "adornment" as const, items: pick("adornment", assets.adornments ?? []) },
+      { kind: "object" as const, items: pick("object", assets.objects ?? []) },
     ].filter((g) => g.items.length > 0);
   }, [assets, typeFilter, matches]);
 
@@ -425,7 +442,14 @@ export function VnStudio() {
   const handleGenerate = () => {
     if (!activeWorld || !activeSlug || !activeName) return;
     const selectedItem = assets
-      ? [...assets.sprites, ...assets.cgs, ...assets.backgrounds].find(
+      ? [
+          ...assets.sprites,
+          ...assets.cgs,
+          ...assets.backgrounds,
+          ...(assets.clothes ?? []),
+          ...(assets.adornments ?? []),
+          ...(assets.objects ?? []),
+        ].find(
           (a) => a.name === activeName && a.type === activeType,
         )
       : null;
@@ -444,7 +468,7 @@ export function VnStudio() {
       scheduler,
       seed: seed ?? Math.floor(Math.random() * 1000000),
       feedback,
-      ...(activeType !== "bg" && references.length > 0 ? { references } : {}),
+      ...((activeType === "sprite" || activeType === "cg") && references.length > 0 ? { references } : {}),
     };
     setMessage("");
     dispatch(jobsActions.start(activeWorld, targetSlug, payload));
@@ -583,6 +607,9 @@ export function VnStudio() {
               <option value="sprite">{bilingual("Sprites")}</option>
               <option value="cg">{bilingual("Event CGs")}</option>
               <option value="bg">{bilingual("Backgrounds")}</option>
+              <option value="clothes">{bilingual("Clothes")}</option>
+              <option value="adornment">{bilingual("Adornments")}</option>
+              <option value="object">{bilingual("Objects")}</option>
             </select>
           </form>
 
@@ -623,6 +650,16 @@ export function VnStudio() {
                             </small>
                             <small className="vs-item-meta">
                               {item.isShared && <em>shared</em>}
+                              {lockLabel(item) !== null &&
+                                (lockLabel(item) ? (
+                                  <em title={bilingual("Locked to")}>🔒 {lockLabel(item)}</em>
+                                ) : (
+                                  <em>{bilingual("Base")}</em>
+                                ))}
+                              {lockLabel(item) === null &&
+                                item.type !== "sprite" &&
+                                item.type !== "cg" &&
+                                item.type !== "bg" && <em>{bilingual("Not linked yet")}</em>}
                               {item.vnSlug &&
                                 item.vnSlug !== "_shared" &&
                                 activeSlug === "_all" && <em>{item.vnSlug}</em>}
@@ -669,6 +706,19 @@ export function VnStudio() {
                     <T>{KIND_LABEL[activeType]}</T>
                   </p>
                   <h2 title={activeName}>{activeName}</h2>
+                  {(() => {
+                    const cur = [
+                      ...(assets?.clothes ?? []),
+                      ...(assets?.adornments ?? []),
+                      ...(assets?.objects ?? []),
+                    ].find((a) => a.type === activeType && a.name === activeName);
+                    const label = cur ? lockLabel(cur) : null;
+                    return label ? (
+                      <p className="vs-muted">
+                        <T>Locked to</T> {label}
+                      </p>
+                    ) : null;
+                  })()}
                 </hgroup>
                 <nav className="vs-head-actions">
                   <button
@@ -820,7 +870,7 @@ export function VnStudio() {
                 </label>
               </details>
 
-              {activeType !== "bg" && (
+              {(activeType === "sprite" || activeType === "cg") && (
                 <details
                   className="vs-card vs-fold"
                   open={(detail?.references?.suggested.length ?? 0) > 0}
