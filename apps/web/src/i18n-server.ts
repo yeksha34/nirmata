@@ -325,6 +325,7 @@ export const HI_SERVER: Record<string, string> = {
   "Send a manifest, adaptationMd or slides.": "मैनिफ़ेस्ट, adaptationMd या स्लाइड्स में से कुछ भेजिए।",
   "That is not a visual novel name.": "यह किसी विज़ुअल नॉवेल का नाम नहीं है।",
   "There is no such visual novel.": "ऐसा कोई विज़ुअल नॉवेल नहीं है।",
+  "There is no such chapter or draft.": "ऐसा कोई अध्याय या मसौदा नहीं है।",
   "The manifest names another visual novel.": "मैनिफ़ेस्ट किसी और विज़ुअल नॉवेल का नाम बताता है।",
 
   // visual novel adaptations

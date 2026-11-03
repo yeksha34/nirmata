@@ -65,6 +65,8 @@ import {
   type StudioRow,
   type VnSource,
   type WorkflowSource,
+  type WorldSource,
+  type WritingSource,
 } from "@nirmata/adaptation";
 import { HttpError } from "./errors";
 import { CARD_DIRS, type CardFile, markdownFiles, readCardFiles, slugFor } from "@nirmata/importer";
@@ -268,6 +270,15 @@ export interface LoreCards {
   removeFile(slug: string, path: string): Promise<boolean>;
 }
 
+/** What an imported world keeps in the database besides its cards (ADR-0035). Each is optional. */
+export interface DbSources {
+  workflows?: WorkflowSource | undefined;
+  vnContent?: VnSource | undefined;
+  plan?: PlanSource | undefined;
+  writings?: WritingSource | undefined;
+  world?: WorldSource | undefined;
+}
+
 /** One planned asset, whether it came from a manifest or from the database. */
 interface PlannedItem {
   type: AssetKind;
@@ -309,12 +320,21 @@ export class WorldFiles implements SourceBackend {
   constructor(
     root: string,
     private readonly lore?: LoreCards,
-    private readonly workflows?: WorkflowSource,
-    private readonly vnContent?: VnSource,
-    private readonly plan?: PlanSource,
+    sources: DbSources = {},
   ) {
     this.root = resolve(root);
+    this.workflows = sources.workflows;
+    this.vnContent = sources.vnContent;
+    this.plan = sources.plan;
+    this.writingSource = sources.writings;
+    this.worldSource = sources.world;
   }
+
+  private readonly workflows: WorkflowSource | undefined;
+  private readonly vnContent: VnSource | undefined;
+  private readonly plan: PlanSource | undefined;
+  private readonly writingSource: WritingSource | undefined;
+  private readonly worldSource: WorldSource | undefined;
 
   /** The world's name in the database, when cards may live there. */
   private async loreSlug(anyStore = false): Promise<string | undefined> {
@@ -332,11 +352,20 @@ export class WorldFiles implements SourceBackend {
 
   /** True when the folder has a world.json (it may still be unreadable). */
   async exists(): Promise<boolean> {
-    return (await readIfThere(join(this.root, "world.json"))) !== undefined;
+    if ((await readIfThere(join(this.root, "world.json"))) !== undefined) return true;
+    return (await this.storedManifest()) !== undefined;
+  }
+
+  /** The manifest the database holds for this folder's world, if it holds one. */
+  private async storedManifest(): Promise<Record<string, unknown> | undefined> {
+    if (!this.worldSource) return undefined;
+    return this.worldSource.manifest(slugFor(basename(this.root)));
   }
 
   async world(): Promise<WorldManifest> {
-    const text = await readIfThere(join(this.root, "world.json"));
+    // an imported world's manifest is in the database; its folder's world.json is only the fallback
+    const stored = await this.storedManifest();
+    const text = stored ? JSON.stringify(stored) : await readIfThere(join(this.root, "world.json"));
     if (text === undefined) {
       throw new HostError("bad_state", "This world has no world.json.");
     }
@@ -369,6 +398,27 @@ export class WorldFiles implements SourceBackend {
   async writings(
     skip: ReadonlySet<string>,
   ): Promise<{ chapters: WritingSummary[]; drafts: WritingSummary[] }> {
+    const world = this.writingSource ? await this.loreSlug(true) : undefined;
+    const stored = world ? await this.writingSource?.list(world) : undefined;
+    if (stored) {
+      const stem = (w: WritingSummary) => w.path.replace(/\.md$/, "");
+      const byName = (a: WritingSummary, b: WritingSummary) =>
+        stem(a).localeCompare(stem(b), undefined, { numeric: true });
+      const keep = stored.filter(
+        (w) =>
+          !skip.has(w.path) &&
+          basename(w.path) !== "index.md" &&
+          !w.path.startsWith("chapters/scenes/"),
+      );
+      return {
+        chapters: keep.filter((w) => w.path.startsWith("chapters/")).sort(byName),
+        drafts: keep
+          .filter((w) => w.path.startsWith("drafts/"))
+          .sort((a, b) =>
+            a.updatedAt === b.updatedAt ? byName(a, b) : a.updatedAt < b.updatedAt ? 1 : -1,
+          ),
+      };
+    }
     const found: Record<(typeof WRITING_DIRS)[number], WritingSummary[]> = {
       chapters: [],
       drafts: [],
@@ -405,6 +455,13 @@ export class WorldFiles implements SourceBackend {
     const rel = posix.normalize(path.replaceAll("\\", "/"));
     const dir = rel.split("/")[0] ?? "";
     if (!(WRITING_DIRS as readonly string[]).includes(dir) || !rel.endsWith(".md")) {
+      throw new HostError("nothing_to_do", `There is no chapter or draft at ${rel}.`);
+    }
+    const world = this.writingSource ? await this.loreSlug(true) : undefined;
+    const stored = world ? await this.writingSource?.get(world, rel) : undefined;
+    if (stored) return stored;
+    // a world in the database has no other copy: what it does not hold is not there
+    if (world && (await this.writingSource?.list(world)) !== undefined) {
       throw new HostError("nothing_to_do", `There is no chapter or draft at ${rel}.`);
     }
     const full = inside(this.root, rel);
@@ -2095,11 +2152,8 @@ export class Library {
       lore?: LoreCards | undefined;
       images?: DatasetImages | undefined;
       /** Workflows an imported world keeps in the database (ADR-0035). */
-      workflows?: WorkflowSource | undefined;
-      /** Visual novels an imported world keeps in the database (ADR-0035). */
-      vnContent?: VnSource | undefined;
-      /** The asset plan an imported world keeps in the database (ADR-0035). */
-      plan?: PlanSource | undefined;
+      /** What an imported world keeps in the database besides its cards (ADR-0035). */
+      db?: DbSources | undefined;
     } = {},
   ) {
     this.root = resolve(root);
@@ -2108,13 +2162,7 @@ export class Library {
   open(name: string): WorldFiles {
     if (!LIBRARY_NAME.test(name))
       throw new HostError("nothing_to_do", `There is no world "${name}".`);
-    return new WorldFiles(
-      join(this.root, name),
-      this.options.lore,
-      this.options.workflows,
-      this.options.vnContent,
-      this.options.plan,
-    );
+    return new WorldFiles(join(this.root, name), this.options.lore, this.options.db);
   }
 
   private readonly storyFiles = new Map<string, StoryFiles>();

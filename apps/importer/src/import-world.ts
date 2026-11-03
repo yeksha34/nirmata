@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { connectDb, isUuid } from "@nirmata/db";
 import { importWorldLore } from "./lore-import";
+import { importWorldStory } from "./story-import";
 import { importWorldVns } from "./vn-import";
 
 /**
@@ -10,12 +11,12 @@ import { importWorldVns } from "./vn-import";
  * database as the author's draft. Run by a person:
  *
  *   pnpm --filter @nirmata/importer import:world <world folder> --user=<author uuid>
- *        [--slug=<name>] [--publish] [--force] [--dry] [--no-vns]
+ *        [--slug=<name>] [--publish] [--force] [--dry] [--no-vns] [--no-story]
  *
  * `--user` is the author the import acts as (they must be allowed to found worlds). `--dry` checks
  * everything and writes nothing. Run it again after editing the files: unchanged cards are skipped,
  * and a card that was edited in the app since it was imported is kept and listed, unless `--force`.
- * It also copies the world's visual novels (`vns/*`: manifest, script, slides) unless `--no-vns`; the world has to
+ * It also copies the world's story (world.json, chapters and drafts) unless `--no-story`, and its visual novels (`vns/*`: manifest, script, slides) unless `--no-vns`; the world has to
  * be published once for that, so add `--publish` the first time. It prints the world's id, which `import:assets` needs.
  */
 async function main(): Promise<void> {
@@ -38,7 +39,7 @@ async function main(): Promise<void> {
   const user = opt("user");
   if (!folder || !user || !isUuid(user)) {
     console.error(
-      "usage: import:world <world folder> --user=<author uuid> [--slug=<name>] [--publish] [--force] [--dry] [--no-vns]",
+      "usage: import:world <world folder> --user=<author uuid> [--slug=<name>] [--publish] [--force] [--dry] [--no-vns] [--no-story]",
     );
     process.exit(2);
   }
@@ -82,6 +83,26 @@ async function main(): Promise<void> {
       for (const c of r.conflicts.slice(0, 20)) console.log(`  - ${c}`);
     }
     let incomplete = r.skipped.length > 0 || r.conflicts.length > 0;
+    if (!args.includes("--no-story") && r.worldId) {
+      const st = await importWorldStory({
+        db,
+        folder: root,
+        userId: user,
+        slug: r.slug,
+        force: args.includes("--force"),
+        dryRun: dry,
+        log: (m) => console.log(m),
+      });
+      const w = st.writings;
+      console.log(
+        `${dry ? "Would import" : "Imported"} world.json (${st.manifest}) and ${w.found} chapter/draft file(s): ${w.added} new, ${w.updated} changed, ${w.unchanged} unchanged`,
+      );
+      for (const s of st.skipped) console.log(`  - skipped ${s}`);
+      for (const c of st.conflicts) {
+        console.log(`  - kept ${c}: it was changed in the database (add --force to overwrite)`);
+      }
+      incomplete = incomplete || st.skipped.length > 0 || st.conflicts.length > 0;
+    }
     if (!args.includes("--no-vns") && r.worldId) {
       const v = await importWorldVns({
         db,
