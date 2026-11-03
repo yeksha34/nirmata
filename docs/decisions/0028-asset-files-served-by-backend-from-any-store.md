@@ -1,6 +1,6 @@
 # ADR-0028: Asset files are served by the backend from any store
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-02
 - Related: [ADR-0025](0025-comfyui-vn-asset-studio-and-reinforcement-loop.md), [ADR-0026](0026-generation-jobs-and-status-store.md), [ADR-0027](0027-database-is-lore-source-of-truth.md)
 

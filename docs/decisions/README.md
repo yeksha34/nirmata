@@ -32,9 +32,10 @@ Use `.agents/skills/record-decision`.
 | [0025](0025-comfyui-vn-asset-studio-and-reinforcement-loop.md) | ComfyUI asset studio and feedback loop | Accepted |
 | [0026](0026-generation-jobs-and-status-store.md) | Generation as a followable job; status in a redux-saga store | Proposed |
 | [0027](0027-database-is-lore-source-of-truth.md) | Database is the lore source of truth; exports separate | Accepted |
-| [0028](0028-asset-files-served-by-backend-from-any-store.md) | Asset files served by the backend from any store | Proposed |
-| [0029](0029-roles-admin-author-moderator-player.md) | Four roles: admin, author, moderator, player | Proposed |
-| [0030](0030-imported-worlds-read-lore-from-the-database.md) | An imported world reads its cards and images from the database | Proposed |
-| [0031](0031-reference-images-in-generation.md) | Reference images in generation | Proposed |
+| [0028](0028-asset-files-served-by-backend-from-any-store.md) | Asset files served by the backend from any store | Accepted |
+| [0029](0029-roles-admin-author-moderator-player.md) | Four roles: admin, author, moderator, player | Accepted |
+| [0030](0030-imported-worlds-read-lore-from-the-database.md) | An imported world reads its cards and images from the database | Accepted |
+| [0031](0031-reference-images-in-generation.md) | Reference images in generation | Accepted |
+| [0032](0032-sign-in-through-the-server.md) | Sign-in through the server: email and password, invitation only | Accepted |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.

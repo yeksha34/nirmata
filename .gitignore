@@ -45,3 +45,6 @@ supabase/migrations/
 # pg driver for the human-run db tools
 tools/db-deps/node_modules/
 tools/db-deps/package-lock.json
+
+# the owner's list of private terms for the neutrality check (never committed)
+terms.forbidden
