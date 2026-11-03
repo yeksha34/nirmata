@@ -1,0 +1,8 @@
+{
+  "name": "@nirmata/storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Where asset files live: a local folder or the Supabase vn-assets bucket, behind one interface, chosen per file by the render's store.",
+  "exports": { ".": "./src/index.ts" }
+}

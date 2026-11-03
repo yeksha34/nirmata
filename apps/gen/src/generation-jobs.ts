@@ -47,6 +47,7 @@ const STAGES: Array<[StageId, string]> = [
 /** In-memory record of generations. The browser reads it, so a refreshed page shows the same truth. */
 export class GenerationJobs {
   private readonly jobs = new Map<string, GenerationJob>();
+  private readonly listeners: Array<(job: GenerationJob) => void> = [];
   private readonly aborts = new Map<string, AbortController>();
   private counter = 0;
 
@@ -75,6 +76,21 @@ export class GenerationJobs {
     return { job, signal: abort.signal };
   }
 
+  /** Called after every change to a job, with the job as it now is. A listener's failure is its own. */
+  subscribe(listener: (job: GenerationJob) => void): void {
+    this.listeners.push(listener);
+  }
+
+  private changed(job: GenerationJob): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(job);
+      } catch {
+        // a listener (say, the database mirror) must never break a generation
+      }
+    }
+  }
+
   get(id: string): GenerationJob | undefined {
     return this.jobs.get(id);
   }
@@ -87,6 +103,7 @@ export class GenerationJobs {
     const job = this.jobs.get(id);
     if (!job) return;
     Object.assign(job, change, { updatedAt: Date.now() });
+    this.changed(job);
   }
 
   /** Move to `stage`: earlier stages become done, later ones stay pending. */
@@ -98,6 +115,7 @@ export class GenerationJobs {
       s.state = i < at ? "done" : i === at ? "active" : "pending";
     });
     job.updatedAt = Date.now();
+    this.changed(job);
   }
 
   /** `node` started: the one running before it is finished. */
@@ -110,6 +128,7 @@ export class GenerationJobs {
     }
     job.progress = undefined;
     job.updatedAt = Date.now();
+    this.changed(job);
   }
 
   nodesCached(id: string, ids: string[]): void {
@@ -117,6 +136,7 @@ export class GenerationJobs {
     if (!job) return;
     for (const n of job.nodes) if (ids.includes(n.id)) n.state = "cached";
     job.updatedAt = Date.now();
+    this.changed(job);
   }
 
   finish(id: string, change: Partial<GenerationJob>): void {

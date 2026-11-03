@@ -1,0 +1,8 @@
+{
+  "name": "nirmata-db-tools",
+  "private": true,
+  "description": "pg driver for tools/db-apply.mjs and tools/db-doctor.mjs (npm install here)",
+  "dependencies": {
+    "pg": "^8.23.1"
+  }
+}

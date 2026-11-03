@@ -104,6 +104,30 @@ export const api = {
   join: (args: { nick?: string; confirmedAdult?: boolean; hostKey?: string }) =>
     post<{ token: string; you: You }>("/api/join", args),
   leave: () => post("/api/leave"),
+  /** Come in as the signed-in person; the host is whoever the account says. */
+  joinSession: () => post<{ token: string; you: You }>("/api/join/session"),
+  /** Who is signed in. Fails with 401 when nobody is, 404 when sign-in is not set up. */
+  me: () =>
+    get<{
+      user: { id: string; email: string };
+      profile: {
+        displayName: string;
+        canFoundWorlds: boolean;
+        role: "admin" | "author" | "player";
+        ageConfirmed: boolean;
+      } | null;
+    }>("/api/auth/me"),
+
+  // sign-in: the server talks to Supabase; the browser only ever calls these
+  invitation: (token: string) =>
+    get<{ email: string }>(`/api/auth/invitation?token=${encodeURIComponent(token)}`),
+  register: (token: string, password: string) =>
+    post<{ user: { id: string; email: string } }>("/api/auth/register", { token, password }),
+  login: (email: string, password: string) =>
+    post<{ user: { id: string; email: string } }>("/api/auth/login", { email, password }),
+  onboard: (args: { attestAdult?: boolean; token?: string }) => post("/api/auth/onboard", args),
+  logout: () => post("/api/auth/logout"),
+
   play: () => post<{ you: You }>("/api/play"),
   watch: () => post<{ you: You }>("/api/watch"),
 
@@ -220,6 +244,9 @@ export const api = {
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/compile`,
     ),
   comfyStatus: () => get<ComfyUiStatus>("/api/comfyui/status"),
+  /** Delete one dataset run, given the address of its image (`…/image` is dropped). */
+  deleteDatasetRun: (imageUrl: string) =>
+    del<{ ok: true; database: boolean; files: boolean }>(imageUrl.replace(/\/image$/, "")),
   allVns: () => get<{ vns: VnWithAssetsSummary[] }>("/api/vns").then((r) => r.vns),
   vnAssets: (worldName: string, slug: string) =>
     get<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }>(
@@ -228,6 +255,25 @@ export const api = {
   vnAssetDetail: (worldName: string, slug: string, type: "sprite" | "cg" | "bg", name: string) =>
     get<VnAssetDetail>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}`,
+    ),
+  /** Remembers an asset prompt and sampler settings, so they are there when it is selected again. */
+  saveAssetPrompt: (
+    worldName: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+    body: {
+      positivePrompt: string;
+      negativePrompt?: string;
+      steps?: number;
+      cfg?: number;
+      sampler?: string;
+      scheduler?: string;
+    },
+  ) =>
+    put(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}/prompt`,
+      body,
     ),
   /** Starts a generation and returns at once; follow it with `vnJob`. */
   generateVnAsset: (worldName: string, slug: string, body: GenerateAssetInput) =>
@@ -248,7 +294,12 @@ export const api = {
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/delete-all`,
       {},
     ),
-  archiveOneVnAsset: (worldName: string, slug: string, type: "sprite" | "cg" | "bg", name: string) =>
+  archiveOneVnAsset: (
+    worldName: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+  ) =>
     post<{ ok: boolean; timestamp: string }>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}/archive`,
       {},

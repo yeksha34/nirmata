@@ -3,9 +3,16 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
+import { GoTrue, SessionStore } from "@nirmata/auth";
+import { connectDb, type Db } from "@nirmata/db";
+import { storesFromEnv } from "@nirmata/storage";
 import { createApp } from "./app";
+import type { AuthDeps } from "./auth-routes";
 import { ConfigError, loadConfig } from "./config";
 import { Library } from "./files";
+import { DbImages } from "./image-store";
+import { DbLore } from "./lore-store";
+import { DbGenerations } from "./generation-ledger";
 import { Table } from "./table";
 
 /** Open the browser on the host's own link, so the person who ran the server just lands in it. */
@@ -23,6 +30,28 @@ function openBrowser(url: string): void {
   } catch {
     // the link is printed anyway
   }
+}
+
+/** Sign-in is on when the Supabase address and publishable key are set. */
+function authFromEnv(
+  env: NodeJS.ProcessEnv,
+  db: Db | undefined,
+  port: number,
+): AuthDeps | undefined {
+  const url = env.SUPABASE_URL?.trim();
+  const key = env.SUPABASE_PUBLISHABLE_KEY?.trim();
+  if (!url || !key) return undefined;
+  const gotrue = new GoTrue({
+    url,
+    publishableKey: key,
+    serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY?.trim() || undefined,
+  });
+  return {
+    gotrue,
+    sessions: new SessionStore(gotrue),
+    db,
+    siteUrl: env.NIRMATA_SITE_URL?.trim() || `http://127.0.0.1:${port}`,
+  };
 }
 
 async function main(): Promise<void> {
@@ -47,8 +76,20 @@ async function main(): Promise<void> {
 
   const config = loadConfig();
   const log = (message: string) => console.error(`[nirmata] ${message}`);
-  const library = new Library(config.libraryDir);
+  const db = await connectDb(process.env);
+  // an imported world keeps its cards in the database, read and written as the signed-in host
+  let hostUser: () => string | undefined = () => undefined;
+  const stores = storesFromEnv(process.env);
+  const library = new Library(config.libraryDir, {
+    lore: db ? new DbLore(db, () => hostUser()) : undefined,
+    images: db ? new DbImages(db, stores, () => hostUser()) : undefined,
+  });
 
+  const ledger = db ? new DbGenerations(db, stores, () => hostUser(), log) : undefined;
+  if (ledger) {
+    const closed = await ledger.failOrphans().catch(() => 0);
+    if (closed) console.log(`${closed} generation job(s) left open by the last run were closed.`);
+  }
   const table = new Table({
     library,
     provider: config.provider,
@@ -58,14 +99,20 @@ async function main(): Promise<void> {
     hostKey: config.hostKey,
     requireAdultConfirmation: config.requireAdultConfirmation,
     log,
+    recorder: ledger,
   });
+  hostUser = () => table.hostUserId();
   const opened = await table.openOnlyWorld();
   const worlds = await library.list();
 
   const uiDir = join(here, "..", "..", "web", "dist");
   const ui = existsSync(join(uiDir, "index.html")) ? uiDir : undefined;
 
-  const app = createApp({ table, log, ui });
+  const data = db ? { db, stores } : undefined;
+  if (data) console.log("Database connected: asset files are served through it.");
+  const auth = authFromEnv(process.env, db, config.port);
+  if (auth) console.log("Sign-in through Supabase is on (email and password).");
+  const app = createApp({ table, log, ui, data, auth });
   const server = serve({ fetch: app.fetch, port: config.port, hostname: config.bind }, (info) => {
     const host = config.bind === "0.0.0.0" ? "localhost" : info.address;
     const link = `http://${host}:${info.port}/`;
@@ -78,14 +125,20 @@ async function main(): Promise<void> {
       console.log(
         "The screens are not built yet: run `corepack pnpm --filter @nirmata/web build`.",
       );
-    console.log(`\nYou are the host. Open this link on this computer:\n  ${hostLink}`);
+    if (auth) {
+      console.log(
+        `\nSign in at:\n  ${link}login\nThe host is the signed-in account that was invited as host.\n(Obsolete host-key link, development only:\n  ${hostLink})`,
+      );
+    } else {
+      console.log(`\nYou are the host. Open this link on this computer:\n  ${hostLink}`);
+    }
     if (config.bind === "0.0.0.0")
       console.log(
         `Friends on your network join at:\n  http://<this computer's address>:${info.port}/`,
       );
     if (config.requireAdultConfirmation) console.log("Joiners must confirm they are adults.");
     if (ui && process.env.NIRMATA_OPEN !== "0" && !config.requireAdultConfirmation)
-      openBrowser(hostLink);
+      openBrowser(auth ? link : hostLink);
   });
 
   const stop = () => {

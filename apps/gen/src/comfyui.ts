@@ -1,4 +1,4 @@
-import { HttpError } from "./errors";
+import { GenError } from "./errors";
 
 export interface ComfyUiDevice {
   name: string;
@@ -116,6 +116,30 @@ export class ComfyUiClient {
     }
   }
 
+  /**
+   * Puts an image into ComfyUI's input folder so a `LoadImage` node can use it, and returns the file
+   * name to give that node. The caller names the file after the image's content, so the same image
+   * uploaded again lands on the same name.
+   */
+  async uploadImage(filename: string, data: Uint8Array): Promise<string> {
+    try {
+      const form = new FormData();
+      form.append("image", new Blob([new Uint8Array(data)], { type: "image/png" }), filename);
+      form.append("type", "input");
+      form.append("overwrite", "true");
+      const res = await fetch(`${this.baseUrl}/upload/image`, { method: "POST", body: form });
+      if (!res.ok) {
+        throw new GenError(502, "comfyui_error", `ComfyUI did not accept the reference image: ${await res.text()}`);
+      }
+      const out = (await res.json()) as { name?: string; subfolder?: string };
+      if (!out.name) throw new GenError(502, "comfyui_error", "ComfyUI did not say where it put the reference image.");
+      return out.subfolder ? `${out.subfolder}/${out.name}` : out.name;
+    } catch (e) {
+      if (e instanceof GenError) throw e;
+      throw new GenError(503, "comfyui_offline", `Could not connect to ComfyUI at ${this.baseUrl}: ${(e as Error).message}`);
+    }
+  }
+
   async queuePrompt(prompt: ComfyPromptPayload, clientId?: string): Promise<string> {
     try {
       const res = await fetch(`${this.baseUrl}/prompt`, {
@@ -127,14 +151,14 @@ export class ComfyUiClient {
       if (!res.ok) {
         const text = await res.text();
         const code = (res.status >= 400 && res.status < 600 ? res.status : 500) as 400 | 401 | 403 | 404 | 409 | 500 | 502 | 503 | 504;
-        throw new HttpError(code, "comfyui_error", `ComfyUI failed to queue prompt: ${text}`);
+        throw new GenError(code, "comfyui_error", `ComfyUI failed to queue prompt: ${text}`);
       }
 
       const data = (await res.json()) as { prompt_id: string };
       return data.prompt_id;
     } catch (e) {
-      if (e instanceof HttpError) throw e;
-      throw new HttpError(503, "comfyui_offline", `Could not connect to ComfyUI at ${this.baseUrl}: ${(e as Error).message}`);
+      if (e instanceof GenError) throw e;
+      throw new GenError(503, "comfyui_offline", `Could not connect to ComfyUI at ${this.baseUrl}: ${(e as Error).message}`);
     }
   }
 
@@ -177,28 +201,28 @@ export class ComfyUiClient {
     let missing = 0;
     try {
       for (;;) {
-        if (signal?.aborted) throw new HttpError(409, "cancelled", "Generation was cancelled.");
+        if (signal?.aborted) throw new GenError(409, "cancelled", "Generation was cancelled.");
         try {
           const found = await this.locate(promptId);
           unreachableSince = undefined;
           if (found.where === "done") return { promptId, outputImages: found.outputImages };
           if (found.where === "error") {
-            throw new HttpError(500, "generation_failed", `ComfyUI execution failed: ${found.message}`);
+            throw new GenError(500, "generation_failed", `ComfyUI execution failed: ${found.message}`);
           }
           if (found.where === "missing") {
             missing += 1;
             if (missing >= missingPolls) {
-              throw new HttpError(502, "comfyui_lost", "ComfyUI no longer has this prompt (restarted or queue cleared).");
+              throw new GenError(502, "comfyui_lost", "ComfyUI no longer has this prompt (restarted or queue cleared).");
             }
           } else {
             missing = 0;
             onEvent?.({ kind: "location", where: found.where, position: found.where === "pending" ? found.position : undefined });
           }
         } catch (err) {
-          if (err instanceof HttpError) throw err;
+          if (err instanceof GenError) throw err;
           unreachableSince ??= Date.now();
           if (Date.now() - unreachableSince > lostMs) {
-            throw new HttpError(503, "comfyui_offline", `Lost contact with ComfyUI at ${this.baseUrl}.`);
+            throw new GenError(503, "comfyui_offline", `Lost contact with ComfyUI at ${this.baseUrl}.`);
           }
         }
         await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
@@ -251,13 +275,13 @@ export class ComfyUiClient {
       const res = await fetch(url);
       if (!res.ok) {
         const code = (res.status >= 400 && res.status < 600 ? res.status : 500) as 400 | 401 | 403 | 404 | 409 | 500 | 502 | 503 | 504;
-        throw new HttpError(code, "image_not_found", `Failed to fetch generated image: ${res.statusText}`);
+        throw new GenError(code, "image_not_found", `Failed to fetch generated image: ${res.statusText}`);
       }
       const arrayBuffer = await res.arrayBuffer();
       return Buffer.from(arrayBuffer);
     } catch (e) {
-      if (e instanceof HttpError) throw e;
-      throw new HttpError(500, "fetch_failed", `Failed to download image from ComfyUI: ${(e as Error).message}`);
+      if (e instanceof GenError) throw e;
+      throw new GenError(500, "fetch_failed", `Failed to download image from ComfyUI: ${(e as Error).message}`);
     }
   }
 }

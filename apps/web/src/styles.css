@@ -2020,6 +2020,52 @@ label.choice-opt:has(input:focus-visible) {
   border: 1px solid #95a5a6;
 }
 
+.vs-refs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.vs-saved[data-state="failed"] {
+  color: #e74c3c;
+}
+.vs-saved {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* ---- where a world's cards are kept ---- */
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: 0.6rem;
+  vertical-align: middle;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid currentColor;
+}
+.source-badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.source-db {
+  color: #2ecc71;
+  background: rgba(46, 204, 113, 0.15);
+}
+.source-files {
+  color: #95a5a6;
+  background: rgba(149, 165, 166, 0.15);
+}
+
 /* ---- Asset Studio (screens/VnStudio.tsx) ----
    Its own light layout: one asset list, one workspace of folding sections. Every control keeps
    its text on one line and ellipsizes rather than spilling into its neighbour. */

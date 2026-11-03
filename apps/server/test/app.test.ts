@@ -49,7 +49,13 @@ describe("joining", () => {
     const sam = new Client(r.app);
     const joined = await sam.join("Sam");
     expect(joined.status).toBe(201);
-    expect(joined.body.you).toEqual({ nick: "Sam", seat: "spectator", muted: false, host: false });
+    expect(joined.body.you).toEqual({
+      nick: "Sam",
+      seat: "spectator",
+      muted: false,
+      host: false,
+      account: false,
+    });
 
     const nobody = await new Client(r.app).get("/api/state");
     expect(nobody.status).toBe(401);

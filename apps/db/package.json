@@ -1,0 +1,11 @@
+{
+  "name": "@nirmata/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The backend's door to the Nirmata database: runs work as the server (app_rw) or as one person, in a transaction, and reads what the backend needs. Nothing else reaches the database.",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {
+    "pg": "^8.13.0"
+  }
+}

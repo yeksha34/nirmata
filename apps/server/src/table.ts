@@ -1,5 +1,5 @@
-import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { GenerationJobs, type GenerationJob } from "./generation-jobs";
+import { basename } from "node:path";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import {
   type Action,
   type Actor,
@@ -31,11 +31,25 @@ import {
   StorySession,
 } from "@nirmata/host";
 import type { Provider } from "@nirmata/llm";
+import {
+  applyAttentionFeedback,
+  ComfyUiClient,
+  type ComfyUiStatus,
+  ensureTransparentSpritePng,
+  type GenerationJob,
+  GenerationJobs,
+  injectReferences,
+  injectWorkflowParams,
+} from "@nirmata/gen";
 import { HttpError } from "./errors";
+import type { GenerationLedger } from "./generation-ledger";
+import type { GeneratedImage } from "./render-recorder";
+import { type PlatformRole, seatKindOf } from "./roles";
 import {
   type CardInput,
   type Library,
   newStoryId,
+  type PromptSpecPatch,
   type RecentStory,
   type StoryFiles,
   type StorySummary,
@@ -55,9 +69,7 @@ import {
   type TableEvent,
   tableEvent,
 } from "./views";
-import { ComfyUiClient, type ComfyUiStatus } from "./comfyui";
-import { ensureTransparentSpritePng } from "./png-transparency";
-import { applyAttentionFeedback, injectWorkflowParams } from "./workflow-injector";
+
 import type { VnAssetDetail, VnAssetItem } from "./files";
 
 export interface GenerateAssetInput {
@@ -73,6 +85,10 @@ export interface GenerateAssetInput {
   seed?: number;
   feedback?: Record<string, "better" | "keep" | "worse">;
   workflowOverride?: Record<string, unknown>;
+  /** Names of sprites whose images should influence this one (see reference-rules). */
+  references?: string[];
+  /** How strongly they count: the sampler's denoise (image-to-image) or the adapter's weight (identity). */
+  referenceStrength?: number;
 }
 
 export interface TableOptions {
@@ -90,6 +106,23 @@ export interface TableOptions {
   requireAdultConfirmation?: boolean | undefined;
   /** Called for problems worth a line in the host's console. */
   log?: ((message: string) => void) | undefined;
+  /** Keeps generations (jobs and their renders) in the database too, for an imported world. */
+  recorder?: GenerationLedger | undefined;
+}
+
+/** The image size a workflow asks for (its latent image node), else the usual size for the kind. */
+function workflowSize(
+  workflow: Record<string, { class_type?: string; inputs?: Record<string, unknown> }>,
+  type: "sprite" | "cg" | "bg",
+): { width: number; height: number } {
+  for (const node of Object.values(workflow)) {
+    const w = Number(node.inputs?.width);
+    const h = Number(node.inputs?.height);
+    if (/latent/i.test(node.class_type ?? "") && w >= 64 && h >= 64) {
+      return { width: Math.min(4096, w), height: Math.min(4096, h) };
+    }
+  }
+  return type === "sprite" ? { width: 512, height: 768 } : { width: 1024, height: 576 };
 }
 
 /** Someone who has joined: the token they present, and the nickname it speaks for. */
@@ -97,6 +130,8 @@ export interface Seat {
   token: string;
   nick: string;
   host: boolean;
+  /** The signed-in person this seat belongs to; absent for a nickname seat or the host key. */
+  account?: string | undefined;
 }
 
 export interface You {
@@ -104,6 +139,17 @@ export interface You {
   seat: ParticipantView["seat"];
   muted: boolean;
   host: boolean;
+  /** True when the seat comes from a signed-in account. */
+  account: boolean;
+}
+
+/** A signed-in person, as the table needs to know them. */
+export interface Account {
+  userId: string;
+  /** The name they go by; made into a valid nickname if it is not one. */
+  name: string;
+  /** What they are on the platform; an author or admin runs the table (ADR-0029). */
+  role: PlatformRole;
 }
 
 /** The world the table has open. */
@@ -166,6 +212,16 @@ const sameKey = (a: string, b: string): boolean => {
 
 const lower = (s: string) => s.toLowerCase();
 
+/** A valid nickname (letters, digits, a few marks; up to 24) from whatever name a person goes by. */
+const nickFrom = (name: string): string => {
+  const clean = name
+    .trim()
+    .replace(/[^\p{L}\p{N}_\-[\]\\^{}|]+/gu, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24);
+  return clean || "Reader";
+};
+
 /** More than this at one table is a crowd, not a game; also a cheap limit on tokens held. */
 const MAX_SEATS = 64;
 
@@ -198,8 +254,15 @@ export class Table {
   private readonly comfy = new ComfyUiClient();
   private readonly genJobs = new GenerationJobs();
 
+  /** What the host is called now: the server's setting until a signed-in host takes the seat. */
+  private hostNick: string;
+  /** The signed-in host, once there is one; the table has one host at a time. */
+  private hostAccount: string | undefined;
+
   constructor(private readonly options: TableOptions) {
     this.settings = options.settings;
+    this.hostNick = options.hostNick;
+    options.recorder?.watch(this.genJobs);
     this.board = new Board({
       host: options.hostNick,
       ports: options.ports,
@@ -212,7 +275,7 @@ export class Table {
   async info(): Promise<TableInfo> {
     return {
       world: this.open?.info ?? null,
-      host: this.options.hostNick,
+      host: this.hostNick,
       requiresAdultConfirmation: this.board.requiresAdultConfirmation,
       story: this.session !== undefined,
     };
@@ -356,9 +419,15 @@ export class Table {
   }
 
   /** List all visual novels across worlds with asset completion status. Host only. */
-  async listAllVns(
-    seat: Seat,
-  ): Promise<Array<VnSummary & { worldName: string; worldTitle: string; assetCounts: { sprites: number; cgs: number; backgrounds: number } }>> {
+  async listAllVns(seat: Seat): Promise<
+    Array<
+      VnSummary & {
+        worldName: string;
+        worldTitle: string;
+        assetCounts: { sprites: number; cgs: number; backgrounds: number };
+      }
+    >
+  > {
     requireCan(this.actor(seat), "source.edit");
     return this.options.library.listAllVns();
   }
@@ -389,16 +458,29 @@ export class Table {
    * Start a ComfyUI generation and return at once with a job to follow. The render runs in the
    * background for as long as ComfyUI takes; read progress with `listGenerationJobs`. Host only.
    */
-  startWorldVnAsset(seat: Seat, worldName: string, slug: string, body: GenerateAssetInput): GenerationJob {
+  startWorldVnAsset(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+    body: GenerateAssetInput,
+  ): GenerationJob {
     requireCan(this.actor(seat), "source.edit");
-    const { job, signal } = this.genJobs.create({ world: worldName, slug, type: body.type, name: body.name });
+    const { job, signal } = this.genJobs.create({
+      world: worldName,
+      slug,
+      type: body.type,
+      name: body.name,
+    });
     void this.runGeneration(job.id, signal, worldName, slug, body);
     return job;
   }
 
-  listGenerationJobs(seat: Seat): GenerationJob[] {
+  /** The jobs in memory, and (after a restart) the recent ones the database remembers. */
+  async listGenerationJobs(seat: Seat): Promise<GenerationJob[]> {
     requireCan(this.actor(seat), "source.edit");
-    return this.genJobs.list();
+    const live = this.genJobs.list();
+    const earlier = await this.options.recorder?.recent(new Set(live.map((j) => j.id)));
+    return earlier?.length ? [...live, ...earlier].sort((a, b) => b.startedAt - a.startedAt) : live;
   }
 
   getGenerationJob(seat: Seat, id: string): GenerationJob {
@@ -434,6 +516,40 @@ export class Table {
     }
   }
 
+  /** Remember an asset's prompt and sampler settings, so they are there when it is selected again. Host only. */
+  async saveAssetPrompt(
+    seat: Seat,
+    worldName: string,
+    type: "sprite" | "cg" | "bg",
+    assetName: string,
+    patch: PromptSpecPatch,
+  ): Promise<void> {
+    requireCan(this.actor(seat), "source.edit");
+    await this.options.library.savePromptSpec(worldName, type, assetName, patch);
+  }
+
+  /** The images of the reference sprites a generation asked for; a missing one stops it. */
+  private async readReferences(
+    worldName: string,
+    slug: string,
+    body: GenerateAssetInput,
+  ): Promise<Buffer[]> {
+    if (!body.references?.length || body.type === "bg") return [];
+    const images: Buffer[] = [];
+    for (const name of body.references.slice(0, 6)) {
+      const found = await this.options.library.readVnAsset(worldName, slug, `sprites/${name}.png`);
+      if (!found) {
+        throw new HttpError(
+          409,
+          "reference_missing",
+          "A reference sprite does not exist yet. Generate it first, or remove it from the references.",
+        );
+      }
+      images.push(found.data);
+    }
+    return images;
+  }
+
   private async generateWorldVnAsset(
     jobId: string,
     signal: AbortSignal,
@@ -451,16 +567,30 @@ export class Table {
       negative = updated.negativePrompt;
     }
 
-    const archivedDir = await this.options.library.archiveVnAsset(worldName, slug, body.type, body.name, {
-      prompt: positive,
-      negativePrompt: negative,
-      feedback: body.feedback,
-      workflow: body.workflowOverride,
-    });
+    // reference sprites are read first: a missing one stops the job before anything is archived
+    const references = await this.readReferences(worldName, slug, body);
 
-    const template = (body.workflowOverride || (await this.options.library.loadWorkflowTemplate(worldName, body.type))) as Record<string, any>;
+    const archivedDir = await this.options.library.archiveVnAsset(
+      worldName,
+      slug,
+      body.type,
+      body.name,
+      {
+        prompt: positive,
+        negativePrompt: negative,
+        feedback: body.feedback,
+        workflow: body.workflowOverride,
+      },
+    );
 
-    const injected = injectWorkflowParams(template, {
+    const template = (body.workflowOverride ||
+      (await this.options.library.loadWorkflowTemplate(
+        worldName,
+        body.type,
+        references.length > 0 ? "ref" : undefined,
+      ))) as Record<string, any>;
+
+    let injected = injectWorkflowParams(template, {
       positivePrompt: positive,
       negativePrompt: negative,
       steps: body.steps,
@@ -469,6 +599,41 @@ export class Table {
       scheduler: body.scheduler,
       seed: body.seed,
       filenamePrefix: `${body.type}s/${body.name}`,
+    });
+
+    if (references.length > 0) {
+      const uploaded: string[] = [];
+      for (const image of references) {
+        const hash = createHash("sha256").update(image).digest("hex").slice(0, 16);
+        uploaded.push(await this.comfy.uploadImage(`nirmata_ref_${hash}.png`, image));
+      }
+      const used = injectReferences(injected as any, uploaded, {
+        strength: body.referenceStrength,
+      });
+      if (used.applied === 0) {
+        throw new HttpError(
+          409,
+          "no_reference_slot",
+          "This workflow has no place for a reference image. Use a workflow with a Reference Image node.",
+        );
+      }
+      injected = used.workflow as typeof injected;
+    }
+
+    await this.options.recorder?.begin({
+      key: jobId,
+      worldName,
+      scope: slug,
+      type: body.type,
+      name: body.name,
+      positive,
+      negative,
+      ...workflowSize(injected, body.type),
+      steps: body.steps,
+      cfg: body.cfg,
+      sampler: body.sampler,
+      scheduler: body.scheduler,
+      seed: body.seed,
     });
 
     jobs.patch(jobId, {
@@ -513,22 +678,108 @@ export class Table {
 
     jobs.stage(jobId, "save");
     jobs.patch(jobId, { state: "saving" });
-    const rawImageBytes = await this.comfy.fetchImage(firstImg.filename, firstImg.subfolder, firstImg.type);
-    const imageBytes = body.type === "sprite" ? ensureTransparentSpritePng(rawImageBytes) : rawImageBytes;
+    const rawImageBytes = await this.comfy.fetchImage(
+      firstImg.filename,
+      firstImg.subfolder,
+      firstImg.type,
+    );
+    const imageBytes =
+      body.type === "sprite" ? ensureTransparentSpritePng(rawImageBytes) : rawImageBytes;
 
     const dirName = body.type === "sprite" ? "sprites" : body.type === "cg" ? "cgs" : "backgrounds";
     const targetPath = body.targetPath || `${dirName}/${body.name}.png`;
     await this.options.library.saveGeneratedVnAsset(worldName, slug, targetPath, imageBytes);
     await this.options.library.saveDatasetGeneratedImage(worldName, archivedDir, imageBytes);
+    await this.recordGeneration({
+      worldName,
+      scope: slug,
+      run: basename(archivedDir),
+      jobKey: jobId,
+      type: body.type,
+      name: body.name,
+      image: Buffer.from(imageBytes),
+      positive,
+      negative,
+      steps: body.steps,
+      cfg: body.cfg,
+      sampler: body.sampler,
+      scheduler: body.scheduler,
+      seed: body.seed,
+    });
+
+    // remember what made this image (the prompt after feedback), so the next visit starts from it
+    await this.options.library
+      .savePromptSpec(worldName, body.type, body.name, {
+        positivePrompt: positive,
+        negativePrompt: negative,
+        steps: body.steps,
+        cfg: body.cfg,
+        sampler: body.sampler,
+        scheduler: body.scheduler,
+      })
+      .catch((e) =>
+        this.options.log?.(
+          `The prompt was not remembered: ${e instanceof Error ? e.message : String(e)}`,
+        ),
+      );
 
     const assetUrl = `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/${targetPath}?t=${Date.now()}`;
 
     return { assetUrl, positivePrompt: positive, negativePrompt: negative };
   }
 
-  /** Read an image from the dataset history. Open to all viewers. */
-  readDatasetImage(worldName: string, slug: string, assetName: string, timestamp: string) {
-    return this.options.library.readDatasetImage(worldName, slug, assetName, timestamp);
+  /**
+   * Delete one run from the dataset gallery. Host only. For an imported world, the database copy
+   * goes with it (and its stored file is removed, freeing quota) when the request is the signed-in
+   * host's own; an asset's current image is refused.
+   */
+  async deleteDatasetRun(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+    assetName: string,
+    timestamp: string,
+    fromDatabase = false,
+  ): Promise<{ database: boolean; files: boolean }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.deleteDatasetRun(
+      worldName,
+      slug,
+      assetName,
+      timestamp,
+      fromDatabase,
+    );
+  }
+
+  /** The database copy of a new generation. The file is already saved, so a failure is only logged. */
+  private async recordGeneration(image: GeneratedImage): Promise<void> {
+    try {
+      await this.options.recorder?.record(image);
+    } catch (e) {
+      this.options.log?.(
+        `A new image was saved on disk but not in the database: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+
+  /**
+   * Read an image from the dataset history. Open to all viewers for files; the database copy of an
+   * imported world is used only when `fromDatabase` says the request is the signed-in host's own.
+   */
+  readDatasetImage(
+    worldName: string,
+    slug: string,
+    assetName: string,
+    timestamp: string,
+    fromDatabase = false,
+  ) {
+    return this.options.library.readDatasetImage(
+      worldName,
+      slug,
+      assetName,
+      timestamp,
+      fromDatabase,
+    );
   }
 
   async archiveWorldVnAsset(
@@ -678,7 +929,7 @@ export class Table {
         throw new HttpError(403, "forbidden", "That host key is not right.");
       }
       host = true;
-      name = this.options.hostNick;
+      name = this.hostNick;
     } else {
       if (this.seats.size >= MAX_SEATS) {
         throw new HttpError(409, "table_full", "The table is full. Try again later.");
@@ -691,6 +942,63 @@ export class Table {
     this.seats.set(seat.token, seat);
     this.pushBoard();
     return seat;
+  }
+
+  /**
+   * Come to the table as a signed-in person. A person who may found worlds takes the host's seat
+   * under their own name, so the table is theirs and nobody is hosted under a stand-in. Anyone
+   * else comes in as a spectator under their name. Coming back returns the same seat.
+   */
+  joinAccount(account: Account): Seat {
+    for (const seat of this.seats.values()) {
+      if (seat.account === account.userId) return seat;
+    }
+    const base = nickFrom(account.name);
+    if (seatKindOf(account.role) === "host") {
+      if (this.hostAccount !== undefined && this.hostAccount !== account.userId) {
+        throw new HttpError(409, "table_has_host", "This table already has a host.");
+      }
+      const name = this.board.setHost(base);
+      for (const seat of this.seats.values()) if (seat.host) seat.nick = name;
+      this.hostNick = name;
+      this.hostAccount = account.userId;
+      const seat: Seat = {
+        token: randomBytes(24).toString("base64url"),
+        nick: name,
+        host: true,
+        account: account.userId,
+      };
+      this.seats.set(seat.token, seat);
+      this.pushBoard();
+      return seat;
+    }
+    if (this.seats.size >= MAX_SEATS) {
+      throw new HttpError(409, "table_full", "The table is full. Try again later.");
+    }
+    let name = base;
+    for (let n = 2; ; n++) {
+      try {
+        name = this.board.join(name, { confirmedAdult: true }).nick;
+        break;
+      } catch (e) {
+        if (n > 99 || !(e instanceof HostError) || e.code !== "bad_nickname") throw e;
+        name = `${base.slice(0, 22)}${n}`;
+      }
+    }
+    const seat: Seat = {
+      token: randomBytes(24).toString("base64url"),
+      nick: name,
+      host: false,
+      account: account.userId,
+    };
+    this.seats.set(seat.token, seat);
+    this.pushBoard();
+    return seat;
+  }
+
+  /** The signed-in account that is the table's host, once there is one. */
+  hostUserId(): string | undefined {
+    return this.hostAccount;
   }
 
   /** The seat a token speaks for. */
@@ -722,7 +1030,13 @@ export class Table {
 
   you(seat: Seat): You {
     const person = this.person(seat);
-    return { nick: person.nick, seat: person.seat, muted: person.muted, host: seat.host };
+    return {
+      nick: person.nick,
+      seat: person.seat,
+      muted: person.muted,
+      host: seat.host,
+      account: seat.account !== undefined,
+    };
   }
 
   private person(seat: Seat): ParticipantView {

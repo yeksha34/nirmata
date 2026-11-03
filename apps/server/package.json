@@ -7,13 +7,19 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "import": "tsx src/import.ts",
+    "import:assets": "tsx src/import-assets.ts",
+    "import:world": "tsx src/import-world.ts",
     "import:watch": "tsx src/watch.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
+    "@nirmata/auth": "workspace:*",
     "@nirmata/core": "workspace:*",
+    "@nirmata/db": "workspace:*",
+    "@nirmata/gen": "workspace:*",
     "@nirmata/host": "workspace:*",
     "@nirmata/llm": "workspace:*",
+    "@nirmata/storage": "workspace:*",
     "hono": "^4.6.0",
     "zod": "^3.24.0"
   },

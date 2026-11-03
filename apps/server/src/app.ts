@@ -3,6 +3,8 @@ import { FLAVOR_STYLES } from "@nirmata/host";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
+import { type DataDeps, registerAssetRoutes } from "./asset-routes";
+import { type AuthDeps, readProfile, registerAuthRoutes } from "./auth-routes";
 import { describeError, HttpError } from "./errors";
 import { type CardInput, WORLD_NAME } from "./files";
 import type { Seat, Send, Table } from "./table";
@@ -84,6 +86,15 @@ const SaveVn = z.object({
   slides: z.any().optional(),
 });
 
+const PromptSpec = z.object({
+  positivePrompt: z.string().max(8000),
+  negativePrompt: z.string().max(8000).optional(),
+  steps: z.number().int().min(1).max(100).optional(),
+  cfg: z.number().min(1).max(30).optional(),
+  sampler: z.string().max(60).optional(),
+  scheduler: z.string().max(60).optional(),
+});
+
 const GenerateAsset = z.object({
   type: z.enum(["sprite", "cg", "bg"]),
   name: z.string().trim().min(1),
@@ -97,6 +108,11 @@ const GenerateAsset = z.object({
   seed: z.number().int().optional(),
   feedback: z.record(z.enum(["better", "keep", "worse"])).optional(),
   workflowOverride: z.record(z.unknown()).optional(),
+  references: z
+    .array(z.string().regex(/^[A-Za-z0-9._-]{1,120}$/))
+    .max(6)
+    .optional(),
+  referenceStrength: z.number().min(0.05).max(1.5).optional(),
 });
 
 export interface AppOptions {
@@ -105,6 +121,10 @@ export interface AppOptions {
   log?: ((message: string) => void) | undefined;
   /** The folder of built screens to serve at the front door. */
   ui?: string | undefined;
+  /** The database and file stores; without them the server runs from files alone. */
+  data?: DataDeps | undefined;
+  /** Sign-in through Supabase Auth; without it only the host-key login works. */
+  auth?: AuthDeps | undefined;
 }
 
 const PING_MS = 15_000;
@@ -117,7 +137,7 @@ const PING_MS = 15_000;
  * progress arrives on `GET /api/events` like everything else, so that every connection sees the
  * same story at the same moment.
  */
-export function createApp({ table, log, ui }: AppOptions): Hono {
+export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
   const app = new Hono();
 
   app.use("/api/*", bodyLimit({ maxSize: 256 * 1024, onError: (c) => c.json(tooBig(), 400) }));
@@ -149,6 +169,8 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
   // ---- open to anyone -----------------------------------------------------------------------
 
   app.get("/api/health", (c) => c.json({ ok: true }));
+  if (data) registerAssetRoutes(app, data, seatOf);
+  const userOf = auth ? registerAuthRoutes(app, auth) : undefined;
   app.get("/api/comfyui/status", async (c) => c.json(await table.comfyStatus()));
   app.get("/api/table", async (c) => c.json(await table.info()));
 
@@ -172,22 +194,43 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
   app.post("/api/worlds/:name/vns/:slug/assets/generate", async (c) => {
     const seat = seatOf(c);
     const body = await json(c, GenerateAsset);
-    return c.json(table.startWorldVnAsset(seat, c.req.param("name"), c.req.param("slug"), body), 202);
+    return c.json(
+      table.startWorldVnAsset(seat, c.req.param("name"), c.req.param("slug"), body),
+      202,
+    );
   });
   // follow generations (survives a page refresh: the server holds the record)
-  app.get("/api/vn-jobs", (c) => c.json({ jobs: table.listGenerationJobs(seatOf(c)) }));
+  app.get("/api/vn-jobs", async (c) => c.json({ jobs: await table.listGenerationJobs(seatOf(c)) }));
   app.get("/api/vn-jobs/:id", (c) => c.json(table.getGenerationJob(seatOf(c), c.req.param("id"))));
-  app.post("/api/vn-jobs/:id/cancel", async (c) => c.json(await table.cancelGenerationJob(seatOf(c), c.req.param("id"))));
+  app.post("/api/vn-jobs/:id/cancel", async (c) =>
+    c.json(await table.cancelGenerationJob(seatOf(c), c.req.param("id"))),
+  );
 
   // archive all assets in a vn or shared pool
   app.post("/api/worlds/:name/vns/:slug/assets/archive-all", async (c) =>
-    c.json(await table.archiveAllWorldVnAssets(seatOf(c), c.req.param("name"), c.req.param("slug"))),
+    c.json(
+      await table.archiveAllWorldVnAssets(seatOf(c), c.req.param("name"), c.req.param("slug")),
+    ),
   );
 
   // delete all rendered assets in a vn or shared pool
   app.post("/api/worlds/:name/vns/:slug/assets/delete-all", async (c) =>
     c.json(await table.deleteAllWorldVnAssets(seatOf(c), c.req.param("name"), c.req.param("slug"))),
   );
+
+  // remember an asset's prompt and sampler settings (the Studio saves as the author types)
+  app.put("/api/worlds/:name/vns/:slug/asset-meta/:type/:assetName/prompt", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(c, PromptSpec);
+    await table.saveAssetPrompt(
+      seat,
+      c.req.param("name"),
+      c.req.param("type") as "sprite" | "cg" | "bg",
+      c.req.param("assetName"),
+      body,
+    );
+    return ok(c);
+  });
 
   // archive a single asset
   app.post("/api/worlds/:name/vns/:slug/asset-meta/:type/:assetName/archive", async (c) =>
@@ -229,17 +272,39 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
   });
 
   app.get("/api/worlds/:name/dataset/:slug/:assetName/:timestamp/image", async (c) => {
+    // the database copy is private: only the signed-in host's own cookie reaches it
+    const host = table.hostUserId();
+    const fromDatabase = host !== undefined && (await userOf?.(c))?.user.id === host;
     const asset = await table.readDatasetImage(
       c.req.param("name"),
       c.req.param("slug"),
       c.req.param("assetName"),
       c.req.param("timestamp"),
+      fromDatabase,
     );
     if (!asset) throw new HttpError(404, "not_found", "Asset not found.");
     return c.body(new Uint8Array(asset.data), 200, {
       "Content-Type": asset.contentType,
-      "Cache-Control": "public, max-age=86400",
+      "Cache-Control": fromDatabase ? "private, max-age=300" : "public, max-age=86400",
     });
+  });
+
+  // delete one run from the gallery (host only); the database copy goes with it for the signed-in host
+  app.delete("/api/worlds/:name/dataset/:slug/:assetName/:timestamp", async (c) => {
+    const seat = seatOf(c);
+    const host = table.hostUserId();
+    const fromDatabase = host !== undefined && (await userOf?.(c))?.user.id === host;
+    const done = await table.deleteDatasetRun(
+      seat,
+      c.req.param("name"),
+      c.req.param("slug"),
+      c.req.param("assetName"),
+      c.req.param("timestamp"),
+      fromDatabase,
+    );
+    if (!done.database && !done.files)
+      throw new HttpError(404, "not_found", "There is no such run.");
+    return c.json({ ok: true, ...done });
   });
 
   app.post("/api/join", async (c) => {
@@ -247,6 +312,32 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
     const seat = table.join(body.nick ?? "", {
       ...(body.confirmedAdult !== undefined ? { confirmedAdult: body.confirmedAdult } : {}),
       ...(body.hostKey !== undefined ? { hostKey: body.hostKey } : {}),
+    });
+    return c.json({ token: seat.token, you: table.you(seat) }, 201);
+  });
+
+  // Come to the table as the signed-in person. Who is the host comes from the account (the host
+  // invitation sets it), not from a key; the same person always gets the same seat back.
+  app.post("/api/join/session", async (c) => {
+    if (!auth || !userOf)
+      throw new HttpError(404, "not_found", "There is nothing at that address.");
+    const session = await userOf(c);
+    if (!session) throw new HttpError(401, "sign_in_required", "Sign in first.");
+    if (!auth.db)
+      throw new HttpError(
+        503,
+        "database_unavailable",
+        "The database is not set up on this server.",
+      );
+    const profile = await readProfile(auth.db, session).catch(() => {
+      throw new HttpError(503, "profile_unavailable", "Your profile cannot be read right now.");
+    });
+    if (!profile?.ageConfirmed)
+      throw new HttpError(409, "onboarding_required", "Finish setting up your account first.");
+    const seat = table.joinAccount({
+      userId: session.user.id,
+      name: profile.displayName,
+      role: profile.role,
     });
     return c.json({ token: seat.token, you: table.you(seat) }, 201);
   });
@@ -309,9 +400,7 @@ export function createApp({ table, log, ui }: AppOptions): Hono {
     c.json(await table.compileWorldVn(seatOf(c), c.req.param("name"), c.req.param("slug"))),
   );
   // list all visual novels across worlds (for /vn index)
-  app.get("/api/vns", async (c) =>
-    c.json({ vns: await table.listAllVns(seatOf(c)) }),
-  );
+  app.get("/api/vns", async (c) => c.json({ vns: await table.listAllVns(seatOf(c)) }));
   app.patch("/api/worlds/:name", async (c) => {
     const seat = seatOf(c);
     const body = await json(

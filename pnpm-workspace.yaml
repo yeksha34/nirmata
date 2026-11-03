@@ -1,5 +1,9 @@
 packages:
   - packages/*
+  - apps/auth
+  - apps/db
+  - apps/gen
+  - apps/storage
   - apps/server
   - apps/web
 

@@ -10,6 +10,8 @@ export interface You {
   seat: SeatKind;
   muted: boolean;
   host: boolean;
+  /** True when the seat comes from a signed-in account. */
+  account?: boolean;
 }
 
 export interface WorldInfo {
@@ -223,6 +225,8 @@ export interface Writing {
 /** A world's page: its details, saved stories and cards, whether or not it is the open one. */
 export interface WorldDetail {
   world: WorldSummary;
+  /** Where the cards came from: the database for an imported world, else the world's folder. */
+  cardSource?: "database" | "files";
   manifest?: Manifest;
   stories: StorySummary[];
   cards: Card[];
@@ -442,6 +446,8 @@ export interface VnAssetDetail {
   aspectRatio?: string;
   width?: number;
   height?: number;
+  /** Sprites that should influence this image, and every sprite that could. */
+  references?: { suggested: string[]; available: string[] };
 }
 
 export interface VnWithAssetsSummary extends VnSummary {
@@ -467,6 +473,8 @@ export interface GenerateAssetInput {
   seed?: number;
   feedback?: Record<string, "better" | "keep" | "worse">;
   workflowOverride?: Record<string, unknown>;
+  /** Sprites whose images should influence this one. */
+  references?: string[];
 }
 
 export type GenerationJobState = "queued" | "running" | "saving" | "done" | "error" | "cancelled";

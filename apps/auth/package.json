@@ -1,0 +1,8 @@
+{
+  "name": "@nirmata/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sign-in for the backend: talks to Supabase Auth over its REST API so the browser never does, and keeps each person's session on the server.",
+  "exports": { ".": "./src/index.ts" }
+}

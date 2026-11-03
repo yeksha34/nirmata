@@ -2,8 +2,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { WorldFiles } from "../src";
-import { ComfyUiClient } from "../src/comfyui";
-import { applyAttentionFeedback, injectWorkflowParams } from "../src/workflow-injector";
+import { applyAttentionFeedback, ComfyUiClient, injectWorkflowParams } from "@nirmata/gen";
 import { Client, HOST_KEY, rig, tempWorld } from "./helpers";
 
 type Rig = Awaited<ReturnType<typeof rig>>;
@@ -68,9 +67,9 @@ describe("workflow parameter injector & attention feedback", () => {
     const currentNegative = "blurry, low quality";
 
     const feedback: Record<string, "better" | "keep" | "worse"> = {
-      "smile": "better",
-      "blush": "worse",
-      "standing": "better",
+      smile: "better",
+      blush: "worse",
+      standing: "better",
     };
 
     const result = applyAttentionFeedback(currentPositive, currentNegative, feedback);
@@ -88,7 +87,7 @@ describe("workflow parameter injector & attention feedback", () => {
     const currentNegative = "blurry";
 
     const feedback: Record<string, "better" | "keep" | "worse"> = {
-      "horns": "worse", // 1.0 - 0.2 = 0.8 (< 1.0), should move to negative
+      horns: "worse", // 1.0 - 0.2 = 0.8 (< 1.0), should move to negative
     };
 
     const result = applyAttentionFeedback(currentPositive, currentNegative, feedback);
@@ -103,12 +102,20 @@ describe("ComfyUI Client API", () => {
 
     const mockStats = {
       devices: [
-        { name: "Intel(R) Iris(R) Xe Graphics", type: "GPU", vram_total: 8000000000, vram_free: 6000000000 },
+        {
+          name: "Intel(R) Iris(R) Xe Graphics",
+          type: "GPU",
+          vram_total: 8000000000,
+          vram_free: 6000000000,
+        },
       ],
     };
 
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(JSON.stringify(mockStats), { status: 200, headers: { "Content-Type": "application/json" } }),
+      new Response(JSON.stringify(mockStats), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
     );
 
     const status = await client.checkStatus();
@@ -158,7 +165,8 @@ describe("Visual Novel Asset Studio Server Endpoints", () => {
 
     // 4. GET /api/worlds/:name/vns/:slug/assets returns asset items
     const assetsRes = await c.get(`/api/worlds/${world.name}/vns/ch01-prologue/assets`);
-    if (assetsRes.status !== 200) console.error("DEBUG assetsRes:", assetsRes.status, assetsRes.body, "Logs:", r.logs);
+    if (assetsRes.status !== 200)
+      console.error("DEBUG assetsRes:", assetsRes.status, assetsRes.body, "Logs:", r.logs);
     expect(assetsRes.status).toBe(200);
     const assetData = assetsRes.body as { sprites: any[]; cgs: any[]; backgrounds: any[] };
     expect(assetData.sprites.length).toBeGreaterThan(0);
@@ -170,7 +178,12 @@ describe("Visual Novel Asset Studio Server Endpoints", () => {
       `/api/worlds/${world.name}/vns/ch01-prologue/asset-meta/sprite/main_character_neutral`,
     );
     expect(detailRes.status).toBe(200);
-    const detail = detailRes.body as { name: string; type: string; positivePrompt: string; negativePrompt: string };
+    const detail = detailRes.body as {
+      name: string;
+      type: string;
+      positivePrompt: string;
+      negativePrompt: string;
+    };
     expect(detail.name).toBe("main_character_neutral");
     expect(detail.type).toBe("sprite");
     expect(detail.positivePrompt).toContain("1girl, solo");
@@ -188,44 +201,84 @@ describe("Visual Novel Asset Studio Server Endpoints", () => {
     expect(allRes.status).toBe(200);
     const allData = allRes.body as { sprites: any[]; cgs: any[]; backgrounds: any[] };
     expect(allData.sprites.length).toBeGreaterThan(0);
-    expect(allData.sprites.some((s) => s.vnSlug !== undefined || s.isShared !== undefined)).toBe(true);
+    expect(allData.sprites.some((s) => s.vnSlug !== undefined || s.isShared !== undefined)).toBe(
+      true,
+    );
 
     // 8. GET /api/worlds/:name/dataset/:slug/:name/:ts/image streams archived generation image
     const ts = "2026-11-01T12-00-00Z";
-    const datasetDir = join(r.library.root, world.name, "assets", "dataset", "ch01-prologue", "test_sprite", ts);
+    const datasetDir = join(
+      r.library.root,
+      world.name,
+      "assets",
+      "dataset",
+      "ch01-prologue",
+      "test_sprite",
+      ts,
+    );
     await mkdir(datasetDir, { recursive: true });
     await writeFile(join(datasetDir, "generated_image.png"), "dummy-png-data");
 
-    const imgRes = await r.app.request(`/api/worlds/${world.name}/dataset/ch01-prologue/test_sprite/${ts}/image`);
+    const imgRes = await r.app.request(
+      `/api/worlds/${world.name}/dataset/ch01-prologue/test_sprite/${ts}/image`,
+    );
     expect(imgRes.status).toBe(200);
     expect(imgRes.headers.get("content-type")).toBe("image/png");
     expect(await imgRes.text()).toBe("dummy-png-data");
 
     // 9. Single asset archive & delete
-    const assetFile = join(r.library.root, world.name, "vns", "ch01-prologue", "assets", "sprites", "main_character_neutral.png");
-    await mkdir(join(r.library.root, world.name, "vns", "ch01-prologue", "assets", "sprites"), { recursive: true });
+    const assetFile = join(
+      r.library.root,
+      world.name,
+      "vns",
+      "ch01-prologue",
+      "assets",
+      "sprites",
+      "main_character_neutral.png",
+    );
+    await mkdir(join(r.library.root, world.name, "vns", "ch01-prologue", "assets", "sprites"), {
+      recursive: true,
+    });
     await writeFile(assetFile, "dummy-sprite-image");
 
-    const archOne = await c.post(`/api/worlds/${world.name}/vns/ch01-prologue/asset-meta/sprite/main_character_neutral/archive`, {});
+    const archOne = await c.post(
+      `/api/worlds/${world.name}/vns/ch01-prologue/asset-meta/sprite/main_character_neutral/archive`,
+      {},
+    );
     expect(archOne.status).toBe(200);
     expect((archOne.body as any).ok).toBe(true);
 
-    const delOne = await c.del(`/api/worlds/${world.name}/vns/ch01-prologue/asset-meta/sprite/main_character_neutral`);
+    const delOne = await c.del(
+      `/api/worlds/${world.name}/vns/ch01-prologue/asset-meta/sprite/main_character_neutral`,
+    );
     expect(delOne.status).toBe(200);
     expect((delOne.body as any).ok).toBe(true);
 
     // 10. Bulk archive and delete
     await writeFile(assetFile, "recreated-sprite-image");
-    const archAll = await c.post(`/api/worlds/${world.name}/vns/ch01-prologue/assets/archive-all`, {});
+    const archAll = await c.post(
+      `/api/worlds/${world.name}/vns/ch01-prologue/assets/archive-all`,
+      {},
+    );
     expect(archAll.status).toBe(200);
     expect((archAll.body as any).archivedCount).toBeGreaterThanOrEqual(1);
 
-    const delAll = await c.post(`/api/worlds/${world.name}/vns/ch01-prologue/assets/delete-all`, {});
+    const delAll = await c.post(
+      `/api/worlds/${world.name}/vns/ch01-prologue/assets/delete-all`,
+      {},
+    );
     expect(delAll.status).toBe(200);
     expect((delAll.body as any).deletedCount).toBeGreaterThanOrEqual(1);
 
     // 11. Custom prompt spec resolution from vns/_shared/assets/prompts.json
-    const promptsJsonPath = join(r.library.root, world.name, "vns", "_shared", "assets", "prompts.json");
+    const promptsJsonPath = join(
+      r.library.root,
+      world.name,
+      "vns",
+      "_shared",
+      "assets",
+      "prompts.json",
+    );
     await mkdir(join(r.library.root, world.name, "vns", "_shared", "assets"), { recursive: true });
     await writeFile(
       promptsJsonPath,
@@ -246,7 +299,9 @@ describe("Visual Novel Asset Studio Server Endpoints", () => {
     );
     expect(customDetailRes.status).toBe(200);
     const customDetail = customDetailRes.body as any;
-    expect(customDetail.positivePrompt).toBe("canon high fidelity character sprite from prompts.json");
+    expect(customDetail.positivePrompt).toBe(
+      "canon high fidelity character sprite from prompts.json",
+    );
     expect(customDetail.negativePrompt).toBe("lowres, bad anatomy");
     expect(customDetail.steps).toBe(28);
     expect(customDetail.cfg).toBe(8.0);

@@ -40,12 +40,21 @@ import {
 } from "@nirmata/core";
 import { type EventSink, HostError, type SourceBackend } from "@nirmata/host";
 import {
+  addReferenceSlot,
   getDefaultNegativePrompt,
   synthesizeBackgroundDanbooruPrompt,
   synthesizeCgDanbooruPrompt,
   synthesizeSpriteDanbooruPrompt,
-} from "./danbooru-prompt";
+  type Workflow,
+} from "@nirmata/gen";
 import { HttpError } from "./errors";
+import { slugFor } from "./lore-rows";
+import {
+  parseReferenceSettings,
+  type ReferenceSettings,
+  type Suggested,
+  suggestReferences,
+} from "./reference-rules";
 
 export interface VnAssetItem {
   id: string;
@@ -85,6 +94,16 @@ export interface VnAssetPromptSpec {
   status?: string;
 }
 
+/** What the Studio saves about an asset's prompt: the text and the sampler settings, never the seed. */
+export interface PromptSpecPatch {
+  positivePrompt: string;
+  negativePrompt?: string | undefined;
+  steps?: number | undefined;
+  cfg?: number | undefined;
+  sampler?: string | undefined;
+  scheduler?: string | undefined;
+}
+
 export interface VnAssetDetail {
   id: string;
   type: "sprite" | "cg" | "bg";
@@ -104,7 +123,15 @@ export interface VnAssetDetail {
   aspectRatio?: string;
   width?: number;
   height?: number;
+  /** Sprites that should influence this image, and every sprite that could (see reference-rules). */
+  references?: Suggested;
 }
+
+/** The last save to each prompts file, so a later save waits for it. */
+const promptWrites = new Map<string, Promise<void>>();
+
+const NO_REFERENCE_SLOT =
+  "This workflow has no place for a reference image. Use a workflow with a Reference Image node.";
 
 /** Where a world keeps its cards. Same layout the editor and the linter use. */
 const CARD_DIRS = ["lore", "characters", "setting", "plot", ".agents/rules"] as const;
@@ -141,6 +168,9 @@ export function inside(root: string, rel: string): string {
 }
 
 /** Validates and normalizes an adaptation slug (e.g. "ch01-first-contact"). */
+/** One folder name of a stored file's path, as the importer and the recorder write it. */
+export const STORED_PART = /^[A-Za-z0-9._-]{1,120}$/;
+
 export function sanitizeSlug(raw: string): string {
   const s = raw
     .toLowerCase()
@@ -198,12 +228,58 @@ export interface CardFile {
   problems?: string[];
 }
 
+/** Dataset images of an imported world, from the database and its stores (see `DbImages`). */
+export interface DatasetImages {
+  read(
+    worldName: string,
+    scope: string,
+    assetName: string,
+    run: string,
+  ): Promise<{ data: Buffer; contentType: string } | "gone" | undefined>;
+  /**
+   * Take a run's file out of its store and mark the render `none`. Answers whether the run was in
+   * the database. Refuses (409) the current render of an asset: an asset keeps its file.
+   */
+  remove(
+    worldName: string,
+    scope: string,
+    assetName: string,
+    run: string,
+  ): Promise<"removed" | "absent">;
+}
+
+/** Where a world's cards are read from. */
+export type CardSource = "database" | "files";
+
+/**
+ * A world's cards when they live in the database instead of the folder. Each call answers
+ * `undefined`/`false` for a world that is not in the database, and the world's files are used.
+ */
+export interface LoreCards {
+  cardFiles(slug: string): Promise<CardFile[] | undefined>;
+  save(slug: string, card: Card): Promise<boolean>;
+  removeFile(slug: string, path: string): Promise<boolean>;
+}
+
 /** One world on disk: `world.json` and its card folders. The source cards (ADR-0009). */
 export class WorldFiles implements SourceBackend {
   readonly root: string;
 
-  constructor(root: string) {
+  constructor(
+    root: string,
+    private readonly lore?: LoreCards,
+  ) {
     this.root = resolve(root);
+  }
+
+  /** The world's name in the database, when cards may live there. */
+  private async loreSlug(): Promise<string | undefined> {
+    if (!this.lore) return undefined;
+    try {
+      return slugFor((await this.world()).name);
+    } catch {
+      return undefined;
+    }
   }
 
   get storiesDir(): string {
@@ -227,6 +303,18 @@ export class WorldFiles implements SourceBackend {
 
   /** Every card file as it is on disk, readable or not: the manager shows the broken ones too. */
   async cardFiles(): Promise<CardFile[]> {
+    return (await this.cardFilesFrom()).files;
+  }
+
+  /** The cards, and where they came from: the database for an imported world, else the folder. */
+  async cardFilesFrom(): Promise<{ files: CardFile[]; source: CardSource }> {
+    const slug = await this.loreSlug();
+    const inDb = slug ? await this.lore?.cardFiles(slug) : undefined;
+    if (inDb) return { files: inDb, source: "database" };
+    return { files: await this.cardFilesOnDisk(), source: "files" };
+  }
+
+  private async cardFilesOnDisk(): Promise<CardFile[]> {
     const out: CardFile[] = [];
     for (const dir of CARD_DIRS) {
       for (const file of await markdownFiles(join(this.root, dir))) {
@@ -307,22 +395,31 @@ export class WorldFiles implements SourceBackend {
   }
 
   async save(card: Card): Promise<void> {
+    const slug = await this.loreSlug();
+    if (slug && (await this.lore?.save(slug, card))) return;
     await writeAtomic(this.cardFile(card.path), serializeCard(card));
   }
 
   /** Write a card file exactly as given (the manager's "edit as text"). */
   async saveText(path: string, text: string): Promise<void> {
+    const slug = await this.loreSlug();
+    if (slug) {
+      const parsed = parseCard(path, text);
+      if (parsed.ok && (await this.lore?.save(slug, parsed.card))) return;
+    }
     await writeAtomic(this.cardFile(path), text);
   }
 
   /** Delete one card file by its path. */
   async removeFile(path: string): Promise<void> {
+    const slug = await this.loreSlug();
+    if (slug && (await this.lore?.removeFile(slug, cardPath(path)))) return;
     await rm(this.cardFile(path), { force: true });
   }
 
   async remove(cardId: string): Promise<void> {
     const found = (await this.cards()).find((c) => c.fm.id === cardId);
-    if (found) await rm(this.cardFile(found.path), { force: true });
+    if (found) await this.removeFile(found.path);
   }
 
   get vnsDir(): string {
@@ -395,6 +492,15 @@ export class WorldFiles implements SourceBackend {
     }
 
     return summaries;
+  }
+
+  /** One visual novel's manifest as written, without working out its order or what comes next. */
+  private async vnManifest(safeSlug: string): Promise<VnManifest> {
+    const text = await readIfThere(join(inside(this.root, `vns/${safeSlug}`), "manifest.json"));
+    if (!text) {
+      throw new HostError("nothing_to_do", `There is no visual novel adaptation "${safeSlug}".`);
+    }
+    return VnManifestSchema.parse(JSON.parse(text));
   }
 
   async vn(
@@ -625,19 +731,88 @@ export class WorldFiles implements SourceBackend {
     return {};
   }
 
-  async listVnAssets(slug: string): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+  /**
+   * The assets of a visual novel. `prompts: false` skips the default prompts (which read every
+   * card and the prompt specs), for callers that only count or list them.
+   */
+  /**
+   * Remembers an asset's prompt and sampler settings in the file `loadPromptSpecs` reads (the shared
+   * visual novel one if it exists, else the world's `assets/workflow/prompts.json`), keeping the file's
+   * shape (a map or a list) and every other field of the entry, the seed included. Saves to one file
+   * wait for each other.
+   */
+  async savePromptSpec(
+    name: string,
+    type: "sprite" | "cg" | "bg",
+    patch: PromptSpecPatch,
+  ): Promise<void> {
+    const shared = inside(this.root, "vns/_shared/assets/prompts.json");
+    const own = inside(this.root, "assets/workflow/prompts.json");
+    const file = (await readIfThere(shared)) ? shared : own;
+    const previous = promptWrites.get(file) ?? Promise.resolve();
+    const done = previous.then(async () => {
+      let data: unknown = {};
+      const text = await readIfThere(file);
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new HostError(
+            "bad_state",
+            "The prompts file cannot be read, so nothing was saved.",
+          );
+        }
+      }
+      const fields: Record<string, unknown> = { name, type, positivePrompt: patch.positivePrompt };
+      for (const key of ["negativePrompt", "steps", "cfg", "sampler", "scheduler"] as const) {
+        if (patch[key] !== undefined) fields[key] = patch[key];
+      }
+      if (Array.isArray(data)) {
+        const at = data.findIndex((e) => e && typeof e === "object" && e.name === name);
+        if (at >= 0) data[at] = { ...data[at], ...fields };
+        else data.push(fields);
+      } else {
+        const map = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
+        map[name] = { ...((map[name] as object | undefined) ?? {}), ...fields };
+        data = map;
+      }
+      await mkdir(dirname(file), { recursive: true });
+      await writeAtomic(
+        file,
+        `${JSON.stringify(data, null, 2)}
+`,
+      );
+    });
+    promptWrites.set(
+      file,
+      done.catch(() => undefined),
+    );
+    await done;
+  }
+
+  async listVnAssets(
+    slug: string,
+    options: { prompts?: boolean } = {},
+  ): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+    const withPrompts = options.prompts !== false;
     const safeSlug = sanitizeSlug(slug);
 
     if (safeSlug === "_all" || safeSlug === "all") {
-      const shared = await this.listVnAssets("_shared");
-      const allSprites: VnAssetItem[] = [...shared.sprites.map((s) => ({ ...s, isShared: true, vnSlug: "_shared" }))];
-      const allCgs: VnAssetItem[] = [...shared.cgs.map((c) => ({ ...c, isShared: true, vnSlug: "_shared" }))];
-      const allBgs: VnAssetItem[] = [...shared.backgrounds.map((b) => ({ ...b, isShared: true, vnSlug: "_shared" }))];
+      const shared = await this.listVnAssets("_shared", options);
+      const allSprites: VnAssetItem[] = [
+        ...shared.sprites.map((s) => ({ ...s, isShared: true, vnSlug: "_shared" })),
+      ];
+      const allCgs: VnAssetItem[] = [
+        ...shared.cgs.map((c) => ({ ...c, isShared: true, vnSlug: "_shared" })),
+      ];
+      const allBgs: VnAssetItem[] = [
+        ...shared.backgrounds.map((b) => ({ ...b, isShared: true, vnSlug: "_shared" })),
+      ];
 
       const vns = await this.vns();
       for (const v of vns) {
         if (v.slug === "_shared") continue;
-        const vAssets = await this.listVnAssets(v.slug);
+        const vAssets = await this.listVnAssets(v.slug, options);
         for (const s of vAssets.sprites) {
           if (!allSprites.some((existing) => existing.name === s.name)) {
             allSprites.push({ ...s, vnSlug: v.slug });
@@ -660,8 +835,13 @@ export class WorldFiles implements SourceBackend {
     const sprites: VnAssetItem[] = [];
     const cgs: VnAssetItem[] = [];
     const backgrounds: VnAssetItem[] = [];
-    const promptSpecs = await this.loadPromptSpecs();
-    const cardFiles = await this.cardFiles().catch(() => []);
+    const promptSpecs = withPrompts ? await this.loadPromptSpecs() : {};
+    const cardFiles = withPrompts ? await this.cardFiles().catch(() => []) : [];
+    const sprite = (n: string) =>
+      withPrompts ? synthesizeSpriteDanbooruPrompt(n, cardFiles) : undefined;
+    const cg = (n: string) => (withPrompts ? synthesizeCgDanbooruPrompt(n, cardFiles) : undefined);
+    const bg = (n: string) =>
+      withPrompts ? synthesizeBackgroundDanbooruPrompt(n, cardFiles) : undefined;
 
     const checkAsset = async (subPath: string): Promise<{ exists: boolean; fullPath?: string }> => {
       const candidates = [
@@ -677,12 +857,18 @@ export class WorldFiles implements SourceBackend {
       return { exists: false };
     };
 
-    const scanDir = async (dirName: "sprites" | "cgs" | "backgrounds", type: "sprite" | "cg" | "bg") => {
+    const scanDir = async (
+      dirName: "sprites" | "cgs" | "backgrounds",
+      type: "sprite" | "cg" | "bg",
+    ) => {
       const dirs: Array<{ path: string; isShared: boolean }> = [
         { path: inside(this.root, `vns/_shared/assets/${dirName}`), isShared: true },
       ];
       if (safeSlug !== "_shared") {
-        dirs.push({ path: inside(this.root, `vns/${safeSlug}/assets/${dirName}`), isShared: false });
+        dirs.push({
+          path: inside(this.root, `vns/${safeSlug}/assets/${dirName}`),
+          isShared: false,
+        });
       }
       const seen = new Set<string>();
       for (const { path: d, isShared } of dirs) {
@@ -719,11 +905,11 @@ export class WorldFiles implements SourceBackend {
     await scanDir("backgrounds", "bg");
 
     try {
-      const vnData = await this.vn(slug);
-      const manifestAssets = vnData.manifest.assets;
+      const manifestAssets = (await this.vnManifest(safeSlug)).assets;
       if (manifestAssets?.characters) {
         for (const [charName, expressions] of Object.entries(manifestAssets.characters)) {
-          const exprList = Array.isArray(expressions) && expressions.length > 0 ? expressions : ["neutral"];
+          const exprList =
+            Array.isArray(expressions) && expressions.length > 0 ? expressions : ["neutral"];
           for (const expr of exprList) {
             const spriteName = `${charName}_${expr}`;
             if (!sprites.some((s) => s.name === spriteName || s.name === charName)) {
@@ -738,7 +924,7 @@ export class WorldFiles implements SourceBackend {
                 url: check.exists
                   ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
                   : undefined,
-                defaultPrompt: synthesizeSpriteDanbooruPrompt(spriteName, cardFiles),
+                defaultPrompt: sprite(spriteName),
               });
             }
           }
@@ -758,7 +944,7 @@ export class WorldFiles implements SourceBackend {
               url: check.exists
                 ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
                 : undefined,
-              defaultPrompt: synthesizeCgDanbooruPrompt(cgName, cardFiles),
+              defaultPrompt: cg(cgName),
             });
           }
         }
@@ -777,7 +963,7 @@ export class WorldFiles implements SourceBackend {
               url: check.exists
                 ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
                 : undefined,
-              defaultPrompt: synthesizeBackgroundDanbooruPrompt(bgName, cardFiles),
+              defaultPrompt: bg(bgName),
             });
           }
         }
@@ -787,17 +973,17 @@ export class WorldFiles implements SourceBackend {
     // Populate any disk-scanned items that did not have default prompts
     for (const s of sprites) {
       if (!s.defaultPrompt) {
-        s.defaultPrompt = synthesizeSpriteDanbooruPrompt(s.name, cardFiles);
+        s.defaultPrompt = sprite(s.name);
       }
     }
     for (const c of cgs) {
       if (!c.defaultPrompt) {
-        c.defaultPrompt = synthesizeCgDanbooruPrompt(c.name, cardFiles);
+        c.defaultPrompt = cg(c.name);
       }
     }
     for (const b of backgrounds) {
       if (!b.defaultPrompt) {
-        b.defaultPrompt = synthesizeBackgroundDanbooruPrompt(b.name, cardFiles);
+        b.defaultPrompt = bg(b.name);
       }
     }
 
@@ -808,7 +994,7 @@ export class WorldFiles implements SourceBackend {
         name: "main_character_neutral",
         targetPath: "sprites/main_character_neutral.png",
         exists: false,
-        defaultPrompt: synthesizeSpriteDanbooruPrompt("main_character_neutral", cardFiles),
+        defaultPrompt: sprite("main_character_neutral"),
       });
     }
     if (cgs.length === 0) {
@@ -818,7 +1004,7 @@ export class WorldFiles implements SourceBackend {
         name: "scene_01_climax",
         targetPath: "cgs/scene_01_climax.png",
         exists: false,
-        defaultPrompt: synthesizeCgDanbooruPrompt("scene_01_climax", cardFiles),
+        defaultPrompt: cg("scene_01_climax"),
       });
     }
     if (backgrounds.length === 0) {
@@ -828,7 +1014,7 @@ export class WorldFiles implements SourceBackend {
         name: "main_setting_day",
         targetPath: "backgrounds/main_setting_day.png",
         exists: false,
-        defaultPrompt: synthesizeBackgroundDanbooruPrompt("main_setting_day", cardFiles),
+        defaultPrompt: bg("main_setting_day"),
       });
     }
 
@@ -841,22 +1027,32 @@ export class WorldFiles implements SourceBackend {
     return { sprites, cgs, backgrounds };
   }
 
-  async getVnAssetDetail(slug: string, type: "sprite" | "cg" | "bg", name: string): Promise<VnAssetDetail> {
-    const list = await this.listVnAssets(slug);
+  async getVnAssetDetail(
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+  ): Promise<VnAssetDetail> {
+    // the list without prompts: only this asset needs one, and building every asset's reads the cards each time
+    const list = await this.listVnAssets(slug, { prompts: false });
     const pool = type === "sprite" ? list.sprites : type === "cg" ? list.cgs : list.backgrounds;
-    const item = pool.find((a) => a.name === name) || {
-      id: `${type}:${name}`,
-      type,
-      name,
-      targetPath: `${type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds"}/${name}.png`,
-      exists: false,
-      defaultPrompt:
-        type === "sprite"
-          ? synthesizeSpriteDanbooruPrompt(name, await this.cardFiles().catch(() => []))
-          : type === "cg"
-            ? synthesizeCgDanbooruPrompt(name, await this.cardFiles().catch(() => []))
-            : synthesizeBackgroundDanbooruPrompt(name, await this.cardFiles().catch(() => [])),
-    };
+    const cards = await this.cardFiles().catch(() => []);
+    const synth = (n: string) =>
+      type === "sprite"
+        ? synthesizeSpriteDanbooruPrompt(n, cards)
+        : type === "cg"
+          ? synthesizeCgDanbooruPrompt(n, cards)
+          : synthesizeBackgroundDanbooruPrompt(n, cards);
+    const found = pool.find((a) => a.name === name);
+    const item = found
+      ? { ...found, defaultPrompt: found.defaultPrompt ?? synth(name) }
+      : {
+          id: `${type}:${name}`,
+          type,
+          name,
+          targetPath: `${type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds"}/${name}.png`,
+          exists: false,
+          defaultPrompt: synth(name),
+        };
 
     let positivePrompt = item.defaultPrompt || "";
     let negativePrompt = getDefaultNegativePrompt(type);
@@ -896,29 +1092,46 @@ export class WorldFiles implements SourceBackend {
 
     for (const dSlug of uniqueDatasetSlugs) {
       const datasetDir = inside(this.root, `assets/dataset/${dSlug}/${sanitizeSlug(name)}`);
+      let timestamps: string[] = [];
       try {
-        const timestamps = await readdir(datasetDir);
-        for (const ts of timestamps) {
-          if (seenTs.has(ts)) continue;
-          seenTs.add(ts);
+        timestamps = await readdir(datasetDir);
+      } catch {}
+      const fresh = timestamps.filter((ts) => !seenTs.has(ts));
+      for (const ts of fresh) seenTs.add(ts);
+      // each run is two small files; read them side by side (the folder may be on a slow disk)
+      const runs = await Promise.all(
+        fresh.map(async (ts): Promise<VnAssetDatasetEntry | undefined> => {
           try {
-            const promptFile = inside(datasetDir, `${ts}/prompt.json`);
-            const feedbackFile = inside(datasetDir, `${ts}/feedback.json`);
-            const promptData = JSON.parse((await readIfThere(promptFile)) || "{}");
-            const feedbackData = JSON.parse((await readIfThere(feedbackFile)) || "{}");
-            datasetHistory.push({
+            const [promptText, feedbackText] = await Promise.all([
+              readIfThere(inside(datasetDir, `${ts}/prompt.json`)),
+              readIfThere(inside(datasetDir, `${ts}/feedback.json`)),
+            ]);
+            const promptData = JSON.parse(promptText || "{}");
+            const feedbackData = JSON.parse(feedbackText || "{}");
+            return {
               timestamp: ts,
               imageFilename: `assets/dataset/${dSlug}/${sanitizeSlug(name)}/${ts}/generated_image.png`,
               imageUrl: `/api/worlds/${encodeURIComponent(basename(this.root))}/dataset/${encodeURIComponent(dSlug)}/${encodeURIComponent(name)}/${encodeURIComponent(ts)}/image`,
               prompt: promptData.positive || "",
               negativePrompt: promptData.negative || "",
               feedback: feedbackData,
-            });
-          } catch {}
-        }
-      } catch {}
+            };
+          } catch {
+            return undefined;
+          }
+        }),
+      );
+      for (const run of runs) if (run) datasetHistory.push(run);
     }
     datasetHistory.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+    const references = suggestReferences({
+      type,
+      name,
+      positivePrompt,
+      sprites: list.sprites.filter((a) => a.exists).map((a) => a.name),
+      settings: await this.referenceSettings(),
+    });
 
     return {
       id: item.id,
@@ -930,6 +1143,7 @@ export class WorldFiles implements SourceBackend {
       positivePrompt,
       negativePrompt,
       templateClass: type,
+      references,
       datasetHistory,
       steps: spec?.steps,
       cfg: spec?.cfg,
@@ -946,7 +1160,12 @@ export class WorldFiles implements SourceBackend {
     slug: string,
     type: string,
     name: string,
-    data: { prompt: string; negativePrompt?: string; feedback?: Record<string, "better" | "keep" | "worse">; workflow?: unknown },
+    data: {
+      prompt: string;
+      negativePrompt?: string;
+      feedback?: Record<string, "better" | "keep" | "worse">;
+      workflow?: unknown;
+    },
   ): Promise<string> {
     const safeSlug = sanitizeSlug(slug);
     const safeName = sanitizeSlug(name);
@@ -954,8 +1173,14 @@ export class WorldFiles implements SourceBackend {
     const targetDir = inside(this.root, `assets/dataset/${safeSlug}/${safeName}/${timestamp}`);
     await mkdir(targetDir, { recursive: true });
 
-    await writeAtomic(join(targetDir, "prompt.json"), JSON.stringify({ positive: data.prompt, negative: data.negativePrompt || "" }, null, 2));
-    await writeAtomic(join(targetDir, "feedback.json"), JSON.stringify(data.feedback || {}, null, 2));
+    await writeAtomic(
+      join(targetDir, "prompt.json"),
+      JSON.stringify({ positive: data.prompt, negative: data.negativePrompt || "" }, null, 2),
+    );
+    await writeAtomic(
+      join(targetDir, "feedback.json"),
+      JSON.stringify(data.feedback || {}, null, 2),
+    );
     if (data.workflow) {
       await writeAtomic(join(targetDir, "workflow.json"), JSON.stringify(data.workflow, null, 2));
     }
@@ -1074,12 +1299,15 @@ export class WorldFiles implements SourceBackend {
     return dest;
   }
 
-  async loadWorkflowTemplate(type: "sprite" | "cg" | "bg"): Promise<Record<string, unknown>> {
-    const candidates = [
-      inside(this.root, `assets/workflow/${type}.json`),
-      inside(this.root, `assets/workflow/${type}.api.json`),
-      resolve(process.cwd(), `tools/comfyui/templates/${type}.template.api.json`),
-    ];
+  /** Which expression is a character's base sprite, from the world's own folder (it is private). */
+  async referenceSettings(): Promise<ReferenceSettings> {
+    return parseReferenceSettings(
+      await readIfThere(inside(this.root, "assets/workflow/references.json")),
+    );
+  }
+
+  /** The first of these files that holds a workflow. */
+  private async readTemplate(candidates: string[]): Promise<Record<string, unknown> | undefined> {
     for (const cand of candidates) {
       const content = await readIfThere(cand);
       if (content) {
@@ -1088,6 +1316,38 @@ export class WorldFiles implements SourceBackend {
         } catch {}
       }
     }
+    return undefined;
+  }
+
+  /**
+   * A world's own workflow wins over the bundled one. The `ref` variant takes reference images: the
+   * world's own `<type>_ref.json` if it has one, else the world's (or the bundled) plain workflow with a
+   * reference slot added, so a customised workflow keeps its customisations.
+   */
+  async loadWorkflowTemplate(
+    type: "sprite" | "cg" | "bg",
+    variant?: "ref",
+  ): Promise<Record<string, unknown>> {
+    if (variant) {
+      if (type === "bg") {
+        throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
+      }
+      const own = await this.readTemplate([
+        inside(this.root, `assets/workflow/${type}_ref.json`),
+        inside(this.root, `assets/workflow/${type}_ref.api.json`),
+      ]);
+      if (own) return own;
+      const derived = addReferenceSlot((await this.loadWorkflowTemplate(type)) as Workflow, type);
+      if (!derived) throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
+      return derived;
+    }
+    const bundled = type === "bg" ? "background" : type;
+    const found = await this.readTemplate([
+      inside(this.root, `assets/workflow/${type}.json`),
+      inside(this.root, `assets/workflow/${type}.api.json`),
+      resolve(process.cwd(), `tools/comfyui/templates/${bundled}.template.api.json`),
+    ]);
+    if (found) return found;
     throw new HttpError(404, "template_not_found", `Template for ${type} was not found.`);
   }
 
@@ -1467,6 +1727,8 @@ export interface WritingSummary {
 
 export interface WorldDetail {
   world: WorldSummary;
+  /** Where the cards came from: the database for an imported world (ADR-0030), else the folder. */
+  cardSource: CardSource;
   /** world.json as read; missing when the world cannot be read. */
   manifest?: WorldManifest;
   stories: StorySummary[];
@@ -1516,14 +1778,20 @@ const LIBRARY_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 export class Library {
   readonly root: string;
 
-  constructor(root: string) {
+  constructor(
+    root: string,
+    private readonly options: {
+      lore?: LoreCards | undefined;
+      images?: DatasetImages | undefined;
+    } = {},
+  ) {
     this.root = resolve(root);
   }
 
   open(name: string): WorldFiles {
     if (!LIBRARY_NAME.test(name))
       throw new HostError("nothing_to_do", `There is no world "${name}".`);
-    return new WorldFiles(join(this.root, name));
+    return new WorldFiles(join(this.root, name), this.options.lore);
   }
 
   private readonly storyFiles = new Map<string, StoryFiles>();
@@ -1592,6 +1860,7 @@ export class Library {
     if (found.problem)
       return {
         world: found,
+        cardSource: "files",
         stories: [],
         cards: [],
         broken: [],
@@ -1599,11 +1868,12 @@ export class Library {
         drafts: [],
         vns: [],
       };
-    const files = await this.open(name).cardFiles();
+    const { files, source } = await this.open(name).cardFilesFrom();
     const writings = await this.open(name).writings(new Set(files.map((f) => f.path)));
     const vns = await this.open(name).vns();
     return {
       world: found,
+      cardSource: source,
       manifest: await this.open(name).world(),
       stories: await this.stories(name).list(),
       cards: files.flatMap((f) => (f.card ? [{ ...f.card, file: f.text }] : [])),
@@ -1671,15 +1941,29 @@ export class Library {
     return this.open(name).readVnAsset(slug, subPath);
   }
 
-  async listAllVns(): Promise<Array<VnSummary & { worldName: string; worldTitle: string; assetCounts: { sprites: number; cgs: number; backgrounds: number } }>> {
+  async listAllVns(): Promise<
+    Array<
+      VnSummary & {
+        worldName: string;
+        worldTitle: string;
+        assetCounts: { sprites: number; cgs: number; backgrounds: number };
+      }
+    >
+  > {
     const worlds = await this.list();
-    const result: Array<VnSummary & { worldName: string; worldTitle: string; assetCounts: { sprites: number; cgs: number; backgrounds: number } }> = [];
+    const result: Array<
+      VnSummary & {
+        worldName: string;
+        worldTitle: string;
+        assetCounts: { sprites: number; cgs: number; backgrounds: number };
+      }
+    > = [];
 
     for (const w of worlds) {
       try {
         const vns = await this.vns(w.name);
         for (const vn of vns) {
-          const assets = await this.open(w.name).listVnAssets(vn.slug);
+          const assets = await this.open(w.name).listVnAssets(vn.slug, { prompts: false });
           result.push({
             ...vn,
             worldName: w.name,
@@ -1697,11 +1981,19 @@ export class Library {
     return result;
   }
 
-  async listVnAssets(name: string, slug: string): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+  async listVnAssets(
+    name: string,
+    slug: string,
+  ): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
     return this.open(name).listVnAssets(slug);
   }
 
-  async getVnAssetDetail(name: string, slug: string, type: "sprite" | "cg" | "bg", nameKey: string): Promise<VnAssetDetail> {
+  async getVnAssetDetail(
+    name: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    nameKey: string,
+  ): Promise<VnAssetDetail> {
     return this.open(name).getVnAssetDetail(slug, type, nameKey);
   }
 
@@ -1710,28 +2002,54 @@ export class Library {
     slug: string,
     type: string,
     nameKey: string,
-    data: { prompt: string; negativePrompt?: string; feedback?: Record<string, "better" | "keep" | "worse">; workflow?: unknown },
+    data: {
+      prompt: string;
+      negativePrompt?: string;
+      feedback?: Record<string, "better" | "keep" | "worse">;
+      workflow?: unknown;
+    },
   ): Promise<string> {
     return this.open(name).archiveVnAsset(slug, type, nameKey, data);
   }
 
-  async archiveOneVnAsset(name: string, slug: string, type: "sprite" | "cg" | "bg", nameKey: string): Promise<{ ok: boolean; timestamp: string; targetDir: string }> {
+  async archiveOneVnAsset(
+    name: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    nameKey: string,
+  ): Promise<{ ok: boolean; timestamp: string; targetDir: string }> {
     return this.open(name).archiveOneVnAsset(slug, type, nameKey);
   }
 
-  async archiveAllVnAssets(name: string, slug: string): Promise<{ ok: boolean; archivedCount: number }> {
+  async archiveAllVnAssets(
+    name: string,
+    slug: string,
+  ): Promise<{ ok: boolean; archivedCount: number }> {
     return this.open(name).archiveAllVnAssets(slug);
   }
 
-  async deleteOneVnAsset(name: string, slug: string, type: "sprite" | "cg" | "bg", nameKey: string): Promise<{ ok: boolean; name: string }> {
+  async deleteOneVnAsset(
+    name: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    nameKey: string,
+  ): Promise<{ ok: boolean; name: string }> {
     return this.open(name).deleteOneVnAsset(slug, type, nameKey);
   }
 
-  async deleteAllVnAssets(name: string, slug: string): Promise<{ ok: boolean; deletedCount: number }> {
+  async deleteAllVnAssets(
+    name: string,
+    slug: string,
+  ): Promise<{ ok: boolean; deletedCount: number }> {
     return this.open(name).deleteAllVnAssets(slug);
   }
 
-  async saveGeneratedVnAsset(name: string, slug: string, subPath: string, buffer: Buffer): Promise<string> {
+  async saveGeneratedVnAsset(
+    name: string,
+    slug: string,
+    subPath: string,
+    buffer: Buffer,
+  ): Promise<string> {
     return this.open(name).saveGeneratedVnAsset(slug, subPath, buffer);
   }
 
@@ -1740,16 +2058,71 @@ export class Library {
     slug: string,
     assetName: string,
     timestamp: string,
+    /** True only when the request is the signed-in host's own: the database copy is private. */
+    fromDatabase = false,
   ): Promise<{ data: Buffer; contentType: string } | undefined> {
+    const images = fromDatabase ? this.options.images : undefined;
+    // the run folder is named by its time ("…T10-00-00-000Z"): keep its case, only check it is safe
+    if (images && [slug, assetName, timestamp].every((part) => STORED_PART.test(part))) {
+      const found = await images.read(name, slug, assetName, timestamp);
+      if (found === "gone") return undefined;
+      if (found) return found;
+    }
     return this.open(name).readDatasetImage(slug, assetName, timestamp);
+  }
+
+  /**
+   * Delete one run of the dataset: its database copy (when `fromDatabase` and it is there) and its
+   * folder on disk. The database goes first, because it may refuse; then nothing is deleted.
+   * Returns what was deleted so the caller can say so.
+   */
+  async deleteDatasetRun(
+    name: string,
+    slug: string,
+    assetName: string,
+    timestamp: string,
+    fromDatabase = false,
+  ): Promise<{ database: boolean; files: boolean }> {
+    if (![slug, assetName, timestamp].every((part) => STORED_PART.test(part))) {
+      throw new HostError("nothing_to_do", "There is no such run.");
+    }
+    const images = fromDatabase ? this.options.images : undefined;
+    const database = images
+      ? (await images.remove(name, slug, assetName, timestamp)) === "removed"
+      : false;
+    const world = this.open(name);
+    const dir = inside(
+      world.root,
+      `assets/dataset/${sanitizeSlug(slug)}/${sanitizeSlug(assetName)}/${timestamp}`,
+    );
+    let files = false;
+    try {
+      await stat(dir);
+      await rm(dir, { recursive: true, force: true });
+      files = true;
+    } catch {}
+    return { database, files };
   }
 
   async saveDatasetGeneratedImage(name: string, targetDir: string, buffer: Buffer): Promise<void> {
     return this.open(name).saveDatasetGeneratedImage(targetDir, buffer);
   }
 
-  async loadWorkflowTemplate(name: string, type: "sprite" | "cg" | "bg"): Promise<Record<string, unknown>> {
-    return this.open(name).loadWorkflowTemplate(type);
+  async loadWorkflowTemplate(
+    name: string,
+    type: "sprite" | "cg" | "bg",
+    variant?: "ref",
+  ): Promise<Record<string, unknown>> {
+    return this.open(name).loadWorkflowTemplate(type, variant);
+  }
+
+  async savePromptSpec(
+    name: string,
+    type: "sprite" | "cg" | "bg",
+    assetName: string,
+    patch: PromptSpecPatch,
+  ): Promise<void> {
+    return this.open(name).savePromptSpec(assetName, type, patch);
   }
 
   /** One chapter or draft of a world, in full, for reading. */

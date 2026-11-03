@@ -66,6 +66,36 @@ export const HI_SERVER: Record<string, string> = {
   // permissions
   "Only the host can edit the source cards.": "केवल यजमान मूल पत्रक संपादित कर सकते हैं।",
   "Only the host can start a story.": "केवल यजमान कथा आरंभ कर सकते हैं।",
+  "Only the host may do that.": "यह केवल यजमान कर सकते हैं।",
+  "That request came from another site.": "यह अनुरोध किसी अन्य जालस्थल से आया है।",
+  "Wrong email or password.": "ईमेल या गुप्तशब्द ग़लत है।",
+  "An invitation is required to sign up.": "पंजीकरण के लिए आमंत्रण आवश्यक है।",
+  "Sign-in is not available right now.": "प्रवेश अभी उपलब्ध नहीं है।",
+  "That did not work. Check the details and try again.": "यह सफल नहीं हुआ। विवरण जाँचकर पुनः प्रयास करें।",
+  "Sign in first.": "पहले प्रवेश करें।",
+  "This table already has a host.": "इस पटल का पहले से एक यजमान है।",
+  "The database cannot be reached right now.": "आँकड़ा-भंडार अभी पहुँच में नहीं है।",
+  "That is the asset's current image, so its file is kept. Make a new image first, then delete this one.":
+    "यही इस सामग्री का वर्तमान चित्र है, इसलिए इसकी फ़ाइल रखी गई है। पहले नया चित्र बनाएँ, फिर इसे हटाएँ।",
+  "There is no such run.": "ऐसा कोई प्रयास नहीं है।",
+  "The prompts file cannot be read, so nothing was saved.":
+    "संकेत-फ़ाइल पढ़ी नहीं जा सकती, इसलिए कुछ सहेजा नहीं गया।",
+  "A reference sprite does not exist yet. Generate it first, or remove it from the references.":
+    "एक संदर्भ-आकृति अभी बनी नहीं है। पहले उसे बनाएँ, या संदर्भों से हटा दें।",
+  "This workflow has no place for a reference image. Use a workflow with a Reference Image node.":
+    "इस कार्यप्रवाह में संदर्भ-चित्र के लिए स्थान नहीं है। संदर्भ-चित्र वाली कड़ी के साथ कार्यप्रवाह चुनें।",
+  "Finish setting up your account first.": "पहले अपना खाता पूरा बनाएँ।",
+  "Your profile cannot be read right now.": "आपका परिचय अभी पढ़ा नहीं जा सकता।",
+  "An account with that address already exists. Sign in instead.":
+    "उस पते का खाता पहले से है। प्रवेश करें।",
+  "The database is not set up on this server.": "इस सेवक पर आँकड़ा-भंडार स्थापित नहीं है।",
+  "Confirm that you are an adult first.": "पहले पुष्टि करें कि आप वयस्क हैं।",
+  "That invitation is not valid.": "वह आमंत्रण मान्य नहीं है।",
+  "You may not accept that invitation.": "आप वह आमंत्रण स्वीकार नहीं कर सकते।",
+  "There is no such file.": "ऐसी कोई संचिका नहीं है।",
+  "The file was deleted; only its record is kept.": "संचिका मिटा दी गई है; केवल उसका अभिलेख रखा गया है।",
+  "That file's store is not set up on this server.": "उस संचिका का भंडार इस सेवक पर स्थापित नहीं है।",
+  "The file is not in its store.": "संचिका अपने भंडार में नहीं है।",
   "You can't take part in this story.": "आप इस कथा में भाग नहीं ले सकते।",
   "You can't undo in this story.": "आप इस कथा में पूर्ववत नहीं कर सकते।",
   "You can't edit turns in this story.": "आप इस कथा में बारियाँ संपादित नहीं कर सकते।",
@@ -298,7 +328,8 @@ export const HI_SERVER: Record<string, string> = {
 
   // ComfyUI and visual novel assets
   "ComfyUI failed to queue prompt: {text}": "ComfyUI प्रॉम्प्ट कतारबद्ध करने में विफल रहा: {text}",
-  "Could not connect to ComfyUI at {host}: {message}": "{host} पर ComfyUI से संपर्क नहीं हो सका: {message}",
+  "Could not connect to ComfyUI at {host}: {message}":
+    "{host} पर ComfyUI से संपर्क नहीं हो सका: {message}",
   "ComfyUI execution failed: {messages}": "ComfyUI निष्पादन विफल रहा: {messages}",
   "Generation timed out after {seconds}s.": "{seconds}s के बाद निर्माण का समय समाप्त हो गया।",
   "Failed to fetch generated image: {statusText}": "निर्मित छवि प्राप्त करने में विफल: {statusText}",
@@ -309,7 +340,8 @@ export const HI_SERVER: Record<string, string> = {
 
   // asset studio
   "Generation was cancelled.": "निर्माण रद्द कर दिया गया।",
-  "ComfyUI no longer has this prompt (restarted or queue cleared).": "ComfyUI के पास अब यह प्रॉम्प्ट नहीं है (पुनः आरंभ हुआ या कतार साफ़ हुई)।",
+  "ComfyUI no longer has this prompt (restarted or queue cleared).":
+    "ComfyUI के पास अब यह प्रॉम्प्ट नहीं है (पुनः आरंभ हुआ या कतार साफ़ हुई)।",
   "Lost contact with ComfyUI at {host}.": "{host} पर ComfyUI से संपर्क टूट गया।",
   "No such generation.": "ऐसा कोई निर्माण नहीं है।",
 };

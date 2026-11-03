@@ -6,6 +6,7 @@ import { T } from "../i18n";
 import { useNav } from "../nav";
 import { type Book, bookFromWorld, bookFromWriting, bookFromWritings } from "../reader/book";
 import { Reader } from "../reader/Reader";
+import { SourceBadge } from "../source-badge";
 import type {
   CardKind,
   VnManifest,
@@ -240,7 +241,10 @@ export function Workspace({ name }: { name: string }) {
         <section className="ws-list" aria-label={world.title}>
           <header className="ws-title">
             <hgroup>
-              <h1>{world.title}</h1>
+              <h1>
+                {world.title}
+                {detail.cardSource && <SourceBadge source={detail.cardSource} />}
+              </h1>
               <p className="muted">{world.tagline || <T>No tagline yet.</T>}</p>
             </hgroup>
             {!world.problem && (

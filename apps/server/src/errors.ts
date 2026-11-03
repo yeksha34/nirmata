@@ -1,4 +1,5 @@
 import { formatIssues, PermissionError } from "@nirmata/core";
+import { GenError } from "@nirmata/gen";
 import { HostError } from "@nirmata/host";
 import { ZodError } from "zod";
 
@@ -43,7 +44,9 @@ export function describeError(e: unknown): {
   status: HttpStatusCode;
   body: ErrorBody;
 } {
-  if (e instanceof HttpError) return { status: e.status, body: fail(e.code, e.message) };
+  if (e instanceof HttpError || e instanceof GenError) {
+    return { status: e.status, body: fail(e.code, e.message) };
+  }
   if (e instanceof HostError) return { status: STATUS[e.code], body: fail(e.code, e.message) };
   if (e instanceof PermissionError) return { status: 403, body: fail("forbidden", e.message) };
   if (e instanceof ZodError) {
