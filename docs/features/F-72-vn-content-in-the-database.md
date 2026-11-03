@@ -16,7 +16,8 @@ A visual novel's manifest, script (`adaptation.md`) and compiled slides are rows
 - [x] `WorldFiles.vns/vn/saveVn/scaffoldVn/compileVn` (and everything that reads a manifest through them: the asset plan, the Studio lists) use the database for a world that is in it and the folder otherwise; scaffolding writes no files for such a world.
 - [x] `import:world` also copies `vns/*` (manifest, script, slides); a visual novel that already differs in the database is kept and listed unless `--force`; `--no-vns` skips it.
 - [x] Agent endpoints: `GET …/vns`, `GET …/vns/:slug`, `PUT …/vns/:slug` (manifest validated, its slug must match), `POST …/vns/:slug/compile`.
-- [ ] The migration, `db/tests/013_vn_draft_content.sql` and `import:world` run against a real database and a real world folder.
+- [x] The migration and `db/tests/013_vn_draft_content.sql` run on a real database (owner, 2026-11-04).
+- [ ] `import:world` copies `vns/*` from a real world folder (held until chapters and drafts are importable too, F-73).
 - [ ] Tried with a real agent: save a chapter's adaptation, compile, open it in the Studio.
 - [ ] The Studio's asset plan for an imported world reads the database plan (still the manifest's `assets`).
 
@@ -35,7 +36,8 @@ A visual novel's manifest, script (`adaptation.md`) and compiled slides are rows
 | Date | What was run | Result |
 |---|---|---|
 | 2026-11-03 | `tsc -b`; full test suite | Pass |
-| 2026-11-03 | Migration, pgTAP 013, `import:world` on a folder | Not run yet |
+| 2026-11-04 | Migration and pgTAP 013 | Pass (owner) |
+| | `import:world` on a folder | Not run yet (held for F-73) |
 
 ## History
 | Date | Change |

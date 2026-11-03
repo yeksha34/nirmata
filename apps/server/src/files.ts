@@ -61,6 +61,8 @@ import {
   addToPlan,
   type PlannedAsset,
   removeFromPlan,
+  type PlanSource,
+  type StudioRow,
   type VnSource,
   type WorkflowSource,
 } from "@nirmata/adaptation";
@@ -266,6 +268,31 @@ export interface LoreCards {
   removeFile(slug: string, path: string): Promise<boolean>;
 }
 
+/** One planned asset, whether it came from a manifest or from the database. */
+interface PlannedItem {
+  type: AssetKind;
+  name: string;
+  owners: string[];
+  cgs: string[];
+  shared?: boolean | undefined;
+  renderId?: string | undefined;
+  prompt?: string | undefined;
+}
+
+function fromStudioRow(r: StudioRow): PlannedItem {
+  // a sprite has no link in the database: its character is the part of its name before the first "_"
+  const owners = r.type === "sprite" ? [r.name.split("_")[0] ?? r.name] : r.owners;
+  return {
+    type: r.type,
+    name: r.name,
+    owners,
+    cgs: r.cgs,
+    shared: r.shared,
+    renderId: r.renderId,
+    prompt: r.prompt,
+  };
+}
+
 /** The parts of a saved visual novel, as the database store takes them. */
 function toParts(data: { manifest?: VnManifest; adaptationMd?: string; slides?: VnSlideDeck }) {
   return {
@@ -284,6 +311,7 @@ export class WorldFiles implements SourceBackend {
     private readonly lore?: LoreCards,
     private readonly workflows?: WorkflowSource,
     private readonly vnContent?: VnSource,
+    private readonly plan?: PlanSource,
   ) {
     this.root = resolve(root);
   }
@@ -853,6 +881,48 @@ export class WorldFiles implements SourceBackend {
     }
   }
 
+  /**
+   * The assets a visual novel plans: from the database for a world that is in it, else from its
+   * manifest. The same shape either way, so the Studio lists them the same way.
+   */
+  private async plannedAssets(safeSlug: string): Promise<PlannedItem[]> {
+    const world = this.plan ? await this.loreSlug(true) : undefined;
+    const rows = world ? await this.plan?.list(world, safeSlug) : undefined;
+    if (rows) return rows.map(fromStudioRow);
+    let m: VnManifest["assets"] | undefined;
+    try {
+      m = (await this.vnManifest(safeSlug)).assets;
+    } catch {
+      return [];
+    }
+    const out: PlannedItem[] = [];
+    for (const [character, expressions] of Object.entries(m?.characters ?? {})) {
+      const list = Array.isArray(expressions) && expressions.length > 0 ? expressions : ["neutral"];
+      for (const expression of list) {
+        out.push({
+          type: "sprite",
+          name: `${character}_${expression}`,
+          owners: [character],
+          cgs: [],
+        });
+      }
+    }
+    for (const name of m?.cgs ?? []) out.push({ type: "cg", name, owners: [], cgs: [] });
+    for (const name of m?.backgrounds ?? []) out.push({ type: "bg", name, owners: [], cgs: [] });
+    for (const [owner, names] of Object.entries(m?.clothes ?? {})) {
+      for (const n of names)
+        out.push({ type: "clothes", name: `${owner}_${n}`, owners: [owner], cgs: [] });
+    }
+    for (const [owner, names] of Object.entries(m?.adornments ?? {})) {
+      for (const n of names)
+        out.push({ type: "adornment", name: `${owner}_${n}`, owners: [owner], cgs: [] });
+    }
+    for (const o of m?.objects ?? []) {
+      out.push({ type: "object", name: o.name, owners: o.owners ?? [], cgs: o.cgs ?? [] });
+    }
+    return out;
+  }
+
   async listVnAssets(slug: string, options: { prompts?: boolean } = {}): Promise<VnAssetLists> {
     const withPrompts = options.prompts !== false;
     const safeSlug = sanitizeSlug(slug);
@@ -1009,44 +1079,36 @@ export class WorldFiles implements SourceBackend {
         } catch {}
       }
     }
+    const planned = await this.plannedAssets(safeSlug);
+    const assetUrl = (targetPath: string) =>
+      `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`;
+    /** The file when there is one; else the image the database holds for it. */
+    const found = async (item: PlannedItem, targetPath: string) => {
+      const check = await checkAsset(targetPath);
+      if (check.exists) return { exists: true, url: assetUrl(targetPath) };
+      if (item.renderId) return { exists: true, url: `/api/assets/renders/${item.renderId}/file` };
+      return { exists: false, url: undefined };
+    };
     try {
-      const m = (await this.vnManifest(safeSlug)).assets;
-      const planned: Array<{ kind: LinkedKind; name: string; owner?: string }> = [];
-      const links = new Map<string, { owners: string[]; cgs: string[] }>();
-      for (const [owner, names] of Object.entries(m?.clothes ?? {})) {
-        for (const n of names) {
-          planned.push({ kind: "clothes", name: `${owner}_${n}`, owner });
-          links.set(`clothes:${owner}_${n}`, { owners: [owner], cgs: [] });
-        }
-      }
-      for (const [owner, names] of Object.entries(m?.adornments ?? {})) {
-        for (const n of names) {
-          planned.push({ kind: "adornment", name: `${owner}_${n}`, owner });
-          links.set(`adornment:${owner}_${n}`, { owners: [owner], cgs: [] });
-        }
-      }
-      for (const o of m?.objects ?? []) {
-        planned.push({ kind: "object", name: o.name, owner: o.owners?.[0] });
-        links.set(`object:${o.name}`, { owners: o.owners ?? [], cgs: o.cgs ?? [] });
-      }
-      for (const { kind, name, owner } of planned) {
-        if (linked[kind].some((a) => a.name === name)) continue;
-        const targetPath = `${assetDir(kind)}/${name}.png`;
-        const check = await checkAsset(targetPath);
+      for (const item of planned) {
+        if (!isLinkedKind(item.type)) continue;
+        const kind = item.type;
+        if (linked[kind].some((a) => a.name === item.name)) continue;
+        const targetPath = `${assetDir(kind)}/${item.name}.png`;
+        const there = await found(item, targetPath);
         linked[kind].push({
-          id: `${kind}:${name}`,
+          id: `${kind}:${item.name}`,
           type: kind,
-          name,
+          name: item.name,
           targetPath,
-          exists: check.exists,
-          url: check.exists
-            ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
-            : undefined,
+          exists: there.exists,
+          url: there.url,
+          ...(item.shared ? { isShared: true, vnSlug: "_shared" } : {}),
         });
       }
       for (const kind of LINKED_KINDS) {
         for (const item of linked[kind]) {
-          const link = links.get(`${kind}:${item.name}`);
+          const link = planned.find((p) => p.type === kind && p.name === item.name);
           if (link) {
             item.lockedTo = link.owners;
             if (link.cgs.length > 0) item.linkedCgs = link.cgs;
@@ -1064,68 +1126,33 @@ export class WorldFiles implements SourceBackend {
     }
 
     try {
-      const manifestAssets = (await this.vnManifest(safeSlug)).assets;
-      if (manifestAssets?.characters) {
-        for (const [charName, expressions] of Object.entries(manifestAssets.characters)) {
-          const exprList =
-            Array.isArray(expressions) && expressions.length > 0 ? expressions : ["neutral"];
-          for (const expr of exprList) {
-            const spriteName = `${charName}_${expr}`;
-            if (!sprites.some((s) => s.name === spriteName || s.name === charName)) {
-              const targetPath = `sprites/${spriteName}.png`;
-              const check = await checkAsset(targetPath);
-              sprites.push({
-                id: `sprite:${spriteName}`,
-                type: "sprite",
-                name: spriteName,
-                targetPath,
-                exists: check.exists,
-                url: check.exists
-                  ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
-                  : undefined,
-                defaultPrompt: sprite(spriteName),
-              });
-            }
-          }
+      for (const item of planned) {
+        if (item.type !== "sprite" && item.type !== "cg" && item.type !== "bg") continue;
+        const list = item.type === "sprite" ? sprites : item.type === "cg" ? cgs : backgrounds;
+        const owner = item.owners[0] ?? item.name;
+        if (
+          list.some((s) => s.name === item.name || (item.type === "sprite" && s.name === owner))
+        ) {
+          continue;
         }
-      }
-      if (Array.isArray(manifestAssets?.cgs)) {
-        for (const cgName of manifestAssets.cgs) {
-          if (!cgs.some((c) => c.name === cgName)) {
-            const targetPath = `cgs/${cgName}.png`;
-            const check = await checkAsset(targetPath);
-            cgs.push({
-              id: `cg:${cgName}`,
-              type: "cg",
-              name: cgName,
-              targetPath,
-              exists: check.exists,
-              url: check.exists
-                ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
-                : undefined,
-              defaultPrompt: cg(cgName),
-            });
-          }
-        }
-      }
-      if (Array.isArray(manifestAssets?.backgrounds)) {
-        for (const bgName of manifestAssets.backgrounds) {
-          if (!backgrounds.some((b) => b.name === bgName)) {
-            const targetPath = `backgrounds/${bgName}.png`;
-            const check = await checkAsset(targetPath);
-            backgrounds.push({
-              id: `bg:${bgName}`,
-              type: "bg",
-              name: bgName,
-              targetPath,
-              exists: check.exists,
-              url: check.exists
-                ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
-                : undefined,
-              defaultPrompt: bg(bgName),
-            });
-          }
-        }
+        const targetPath = `${assetDir(item.type)}/${item.name}.png`;
+        const there = await found(item, targetPath);
+        list.push({
+          id: `${item.type}:${item.name}`,
+          type: item.type,
+          name: item.name,
+          targetPath,
+          exists: there.exists,
+          url: there.url,
+          defaultPrompt:
+            item.prompt ??
+            (item.type === "sprite"
+              ? sprite(item.name)
+              : item.type === "cg"
+                ? cg(item.name)
+                : bg(item.name)),
+          ...(item.shared ? { isShared: true, vnSlug: "_shared" } : {}),
+        });
       }
     } catch {}
 
@@ -1443,6 +1470,16 @@ export class WorldFiles implements SourceBackend {
     const safeSlug = sanitizeSlug(slug);
     if (safeSlug === "_all" || safeSlug === "all" || safeSlug === "_shared")
       throw new HostError("bad_state", "Pick one visual novel to plan the asset in.");
+    const world = this.plan ? await this.loreSlug(true) : undefined;
+    if (world && this.plan) {
+      try {
+        const made = await this.plan.add(world, safeSlug, type, input);
+        if (made) return { ok: true, name: made.name };
+      } catch (e) {
+        if (e instanceof AssetPlanError) throw new HostError("bad_state", e.message);
+        throw e;
+      }
+    }
     const manifest = await this.vnManifest(safeSlug);
     try {
       const { assets, name } = addToPlan(manifest.assets, type, input);
@@ -1468,7 +1505,17 @@ export class WorldFiles implements SourceBackend {
     const safeSlug = sanitizeSlug(slug);
     if (safeSlug === "_all" || safeSlug === "all")
       throw new HostError("bad_state", "Pick one visual novel to remove the asset from.");
-    if (safeSlug !== "_shared") {
+    const world = this.plan ? await this.loreSlug(true) : undefined;
+    let inDatabase = false;
+    if (world && this.plan) {
+      try {
+        inDatabase = await this.plan.remove(world, safeSlug, type, name);
+      } catch (e) {
+        if (!(e instanceof AssetPlanError)) throw e; // never planned: only its images are left to delete
+        inDatabase = true;
+      }
+    }
+    if (!inDatabase && safeSlug !== "_shared") {
       const manifest = await this.vnManifest(safeSlug);
       const { assets, removed } = removeFromPlan(manifest.assets, type, name);
       if (removed)
@@ -2051,6 +2098,8 @@ export class Library {
       workflows?: WorkflowSource | undefined;
       /** Visual novels an imported world keeps in the database (ADR-0035). */
       vnContent?: VnSource | undefined;
+      /** The asset plan an imported world keeps in the database (ADR-0035). */
+      plan?: PlanSource | undefined;
     } = {},
   ) {
     this.root = resolve(root);
@@ -2064,6 +2113,7 @@ export class Library {
       this.options.lore,
       this.options.workflows,
       this.options.vnContent,
+      this.options.plan,
     );
   }
 

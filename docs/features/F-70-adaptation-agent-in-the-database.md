@@ -19,7 +19,8 @@ The adaptation agent no longer writes files into a world's folder. An author giv
 - [x] A token works only for its own world and its scopes (`adaptation.read`, `adaptation.write`); a revoked, expired or unknown token is refused (server tests).
 - [x] The database objects run on a real database: `db/identity/migrations/20261103000300_agent_tokens.sql`, `db/assets/migrations/20261103000400_character_prep.sql`, the changed unique indexes in `20261102001000_assets.sql`, and pgTAP `010_agent_tokens.sql` and `011_character_prep.sql` (run by the owner after a reset, 2026-11-03).
 - [ ] Tried with a real agent against a real imported world (create token, prep a character, plan the baseline).
-- [ ] The Studio lists an imported world's planned assets from the database (it still reads the manifest) and the world manager has an "Agent access" panel.
+- [x] The Studio lists an imported world's planned assets from the database (names, owners, links, the image and prompt the database holds), and planning or removing an asset there writes the database. A world that is not in the database keeps using the manifest. (2026-11-04; tests with a fake database, not tried in a browser.)
+- [ ] The world manager has an "Agent access" panel (an author makes a token through the API until then).
 
 ## Non-goals
 - Workflow templates in the database (F-71) and visual novel content in the database (F-72).
@@ -30,6 +31,7 @@ The adaptation agent no longer writes files into a world's folder. An author giv
 - Packages: `apps/importer` (import:* scripts, lore rows, card-folder reader), `apps/adaptation` (asset plan rules, agent tokens, character prep, plan store, gap check).
 - Tables: `identity.agent_tokens`; `assets.character_prep`, `character_expressions`, `character_outfits`; the plan itself is the existing `assets.assets` (status `planned`) with `asset_links`. `assets.unplan_asset` deletes an ungenerated asset and retires a generated one; the unique name index no longer counts retired assets.
 - Routes: `agent-routes.ts`. A prep is made from the card as it is now unless the agent sends the `cardHash` it read.
+- Studio: `PlanViews` (`apps/adaptation/src/plan-store.ts`) lists a visual novel's plan plus the shared pool; the library reads it through `PlanSource` for a world that is in the database. The image shown is the file if there is one, else the database's current render. The prompt is the latest spec's; the card-based prompt is still the fallback (using the character prep tags there is not done).
 - Gap rule: stricter than how the player finds an image. A bare portrait does not express another expression; only an exact `<character>_<state>_<expression>` does, or the neutral portrait for the neutral look.
 - The skill ([story-to-vn-adaptation](../../.agents/skills/story-to-vn-adaptation/SKILL.md)) has a new Step 0 and a gap check in Step 6.
 
@@ -37,6 +39,7 @@ The adaptation agent no longer writes files into a world's folder. An author giv
 | Date | What was run | Result |
 |---|---|---|
 | 2026-11-03 | `tsc -b`; full test suite (796) | Pass |
+| 2026-11-04 | Studio plan from the database: `tsc -b`; full suite (837) | Pass; browser not tried |
 | 2026-11-03 | SQL migrations and pgTAP 010, 011 | Pass (owner, after fixing a `like()` call in 010 and resetting for the index change) |
 
 ## History
