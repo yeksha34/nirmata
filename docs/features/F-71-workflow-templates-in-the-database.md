@@ -18,7 +18,7 @@ The adaptation agent no longer copies workflow files into a world's folder to cu
 - [x] `POST …/workflows/:type/adopt` gives the world its own copy of the default; `PUT …/workflows/:type` publishes the world's graph (one new version per call); `DELETE …/workflows/:type` goes back to the default. The agent token's scopes apply.
 - [x] A graph that is not a ComfyUI graph is refused before the database; the database refuses nodes outside the allow-list, web addresses and file paths.
 - [x] `loadWorkflowTemplate` uses the world's (or a visual novel's) copy from the database before the world's workflow files; the platform default stays with the bundled files, which are the same graphs.
-- [ ] The migration and `db/tests/012_workflow_templates.sql` run on a real database.
+- [x] The migration and `db/tests/012_workflow_templates.sql` run on a real database (owner, 2026-11-03).
 - [ ] Tried with a real agent: adopt, change a step count, generate an asset, see the change in the run.
 - [ ] `asset_specs.workflow_template_version_id` is filled when a generation is recorded (the job already records the version `effective_template` gives).
 
@@ -36,7 +36,7 @@ The adaptation agent no longer copies workflow files into a world's folder to cu
 | Date | What was run | Result |
 |---|---|---|
 | 2026-11-03 | `tsc -b`; full test suite | Pass |
-| 2026-11-03 | Migration and pgTAP 012 | Not run yet |
+| 2026-11-03 | Migration and pgTAP 012 | Pass (owner) |
 
 ## History
 | Date | Change |

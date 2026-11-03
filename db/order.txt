@@ -31,3 +31,4 @@ assets/migrations/20261103000200_asset_links_is_author.sql
 identity/migrations/20261103000300_agent_tokens.sql
 assets/migrations/20261103000400_character_prep.sql
 platform/migrations/20261103000500_workflow_templates.sql
+vn_content/migrations/20261103000600_vn_draft_content.sql
