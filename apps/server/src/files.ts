@@ -40,10 +40,12 @@ import {
 } from "@nirmata/core";
 import { type EventSink, HostError, type SourceBackend } from "@nirmata/host";
 import {
+  addReferenceSlot,
   getDefaultNegativePrompt,
   synthesizeBackgroundDanbooruPrompt,
   synthesizeCgDanbooruPrompt,
   synthesizeSpriteDanbooruPrompt,
+  type Workflow,
 } from "@nirmata/gen";
 import { HttpError } from "./errors";
 import { slugFor } from "./lore-rows";
@@ -114,6 +116,9 @@ export interface VnAssetDetail {
   /** Sprites that should influence this image, and every sprite that could (see reference-rules). */
   references?: Suggested;
 }
+
+const NO_REFERENCE_SLOT =
+  "This workflow has no place for a reference image. Use a workflow with a Reference Image node.";
 
 /** Where a world keeps its cards. Same layout the editor and the linter use. */
 const CARD_DIRS = ["lore", "characters", "setting", "plot", ".agents/rules"] as const;
@@ -1218,18 +1223,8 @@ export class WorldFiles implements SourceBackend {
     );
   }
 
-  /** A world's own workflow wins over the bundled one; `ref` is the variant that takes reference images. */
-  async loadWorkflowTemplate(
-    type: "sprite" | "cg" | "bg",
-    variant?: "ref",
-  ): Promise<Record<string, unknown>> {
-    const key = variant ? `${type}_${variant}` : type;
-    const bundled = type === "bg" && !variant ? "background" : key;
-    const candidates = [
-      inside(this.root, `assets/workflow/${key}.json`),
-      inside(this.root, `assets/workflow/${key}.api.json`),
-      resolve(process.cwd(), `tools/comfyui/templates/${bundled}.template.api.json`),
-    ];
+  /** The first of these files that holds a workflow. */
+  private async readTemplate(candidates: string[]): Promise<Record<string, unknown> | undefined> {
     for (const cand of candidates) {
       const content = await readIfThere(cand);
       if (content) {
@@ -1238,6 +1233,38 @@ export class WorldFiles implements SourceBackend {
         } catch {}
       }
     }
+    return undefined;
+  }
+
+  /**
+   * A world's own workflow wins over the bundled one. The `ref` variant takes reference images: the
+   * world's own `<type>_ref.json` if it has one, else the world's (or the bundled) plain workflow with a
+   * reference slot added, so a customised workflow keeps its customisations.
+   */
+  async loadWorkflowTemplate(
+    type: "sprite" | "cg" | "bg",
+    variant?: "ref",
+  ): Promise<Record<string, unknown>> {
+    if (variant) {
+      if (type === "bg") {
+        throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
+      }
+      const own = await this.readTemplate([
+        inside(this.root, `assets/workflow/${type}_ref.json`),
+        inside(this.root, `assets/workflow/${type}_ref.api.json`),
+      ]);
+      if (own) return own;
+      const derived = addReferenceSlot((await this.loadWorkflowTemplate(type)) as Workflow, type);
+      if (!derived) throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
+      return derived;
+    }
+    const bundled = type === "bg" ? "background" : type;
+    const found = await this.readTemplate([
+      inside(this.root, `assets/workflow/${type}.json`),
+      inside(this.root, `assets/workflow/${type}.api.json`),
+      resolve(process.cwd(), `tools/comfyui/templates/${bundled}.template.api.json`),
+    ]);
+    if (found) return found;
     throw new HttpError(404, "template_not_found", `Template for ${type} was not found.`);
   }
 

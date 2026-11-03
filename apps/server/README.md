@@ -99,7 +99,7 @@ A new generation of an imported world is kept twice: the file is saved on disk a
 
 The dataset gallery can delete one run (`DELETE /api/worlds/:name/dataset/:slug/:asset/:run`, host only; the screen asks first). It removes the run's folder on disk and, for an imported world and the signed-in host's own request, sets the render's store to `none` (audited) and removes its file from the store, which frees quota. The database refuses an asset's current image, and then nothing is deleted. The VN-image archive and delete buttons are unchanged: they act on the visual novel's current image files, not on the dataset.
 
-A generation can take reference sprites (ADR-0031): `references: ["<sprite name>"]` in the request, optionally `referenceStrength`. The server reads each from the visual novel's sprite files, uploads it to ComfyUI, and uses the world's or the bundled `sprite_ref` / `cg_ref` workflow. The asset detail carries `references.suggested` and `references.available` for the Studio's checklist; the base sprite's expression is the world's `assets/workflow/references.json`.
+A generation can take reference sprites (ADR-0031): `references: ["<sprite name>"]` in the request, optionally `referenceStrength`. The server reads each from the visual novel's sprite files, uploads it to ComfyUI, and adds a reference slot to the workflow the world uses (or uses the world's own `sprite_ref` / `cg_ref`). The asset detail carries `references.suggested` and `references.available` for the Studio's checklist; the base sprite's expression is the world's `assets/workflow/references.json`.
 
 ## Importing dataset images
 
