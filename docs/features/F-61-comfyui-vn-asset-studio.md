@@ -47,3 +47,4 @@ See [ADR-0025](../decisions/0025-comfyui-vn-asset-studio-and-reinforcement-loop.
 | 2026-11-02 | Generation became a background job with no fixed timeout; per-stage and per-node status via redux-saga that survives a refresh; studio layout simplified ([ADR-0026](../decisions/0026-generation-jobs-and-status-store.md)) |
 | 2026-11-01 | Created feature specification and linked ADR-0025 |
 | 2026-11-01 | Verified full implementation: templates, skill, backend bridge, web studio, tag badges & questionnaire |
+| 2026-11-03 | Studio form now resets per asset, autosaves prompt and sampler edits and loads one request per pick (BUG-008, BUG-009, BUG-010); reference images added ([F-66](F-66-reference-images.md)). Checked in a browser against a throwaway server. |

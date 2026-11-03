@@ -1,6 +1,6 @@
 # ADR-0029: Four roles: admin, author, moderator, player
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-03
 - Related: [ADR-0009](0009-permissions.md), [ADR-0027](0027-database-is-lore-source-of-truth.md)
 

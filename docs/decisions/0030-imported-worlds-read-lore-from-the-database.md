@@ -1,6 +1,6 @@
 # ADR-0030: An imported world reads its cards and images from the database
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-03
 - Related: [ADR-0027](0027-database-is-lore-source-of-truth.md), [ADR-0029](0029-roles-admin-author-moderator-player.md)
 

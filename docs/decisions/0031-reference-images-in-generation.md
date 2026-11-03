@@ -1,6 +1,6 @@
 # ADR-0031: Reference images in generation
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-03
 - Related: [ADR-0025](0025-comfyui-vn-asset-studio-and-reinforcement-loop.md), [ADR-0028](0028-asset-files-served-by-backend-from-any-store.md)
 
