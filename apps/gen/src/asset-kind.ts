@@ -98,17 +98,12 @@ const LEAD: Record<LinkedKind, string> = {
 const TAIL = "isolated item, no person, no body, plain white background";
 
 /**
- * The prompt for a linked asset. The model has never seen the world's item, so it is described from the
- * card instead of named: the card's own prompt first (the author's words), then what it looks like, what
- * it is made of, where it sits on the body and how it is held or used.
+ * The prompt for a linked asset. It is only what the image model needs to draw the item: the card's own
+ * prompt first (the author's words), then what it looks like, what it is made of, where it sits on the
+ * body and how it is attached. No character names and no story (who owns it, how it is used): the model
+ * cannot use them, and they would only be drawn as text or confuse the image.
  */
-export function composeLinkedPrompt(
-  kind: LinkedKind,
-  name: string,
-  d: LinkedDetails = {},
-  owner?: string,
-): string {
-  const words = name.replace(/_/g, " ");
+export function composeLinkedPrompt(kind: LinkedKind, name: string, d: LinkedDetails = {}): string {
   const bits: Array<string | undefined> = [
     LEAD[kind],
     d.prompt,
@@ -117,14 +112,18 @@ export function composeLinkedPrompt(
     d.frames && `worn on ${d.frames}`,
     d.attachment && d.attachment !== "magic" ? `attached by ${d.attachment}` : undefined,
     d.coverage && `coverage: ${d.coverage}`,
-    d.interaction && `shown as used: ${d.interaction}`,
+    d.prompt || d.appearance ? undefined : itemWords(kind, name),
   ];
-  const described = bits.filter(Boolean).join(", ");
-  const subject = d.prompt || d.appearance ? "" : `, ${words}${owner ? ` for ${owner.replace(/_/g, " ")}` : ""}`;
-  return `${described}${subject}, ${TAIL}`;
+  return `${bits.filter(Boolean).join(", ")}, ${TAIL}`;
+}
+
+/** What a card name says about the item. An owned item is named `<Owner>_<item>`; the owner is dropped. */
+function itemWords(kind: LinkedKind, name: string): string {
+  const item = kind !== "object" && name.includes("_") ? name.slice(name.indexOf("_") + 1) : name;
+  return item.replace(/_/g, " ");
 }
 
 /** A starting prompt when the world has no card: the name only. Prefer composeLinkedPrompt with a card. */
-export function synthesizeLinkedPrompt(kind: LinkedKind, name: string, owner?: string): string {
-  return composeLinkedPrompt(kind, name, {}, owner);
+export function synthesizeLinkedPrompt(kind: LinkedKind, name: string): string {
+  return composeLinkedPrompt(kind, name, {});
 }

@@ -1033,7 +1033,7 @@ export class WorldFiles implements SourceBackend {
       for (const kind of LINKED_KINDS) {
         for (const item of linked[kind]) {
           const details = await this.linkedDetails(kind, item.name);
-          item.defaultPrompt ??= composeLinkedPrompt(kind, item.name, details, item.lockedTo?.[0]);
+          item.defaultPrompt ??= composeLinkedPrompt(kind, item.name, details);
         }
       }
     }

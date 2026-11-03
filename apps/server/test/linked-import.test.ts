@@ -29,7 +29,8 @@ describe("collectLinked", () => {
     const lamp = found.find((a) => a.name === "lamp");
     expect(lamp?.characters).toEqual(["Anya"]);
     expect(lamp?.cgs).toEqual(["night"]);
-    expect(lamp?.positive).toContain("shown as used: she lights it");
+    expect(lamp?.positive).toContain("a brass oil lamp");
+    expect(lamp?.positive).not.toContain("lights");
   });
 
   it("falls back to the card's owners for an object no manifest lists", () => {

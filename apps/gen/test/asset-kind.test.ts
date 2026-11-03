@@ -22,7 +22,7 @@ describe("asset kinds", () => {
   it("names dataset entries by prefix and builds a generic prompt", () => {
     expect(kindOf("clothes_ana_uniform")).toBe("clothes");
     expect(kindOf("object_cup")).toBe("object");
-    expect(synthesizeLinkedPrompt("object", "skull_cup", "ana")).toContain("skull cup for ana");
+    expect(synthesizeLinkedPrompt("object", "skull_cup")).toContain("skull cup");
   });
 });
 
@@ -45,7 +45,15 @@ describe("linked card prompts", () => {
     expect(text).toContain("no person");
   });
 
+  it("leaves out names and story: interaction and owners never reach the prompt", () => {
+    const text = composeLinkedPrompt("object", "lamp", { prompt: "a brass oil lamp", interaction: "Ana lights it", owners: ["char.ana"] });
+    expect(text).toContain("a brass oil lamp");
+    expect(text).not.toMatch(/Ana|char\.ana|lights/);
+  });
+
   it("falls back to the name when there is no card", () => {
-    expect(composeLinkedPrompt("object", "brass_lamp", {}, "ana")).toContain("brass lamp for ana");
+    expect(composeLinkedPrompt("object", "brass_lamp", {})).toContain("brass lamp");
+    expect(composeLinkedPrompt("adornment", "Ana_gold_ring", {})).toContain("gold ring");
+    expect(composeLinkedPrompt("adornment", "Ana_gold_ring", {})).not.toContain("Ana");
   });
 });

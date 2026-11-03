@@ -279,11 +279,10 @@ export function scaffoldWorldWorkflows(worldSlug, vnSlug) {
           const describe = (type, name, d) =>
             [
               LEAD[type],
-              d.prompt || d.appearance || pretty(name),
+              d.prompt || d.appearance || pretty(type === "object" || !name.includes("_") ? name : name.slice(name.indexOf("_") + 1)),
               d.prompt && d.material ? `made of ${d.material}` : "",
               d.frames ? `worn on ${d.frames}` : "",
               d.coverage ? `coverage: ${d.coverage}` : "",
-              d.interaction ? `shown as used: ${d.interaction}` : "",
               "isolated item, no person, no body, plain white background",
             ]
               .filter(Boolean)

@@ -89,7 +89,7 @@ export function collectLinked(folder: string): LinkedAsset[] {
         kind,
         name,
         details,
-        positive: composeLinkedPrompt(kind, name, details, characters[0]),
+        positive: composeLinkedPrompt(kind, name, details),
         characters,
         cgs: [...(objects.get(name)?.cgs ?? details.cgs ?? [])],
         reference: details.reference,
