@@ -37,7 +37,7 @@ declare
   v_cgs   uuid[] := coalesce(p_cgs, '{}');
 begin
   select * into v_a from assets.assets where id = p_asset;
-  if not found or not (select membership.is_host(v_a.world_id)) then
+  if not found or not (select membership.is_author(v_a.world_id)) then
     raise exception 'host only' using errcode = '42501';
   end if;
   if v_a.kind_key not in ('clothes', 'adornment', 'object') then
