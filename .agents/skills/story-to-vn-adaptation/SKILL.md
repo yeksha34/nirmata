@@ -110,7 +110,7 @@ Then make an **Asset List** and check it against the budget:
 - music tracks by mood,
 - key sound effects.
 
-Clothes cover a body; adornments dress it without necessarily covering it (jewellery, body art, grown or attached ornament), so a world whose characters stay unclothed still has them. Cards live in `worlds/<world>/{clothes,adornments,objects}/`; the manifest lists them as `assets.clothes` / `assets.adornments` (`{ character: [names] }`) and `assets.objects` (`[{ name, owners?, cgs? }]`). Their art feeds the owner's sprite state or the linked CG as a reference image; there is no layer compositor. Skip anything a generic sprite or CG prompt already draws. See ADR-0033.
+Clothes cover a body; adornments dress it without necessarily covering it (jewellery, body art, grown or attached ornament), so a world whose characters stay unclothed still has them. Cards live in `worlds/<world>/{clothes,adornments,objects}/`; the manifest lists them as `assets.clothes` / `assets.adornments` (`{ character: [names] }`) and `assets.objects` (`[{ name, owners?, cgs? }]`). Their art feeds the owner's sprite state or the linked CG as a reference image; there is no layer compositor. Skip anything a generic sprite or CG prompt already draws. Make one card per piece, and write its `<prompt>` as a plain visual description with no character names or story (the image model cannot use them). See ADR-0033.
 
 When the list is over budget, merge locations and drop expressions before cutting must-keep CGs.
 
