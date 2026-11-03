@@ -179,6 +179,8 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@22.20.5)(tsx@4.23.15)(yaml@2.9.1)
 
+  apps/auth: {}
+
   apps/db:
     dependencies:
       pg:
@@ -199,6 +201,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.17(hono@4.13.13)
+      '@nirmata/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@nirmata/core':
         specifier: workspace:*
         version: link:../../packages/core

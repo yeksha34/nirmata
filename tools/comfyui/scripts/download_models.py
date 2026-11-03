@@ -58,6 +58,22 @@ MODELS_SPEC: List[Dict[str, str]] = [
         "size_est": "~800 MB"
     },
     {
+        "id": "ipadapter_plus_sd15",
+        "name": "IP-Adapter Plus SD 1.5 (High Strength)",
+        "subfolder": "ipadapter",
+        "filename": "ip-adapter-plus_sd15.safetensors",
+        "url": "https://huggingface.co/h94/IP-Adapter/resolve/main/models/ip-adapter-plus_sd15.safetensors",
+        "size_est": "~135 MB"
+    },
+    {
+        "id": "clip_vision_h",
+        "name": "CLIP-ViT-H-14 (Vision Encoder for SD 1.5)",
+        "subfolder": "clip_vision",
+        "filename": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
+        "url": "https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors",
+        "size_est": "~2.5 GB"
+    },
+    {
         "id": "birefnet",
         "name": "BiRefNet General (Alpha Transparency Cutout)",
         "subfolder": "birefnet",
@@ -131,7 +147,7 @@ def get_models(comfy_dir: Path, selected_ids: List[str] = None):
             print(f"  [ALREADY EXISTS] {dest_file}\n")
             continue
 
-        print(f"  Desheroinetion: {dest_file}")
+        print(f"  Destination: {dest_file}")
         try:
             download_file(spec["url"], dest_file)
             print()
@@ -148,7 +164,7 @@ def print_urls_and_commands(comfy_dir: Path = None):
         fname = spec["filename"]
         target = f"{sub}/{fname}"
         print(f"\n# {spec['name']} ({spec['size_est']})")
-        print(f"# Desheroinetion: ComfyUI/models/{target}")
+        print(f"# Destination: ComfyUI/models/{target}")
         print(f"URL: {spec['url']}")
         if comfy_dir:
             full_dest = comfy_dir / "models" / sub / fname

@@ -42,7 +42,8 @@ def build_sprite_prompt(
     ref_image: str = "reference_character_anchor.png",
     seed: int = 1024,
     steps: int = 25,
-    cfg: float = 7.0
+    cfg: float = 7.0,
+    use_ipadapter: bool = False
 ) -> Dict[str, Any]:
     prompt = json.loads(json.dumps(template))  # Deep copy
 
@@ -57,6 +58,13 @@ def build_sprite_prompt(
 
     # Anchor image
     prompt["5"]["inputs"]["image"] = ref_image
+
+    if not use_ipadapter:
+        # Bypass IPAdapter if model weights are not installed
+        if "10" in prompt and "inputs" in prompt["10"]:
+            prompt["10"]["inputs"]["model"] = ["1", 0]
+        prompt.pop("6", None)
+        prompt.pop("7", None)
 
     if mode == "monster":
         # Adaptive Monster / Visceral Mode:
@@ -89,7 +97,8 @@ def generate_sprites(
     steps: int = 25,
     cfg: float = 7.0,
     seed: int = -1,
-    dry_run: bool = False
+    dry_run: bool = False,
+    use_ipadapter: bool = False
 ):
     output_dir.mkdir(parents=True, exist_ok=True)
     base_seed = seed if seed >= 0 else random.randint(1, 2**31 - 1)
@@ -122,7 +131,8 @@ def generate_sprites(
             ref_image=ref_image,
             seed=expr_seed,
             steps=steps,
-            cfg=cfg
+            cfg=cfg,
+            use_ipadapter=use_ipadapter
         )
 
         if dry_run:
@@ -150,11 +160,11 @@ def load_character_prompt_from_world(world: str, character: str) -> str:
     if not world_path.exists():
         return ""
 
-    # 1. Check prompt specs in vns/_shared/assets/prompts.json or assets/workflow/prompts.json
-    spec_candidates = [
-        world_path / "vns" / "_shared" / "assets" / "prompts.json",
-        world_path / "assets" / "workflow" / "prompts.json"
-    ]
+    # 1. Check prompt specs in assets/workflow/prompts.json or vns/_shared/assets/prompts.json
+    # Note: Explicitly bypass vns directory for cuntitty to respect workspace boundaries
+    spec_candidates = [world_path / "assets" / "workflow" / "prompts.json"]
+    if "cuntitty" not in str(world_path).lower():
+        spec_candidates.append(world_path / "vns" / "_shared" / "assets" / "prompts.json")
     for cand in spec_candidates:
         if cand.exists():
             try:
@@ -201,12 +211,13 @@ def main():
     parser.add_argument("--prompt", default="", help="Core character description and attire prompt (optional if --world is provided)")
     parser.add_argument("--ref-image", default="reference_character_anchor.png", help="Reference image filename for IP-Adapter")
     parser.add_argument("--mode", choices=["humanoid", "monster"], default="humanoid", help="Adaptive mode: humanoid (FaceDetailer+OpenPose) or monster (Depth+organic)")
-    parser.add_argument("--output-dir", default="", help="Desheroinetion folder for transparent PNGs (defaults to worlds/<slug>/assets/sprites if --world given)")
+    parser.add_argument("--output-dir", default="", help="Destination folder for transparent PNGs (defaults to worlds/<slug>/assets/sprites if --world given)")
     parser.add_argument("--host", default="127.0.0.1", help="ComfyUI host address")
     parser.add_argument("--port", type=int, default=8188, help="ComfyUI port")
     parser.add_argument("--steps", type=int, default=25, help="Sampling steps (use 4-8 for Lightning models on Intel Iris Xe)")
     parser.add_argument("--cfg", type=float, default=7.0, help="CFG scale")
     parser.add_argument("--seed", type=int, default=-1, help="Random seed (-1 for randomized)")
+    parser.add_argument("--use-ipadapter", action="store_true", default=False, help="Enable IP-Adapter feature transfer (requires IP-Adapter model weights in models/ipadapter)")
     parser.add_argument("--dry-run", action="store_true", help="Print plans without connecting to ComfyUI")
 
     args = parser.parse_args()
@@ -235,7 +246,8 @@ def main():
         steps=args.steps,
         cfg=args.cfg,
         seed=args.seed,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        use_ipadapter=args.use_ipadapter
     )
 
 
