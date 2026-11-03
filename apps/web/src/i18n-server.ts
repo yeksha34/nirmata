@@ -329,6 +329,8 @@ export const HI_SERVER: Record<string, string> = {
   "There is no such visual novel.": "ऐसा कोई विज़ुअल नॉवेल नहीं है।",
   "There is no such chapter or draft.": "ऐसा कोई अध्याय या मसौदा नहीं है।",
   "There is no such card.": "ऐसा कोई कार्ड नहीं है।",
+  "That agent token may not write cards of that kind.": "वह एजेंट टोकन उस प्रकार के कार्ड नहीं लिख सकता।",
+  "That agent token may write cards of its kinds only.": "वह एजेंट टोकन केवल अपने प्रकारों के कार्ड लिख सकता है।",
   "There is no such skill.": "ऐसा कोई कौशल-मार्गदर्शक नहीं है।",
   "There is no such rule.": "ऐसा कोई नियम नहीं है।",
   "A card id looks like kind.name, in lowercase.": "कार्ड की पहचान प्रकार.नाम जैसी होती है, छोटे अक्षरों में।",

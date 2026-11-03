@@ -52,7 +52,37 @@ describe("agent tokens", () => {
     const made = await f.tokens.create(AUTHOR, "sample-world", "agent", { days: 7 });
     expect(made).toEqual({ id: "t1", token: "nga_secret" });
     const call = f.seen.find((s) => s.text.includes("create_agent_token"));
-    expect(call?.params).toEqual([WORLD, "agent", ["adaptation.read", "adaptation.write", "import.read", "import.write"], 7]);
+    expect(call?.params).toEqual([
+      WORLD,
+      "agent",
+      ["adaptation.read", "adaptation.write", "import.read", "import.write"],
+      7,
+      null,
+    ]);
+  });
+
+  it("makes a lane token: import only, and for the kinds it names", async () => {
+    const f = fake();
+    await f.tokens.create(AUTHOR, "sample-world", "accessories", {
+      days: 7,
+      kinds: ["clothes", "adornment", "clothes", "object"],
+    });
+    const call = f.seen.find((s) => s.text.includes("create_agent_token"));
+    expect(call?.params).toEqual([
+      WORLD,
+      "accessories",
+      ["import.read", "import.write"],
+      7,
+      ["clothes", "adornment", "object"],
+    ]);
+  });
+
+  it("refuses kinds that are not names of kinds", async () => {
+    for (const kinds of [[], ["Not A Kind"], ["a-b"], ["x".repeat(41)]]) {
+      await expect(
+        fake().tokens.create(AUTHOR, "sample-world", "x", { kinds }),
+      ).rejects.toBeInstanceOf(AgentTokenError);
+    }
   });
 
   it("refuses a world that is not in the database", async () => {
@@ -68,6 +98,7 @@ describe("agent tokens", () => {
         id: "t1",
         label: "agent",
         scopes: ["adaptation.read"],
+        kinds: null,
         expiresAt: "2026-12-01",
         revokedAt: null,
         lastUsedAt: null,
@@ -82,6 +113,7 @@ describe("agent tokens", () => {
       worldId: WORLD,
       userId: AUTHOR,
       scopes: ["adaptation.read"],
+      kinds: null,
     });
   });
 

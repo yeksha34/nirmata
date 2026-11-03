@@ -248,6 +248,8 @@ export interface AgentToken {
   id: string;
   label: string;
   scopes: string[];
+  /** The kinds of card a lane token may write; null means any. */
+  kinds: string[] | null;
   expiresAt: string;
   revokedAt: string | null;
   lastUsedAt: string | null;

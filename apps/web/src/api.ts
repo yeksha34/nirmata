@@ -158,10 +158,10 @@ export const api = {
       (r) => r.tokens,
     ),
   /** Makes a token for the adaptation agent. The token is in the answer once and cannot be read again. */
-  makeAgentToken: (worldName: string, label: string, days: number) =>
+  makeAgentToken: (worldName: string, label: string, days: number, kinds?: string[]) =>
     post<{ id: string; token: string }>(
       `/api/worlds/${encodeURIComponent(worldName)}/agent-tokens`,
-      { label, days },
+      { label, days, ...(kinds ? { kinds } : {}) },
     ),
   revokeAgentToken: (worldName: string, id: string) =>
     del(`/api/worlds/${encodeURIComponent(worldName)}/agent-tokens/${encodeURIComponent(id)}`),

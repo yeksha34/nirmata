@@ -415,6 +415,15 @@ export const HI_TEXT: Record<string, string> = {
     "एजेंट की पहुँच के लिए डेटाबेस और लॉग-इन किया हुआ एक लेखक चाहिए।",
   "A token lets an agent import into this world and adapt it, at {root}, and nothing else. It is shown once. Revoke it to stop it.":
     "टोकन से एजेंट {root} पर इस संसार में आयात और इसका रूपांतरण कर सकता है, और कुछ नहीं। यह एक ही बार दिखता है। रोकने के लिए इसे रद्द करें।",
+  "Works on": "किस पर काम करे",
+  Everything: "सब कुछ",
+  "Characters only": "केवल पात्र",
+  "Accessories only": "केवल साज-सामान",
+  "Settings only": "केवल परिवेश",
+  "Other kinds": "अन्य प्रकार",
+  "Kinds of card, separated by commas": "कार्ड के प्रकार, अल्पविराम से अलग",
+  "kinds: {kinds}": "प्रकार: {kinds}",
+  "any kind": "कोई भी प्रकार",
   "Your new token. Copy it now: it will not be shown again.":
     "आपका नया टोकन। अभी नकल कर लें: यह दोबारा नहीं दिखेगा।",
   Copy: "नकल करें",
