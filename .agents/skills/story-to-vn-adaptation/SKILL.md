@@ -93,7 +93,19 @@ Branches come from the story itself, not from arbitrary options.
 
 Document the structure in a **Route Map**: common route scenes → hinge → routes → endings, with the conditions (choices and variable thresholds) for each, as a mermaid flowchart plus a table.
 
+## Step 0 — Prepare characters and the baseline (once per world, in Nirmata)
+
+For a world that Nirmata holds in its database, do this before the first chapter. Use the endpoints with an agent token (an author makes it in Nirmata); never write to the database or to the world's folder. Send `Authorization: Bearer nga_…` to `/api/agent/…`.
+
+1. `GET /api/agent/worlds/<world>/characters` returns each character card with its prep state (`none`, `stale` or `current`).
+2. For each character, read the card and `PUT …/characters/<name>/prep` with `{basePositive, baseNegative, notes, expressions:[{expression, tags}], outfits:[{kind:"clothes"|"adornment", name, tags}]}`. Keep the characterization: the tags come from the card, not from invention. A `stale` prep means the card changed; read it again.
+3. `GET …/baseline` lists the first assets still missing: the unclad base (`<character>_naked`) and each item of clothes or adornment in the prep. `POST …/assets` each one with `{type, name, owner}`. Plan the important objects (`{type:"object", name, owner?}`) and the locations (`{type:"bg", name}`) the same way.
+
+Step 6 then only adds what a chapter needs and the existing assets do not express (below).
+
 ## Step 6 — Characters and assets
+
+**Gap check.** For each chapter or draft, list the states its scenes need (character with outfit state and expression; object; background; CG) and `POST /api/agent/worlds/<world>/assets/gap` with `{needs:[{type:"sprite", character, expression?, state?} | {type:"clothes"|"adornment", character, name} | {type:"cg"|"bg"|"object", name}]}`. Plan only the `missing` ones with `POST …/assets`. A bare portrait does not count as another expression, so an expression no sprite has is missing; the neutral look is covered by `<character>` or `<character>_neutral`. Never plan an asset that already exists.
 
 Write a sheet for each sprite character within budget. Composites list which story characters they absorb. Each sheet covers:
 - role, route involvement, what they want from the MC,

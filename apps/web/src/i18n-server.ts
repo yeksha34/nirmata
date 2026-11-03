@@ -318,6 +318,9 @@ export const HI_SERVER: Record<string, string> = {
   "That is not a world name.": "यह किसी संसार का नाम नहीं है।",
   'There is no world "{slug}" in the database.': 'डेटाबेस में "{slug}" नाम का कोई संसार नहीं है।',
   "The token could not be made.": "टोकन नहीं बन सका।",
+  "That agent token is for another world.": "वह एजेंट टोकन किसी दूसरे संसार के लिए है।",
+  "That is not a character name.": "यह किसी पात्र का नाम नहीं है।",
+  "There is no such character card.": "ऐसा कोई पात्र-कार्ड नहीं है।",
 
   // visual novel adaptations
   "That is not a kind of asset.": "यह संसाधन का कोई प्रकार नहीं है।",

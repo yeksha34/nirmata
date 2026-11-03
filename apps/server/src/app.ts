@@ -173,7 +173,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
 
   app.get("/api/health", (c) => c.json({ ok: true }));
   if (data) registerAssetRoutes(app, data, seatOf);
-  if (data) registerAgentRoutes(app, new AgentTokens(data.db), seatOf);
+  if (data) registerAgentRoutes(app, data.db, new AgentTokens(data.db), seatOf);
   const userOf = auth ? registerAuthRoutes(app, auth) : undefined;
   app.get("/api/comfyui/status", async (c) => c.json(await table.comfyStatus()));
   app.get("/api/table", async (c) => c.json(await table.info()));

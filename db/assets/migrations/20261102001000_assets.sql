@@ -88,8 +88,8 @@ create table assets.assets (
   updated_at        timestamptz not null default now(),
   unique (id, world_id)
 );
-create unique index assets_vn_name on assets.assets (vn_id, kind_key, name) where vn_id is not null;
-create unique index assets_shared_name on assets.assets (world_id, kind_key, name) where vn_id is null;
+create unique index assets_vn_name on assets.assets (vn_id, kind_key, name) where vn_id is not null and status_key <> 'retired';
+create unique index assets_shared_name on assets.assets (world_id, kind_key, name) where vn_id is null and status_key <> 'retired';
 create index assets_world on assets.assets (world_id, kind_key) where not is_terminal;
 
 create trigger assets_touch before update on assets.assets
