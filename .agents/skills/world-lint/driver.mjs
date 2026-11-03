@@ -358,11 +358,36 @@ const cmds = {
     return 0;
   },
 
+  // Clothes/adornment cards must name an owner; object cards must link a
+  // character or CG and explain interaction + why-custom (ADR-0033).
+  assets() {
+    const bad = [];
+    const attr = (t, a) => (new RegExp(`\\b${a}="([^"]*)"`).exec(t) || [])[1] || '';
+    const part = (t, a) => (new RegExp(`<${a}>([\\s\\S]*?)</${a}>`).exec(t) || [])[1]?.trim() || '';
+    for (const f of FILES) {
+      const r = rel(f);
+      if (r.includes('_template') || !/(^|\/)(clothes|adornments|objects)\/[^/]+\.md$/.test(r) || r.endsWith('_card.template.md')) continue;
+      const text = readFileSync(f, 'utf8');
+      const head = /<card[^>]*>/.exec(text)?.[0] || '';
+      const kind = attr(head, 'kind'), name = attr(head, 'name');
+      if (kind === 'clothes' || kind === 'adornment') {
+        if (!attr(head, 'owner') && !/(^|_)naked$/.test(name.toLowerCase())) bad.push(`${r}: ${kind} has no owner`);
+      } else if (kind === 'object') {
+        if (!attr(head, 'owners') && !attr(head, 'cgs')) bad.push(`${r}: object links no character or CG`);
+        if (!part(text, 'interaction')) bad.push(`${r}: object missing <interaction>`);
+        if (!part(text, 'why-custom')) bad.push(`${r}: object missing <why-custom>`);
+      }
+    }
+    console.log(bad.length ? bad.map((b) => `  ${b}`).join('\n') : '  ok');
+    return bad.length ? 1 : 0;
+  },
+
   check() {
     let code = 0;
     console.log('== stats ==');   code |= cmds.stats();
     console.log('\n== links ==');  code |= cmds.links();
     console.log('\n== orphans =='); code |= cmds.orphans();
+    console.log('\n== asset cards =='); code |= cmds.assets();
     return code;
   },
 

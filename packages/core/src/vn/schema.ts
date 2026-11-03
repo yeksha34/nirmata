@@ -36,6 +36,11 @@ export const VnAssetsManifestSchema = z.object({
   backgrounds: z.array(z.string()),
   characters: z.record(z.string(), z.array(z.string())),
   cgs: z.array(z.string()),
+  clothes: z.record(z.string(), z.array(z.string())).optional(),
+  adornments: z.record(z.string(), z.array(z.string())).optional(),
+  objects: z
+    .array(z.object({ name: z.string().min(1), owners: z.array(z.string()).optional(), cgs: z.array(z.string()).optional() }))
+    .optional(),
   music: z.array(z.string()).optional(),
   sfx: z.array(z.string()).optional(),
 }) satisfies z.ZodType<VnAssetsManifest>;

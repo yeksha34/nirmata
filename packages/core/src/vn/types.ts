@@ -14,10 +14,21 @@ export interface VnVariableDef {
   description?: string;
 }
 
+export interface VnObjectRef {
+  name: string;
+  owners?: string[];
+  cgs?: string[];
+}
+
 export interface VnAssetsManifest {
   backgrounds: string[];
   characters: Record<string, string[]>; // character name -> expressions array
   cgs: string[];
+  /** character name -> clothes names (locked to that character) */
+  clothes?: Record<string, string[]>;
+  /** character name -> adornment names (locked to that character) */
+  adornments?: Record<string, string[]>;
+  objects?: VnObjectRef[];
   music?: string[];
   sfx?: string[];
 }

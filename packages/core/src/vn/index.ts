@@ -1,3 +1,4 @@
+export * from "./assets";
 export * from "./compiler";
 export * from "./parser";
 export * from "./schema";
