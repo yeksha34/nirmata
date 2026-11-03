@@ -82,14 +82,15 @@ function Home() {
         )}
       </Panel>
 
-      <Panel
-        title="Your worlds"
-        aside={
+      <section className="shelf" aria-labelledby="worlds-title">
+        <header className="shelf-head">
+          <h2 id="worlds-title">
+            <T>Your worlds</T>
+          </h2>
           <button type="button" className="primary" onClick={() => setCreating(true)}>
             <T>New world</T>
           </button>
-        }
-      >
+        </header>
         {!worlds ? (
           <Empty>
             <T>Looking for your worlds…</T>
@@ -127,9 +128,26 @@ function Home() {
                 </button>
               </li>
             ))}
+            <li>
+              <button type="button" className="world-new" onClick={() => setCreating(true)}>
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                <T>New world</T>
+              </button>
+            </li>
           </ul>
         )}
-      </Panel>
+      </section>
 
       {creating && (
         <CreateWorld

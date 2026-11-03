@@ -11,6 +11,7 @@ import "@fontsource-variable/newsreader/wght-italic.css";
 import "@fontsource-variable/noto-sans-devanagari";
 import "@fontsource-variable/noto-serif-devanagari";
 import "./styles.css";
+import "./glass.css";
 
 // before anything is drawn, so the page never shows one theme and then the other
 applyTheme(storedTheme());

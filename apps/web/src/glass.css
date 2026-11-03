@@ -1,0 +1,902 @@
+/*
+ * Lantern glass: the Nirmata design's surfaces and shapes, laid over styles.css.
+ *
+ * The palette lives in styles.css (light and dark). This file only decides what things look like:
+ * an aurora of lamplight behind frosted islands, and edges that are round or pointed on purpose,
+ * never square: pills for controls, circles for icon buttons and seats, arches for worlds, one
+ * large squircle island per screen, drops for who said what. It is imported after styles.css and
+ * changes no markup behaviour. Only glass on the page itself blurs; what sits inside an island uses
+ * the strong, flat fill so the blur is never stacked.
+ */
+
+/* ---- the ground: three lamp glows over warm paper, fixed behind everything ---- */
+
+html {
+  background: var(--aur);
+  background-attachment: fixed;
+  min-height: 100%;
+}
+body {
+  background: transparent;
+  min-height: 100vh;
+}
+main {
+  padding: 36px 24px 110px;
+}
+
+/* ---- glass: the one frosted level ---- */
+
+.topbar,
+.panel,
+.ws,
+.win,
+.win-chip,
+.theme-toggle,
+.queue-portal,
+.menu-body,
+.toast,
+.dialog,
+.join-card,
+.world-card,
+.vs-card,
+.vs-actions,
+.composer {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
+}
+/* what must stay legible over moving content, and what floats above another island */
+.menu-body,
+.toast,
+.dialog,
+.queue-portal,
+.composer,
+.vs-actions {
+  background: var(--glass-strong);
+}
+/* without a blur, text over the page would be hard to read: fall back to the strong fill */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar,
+  .panel,
+  .ws,
+  .win,
+  .win-chip,
+  .theme-toggle,
+  .world-card,
+  .join-card,
+  .vs-card {
+    background: var(--glass-strong);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .topbar,
+  .panel,
+  .ws,
+  .win,
+  .win-chip,
+  .theme-toggle,
+  .world-card,
+  .join-card,
+  .vs-card {
+    background: var(--glass-strong);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* ---- controls: pills ---- */
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+button {
+  padding: 0 1.25em;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  background: var(--glass-strong);
+  color: var(--ink);
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+button.primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color: var(--accent-ink);
+  box-shadow: var(--lamp-glow);
+}
+button.primary:hover:not(:disabled) {
+  border-color: transparent;
+  filter: brightness(1.06);
+}
+button.plain {
+  padding: 0.1em 0.5em;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  box-shadow: none;
+}
+
+input:not([type="checkbox"], [type="radio"]),
+select {
+  min-height: 46px;
+  padding: 0 1.25em;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: var(--glass-strong);
+}
+textarea {
+  padding: 0.9em 1.4em;
+  border: 1px solid var(--hair);
+  border-radius: 30px;
+  background: var(--glass-strong);
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+}
+label {
+  padding-left: 0.6em;
+}
+label.check,
+label.choice-opt {
+  padding-left: 0;
+}
+
+.dot {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--muted) 20%, transparent);
+}
+.dot-live {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 22%, transparent);
+}
+.dot-lost {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--bad) 22%, transparent);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 0.8em;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-weight: 700;
+}
+.badge-host {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color: var(--accent-ink);
+}
+.chip {
+  padding: 0 0.7em;
+  border-radius: 999px;
+  background: var(--glass-strong);
+}
+.tagline,
+.hint {
+  color: var(--muted);
+}
+a {
+  color: var(--accent-deep);
+  text-underline-offset: 3px;
+}
+
+/* a segmented control: one pill, the current choice floats in it on strong glass */
+.topnav,
+.tabs,
+.tabs-line,
+.modes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  background: var(--glass);
+}
+.tabs,
+.tabs-line {
+  margin-bottom: 14px;
+  border-bottom-width: 1px;
+}
+.modes {
+  margin-bottom: 8px;
+}
+.navlink,
+.tabs button,
+.tabs-line button,
+.modes button {
+  min-height: 36px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: none;
+}
+.navlink[aria-current="page"],
+.tabs button[aria-current="true"],
+.tabs-line button[aria-current="true"],
+.modes button.is-on {
+  border: 0;
+  background: var(--glass-strong);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgb(110 65 15 / 18%);
+}
+.tabs-line button {
+  color: var(--muted);
+}
+.tabs-line button[aria-current="true"] {
+  color: var(--ink);
+}
+
+/* a choice among a few: pills that light up */
+label.choice-opt,
+.vs-chip {
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: var(--glass-strong);
+}
+label.choice-opt.is-on,
+.vs-chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+/* ---- the floating dock (the header) ---- */
+
+.topbar {
+  top: 12px;
+  width: calc(100% - 32px);
+  max-width: 1180px;
+  min-height: 0;
+  margin: 12px auto 0;
+  padding: 8px 12px 8px 12px;
+  border-radius: 999px;
+}
+.brand svg {
+  box-sizing: border-box;
+  width: 38px;
+  height: 38px;
+  padding: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color: #fff;
+  box-shadow: 0 4px 14px rgb(154 79 4 / 40%);
+}
+.topnav {
+  margin-left: 8px;
+}
+.jump {
+  min-height: 44px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: var(--glass-strong);
+  padding: 0 18px;
+}
+kbd {
+  border: 0;
+  background: transparent;
+}
+.world-name {
+  padding: 0 4px;
+}
+.menu > summary {
+  min-height: 44px;
+  padding: 0 6px 0 10px;
+  border-radius: 999px;
+}
+.menu[open] > summary {
+  background: var(--accent-soft);
+}
+.menu-body {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 26px;
+}
+.menu-body button {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.menu-body button:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.comfy-pill {
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+@media (max-width: 720px) {
+  .topbar {
+    width: calc(100% - 16px);
+    margin-top: 8px;
+    padding: 6px 8px;
+  }
+  main {
+    padding: 24px 12px 110px;
+  }
+}
+
+/* ---- islands: one large surface, not many small cards ---- */
+
+.panel {
+  margin-bottom: 20px;
+  padding: 26px 30px;
+  border-radius: 40px;
+}
+.panel-head h2 {
+  font-size: 1.5rem;
+}
+.card-item,
+.story-row,
+.draft,
+.writing-row,
+.writing-vn-box,
+.vs-feedback fieldset,
+.queue-list li,
+.syntax,
+fieldset.parts,
+.broken {
+  border: 1px solid var(--hair);
+  border-radius: 24px;
+  background: var(--glass-strong);
+}
+.story-row {
+  padding: 14px 18px;
+}
+.writing-preview-box {
+  border-radius: 26px;
+  border-color: var(--hair);
+  background: var(--glass-strong);
+}
+.writing-row.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.linked {
+  border-radius: 24px;
+}
+.warnings {
+  border-radius: 24px;
+}
+.empty {
+  color: var(--muted);
+}
+code {
+  border-radius: 999px;
+  padding: 0 0.5em;
+}
+
+/* the divider is a tide, not a rule */
+.world-danger {
+  border-top: 0;
+  position: relative;
+}
+.world-danger::before {
+  content: "";
+  display: block;
+  height: 14px;
+  margin-bottom: 14px;
+  background: var(--accent);
+  opacity: 0.55;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='14' viewBox='0 0 48 14'%3E%3Cpath d='M0 7 C 6 0, 18 14, 24 7 S 42 0, 48 7' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x left center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='14' viewBox='0 0 48 14'%3E%3Cpath d='M0 7 C 6 0, 18 14, 24 7 S 42 0, 48 7' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x left center;
+}
+.notices {
+  border-top: 1px dashed var(--hair);
+}
+
+/* ---- the front page ---- */
+
+.hero h1 {
+  font-size: clamp(2.3rem, 6vw, 3.6rem);
+}
+.hero .eyebrow {
+  color: var(--accent);
+}
+.worlds,
+.waiting {
+  max-width: 1100px;
+}
+
+/* worlds are arches: a lighthouse window with a lamp in it */
+.shelf {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.shelf-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+.shelf-head h2 {
+  font-family: var(--story-font);
+  font-size: 1.75rem;
+  font-weight: 500;
+}
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-end;
+}
+.cards > li {
+  display: flex;
+}
+.world-card {
+  position: relative;
+  width: 250px;
+  min-height: 0;
+  padding: 78px 24px 26px;
+  border-radius: 999px 999px 34px 34px;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  font-weight: 400;
+}
+.world-card:hover:not(:disabled) {
+  transform: translateY(-3px);
+  border-color: var(--glass-line);
+}
+.world-card strong {
+  position: relative;
+  font-size: 1.5rem;
+}
+.world-card .meta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: var(--glass-strong);
+  color: var(--accent-deep);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.world-card.is-open {
+  border-color: var(--accent);
+  background: var(--glass);
+}
+.world-card::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  width: 68px;
+  height: 68px;
+  margin-left: -34px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgb(255 214 140 / 95%), rgb(236 150 56 / 50%) 60%, transparent 74%);
+  pointer-events: none;
+}
+.world-new {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 150px;
+  height: 150px;
+  padding: 0;
+  border: 2px dashed var(--line-strong);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+}
+.world-new:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-deep);
+}
+
+/* ---- the workspace: one island with a rail, a list and an editor ---- */
+
+.ws {
+  border-radius: 44px;
+}
+.ws-rail,
+.ws-list {
+  border-right: 1px solid var(--hair);
+}
+.rail-item {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+}
+.rail-item[aria-current="true"] {
+  background: var(--glass-strong);
+  box-shadow: 0 2px 10px rgb(110 65 15 / 18%);
+}
+button.dashed {
+  border: 2px dashed var(--line-strong);
+  background: transparent;
+  box-shadow: none;
+}
+.card-row {
+  border: 1px solid var(--hair);
+  border-radius: 24px;
+  background: var(--glass-strong);
+}
+.card-row[aria-current="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.ws-editor {
+  padding: 28px 36px;
+}
+.saved-flag.is-saved,
+.saved {
+  color: var(--ok);
+}
+@media (max-width: 1000px) {
+  .ws-rail {
+    border-bottom: 1px solid var(--hair);
+  }
+}
+
+/* ---- the story: the storyteller speaks in a drop that points at them, you answer in one that points back ---- */
+
+.story-bar {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  margin: 8px 0 14px;
+}
+.host-text {
+  max-width: 42rem;
+  margin: 0 0 14px;
+  padding: 16px 24px;
+  border: 1px solid var(--glass-line);
+  border-radius: 30px 30px 30px 8px;
+  background: var(--glass-strong);
+  box-shadow: var(--glass-shadow);
+}
+.host-text p:last-child {
+  margin-bottom: 0;
+}
+.player-lines {
+  width: fit-content;
+  max-width: min(34rem, 88%);
+  margin: 0 0 14px auto;
+  padding: 14px 24px;
+  border: 0;
+  border-radius: 30px 30px 8px 30px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color: var(--accent-ink);
+  box-shadow: 0 8px 22px rgb(154 79 4 / 30%);
+}
+.player-lines p {
+  margin: 0.2em 0;
+  font-size: 1rem;
+}
+.player-lines .chip {
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+  background: transparent;
+  color: inherit;
+}
+.streaming > p:last-child::after {
+  border-radius: 2px;
+}
+
+/* the composer is a capsule */
+.composer {
+  padding: 14px 16px;
+  border-radius: 34px;
+}
+.composer textarea {
+  min-height: 60px;
+}
+.composer-actions {
+  margin-top: 10px;
+}
+
+/* ---- the story window: a glass sheet with a pill for a title ---- */
+
+.win {
+  border-radius: 44px;
+  box-shadow: 0 30px 80px rgb(90 50 10 / 32%), inset 0 1px 0 rgb(255 255 255 / 80%);
+}
+:root[data-theme="dark"] .win {
+  box-shadow: 0 30px 80px rgb(0 0 0 / 60%), inset 0 1px 0 rgb(255 226 180 / 12%);
+}
+.win.is-maximized {
+  inset: 12px;
+}
+.win.is-sheet {
+  inset: auto 8px 8px;
+  border-radius: 44px 44px 36px 36px;
+}
+.win.is-sheet.is-maximized {
+  inset: 8px;
+  border-radius: 36px;
+}
+.win-bar {
+  padding: 12px 16px 6px 14px;
+  border-bottom: 0;
+  background: transparent;
+}
+.win-title {
+  font-weight: 500;
+  font-size: 1.05rem;
+}
+.win-buttons {
+  gap: 6px;
+}
+.win-buttons button {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid var(--glass-line);
+  border-radius: 50%;
+  background: var(--glass-strong);
+  color: var(--muted);
+}
+.win-grip {
+  min-width: 28px;
+  background: transparent;
+  border: 0;
+}
+.win-body {
+  padding: 0 18px;
+}
+.win-resize {
+  right: 10px;
+  bottom: 10px;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, transparent 52%, var(--muted) 52% 60%, transparent 60% 72%, var(--muted) 72% 80%, transparent 80%);
+  box-shadow: none;
+}
+.win-chip {
+  right: 190px;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  color: var(--ink);
+}
+.win-chip::before {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--muted) 20%, transparent);
+}
+.win-chip.is-working::before {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 22%, transparent);
+}
+@media (max-width: 640px) {
+  .win-chip {
+    right: 16px;
+    bottom: 76px;
+  }
+}
+
+/* ---- dialogs, notices, tips ---- */
+
+.dialog {
+  padding: 30px 32px;
+  border-radius: 48px;
+  box-shadow: 0 30px 80px rgb(90 50 10 / 30%), inset 0 1px 0 rgb(255 255 255 / 80%);
+}
+:root[data-theme="dark"] .dialog {
+  box-shadow: 0 30px 80px rgb(0 0 0 / 60%), inset 0 1px 0 rgb(255 226 180 / 12%);
+}
+.dialog::backdrop {
+  background: rgb(40 24 6 / 42%);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.dialog h2 {
+  margin-bottom: 0.4em;
+  font-family: var(--story-font);
+  font-size: 1.8rem;
+  font-weight: 500;
+}
+.toast {
+  align-items: center;
+  padding: 10px 14px 10px 20px;
+  border-radius: 28px;
+  color: var(--ink);
+}
+.toast-error {
+  border-color: transparent;
+  background: var(--bad);
+  color: #fff;
+}
+:root[data-theme="dark"] .toast-error {
+  color: #1b0907;
+}
+.toast .plain {
+  min-height: 36px;
+  min-width: 36px;
+}
+.tip-bubble,
+.clip-tip {
+  border-radius: 14px;
+}
+
+/* ---- the dark mode toggle: a glass pill in the corner ---- */
+
+.theme-toggle {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.875rem;
+}
+.theme-toggle .tr {
+  display: inline-grid;
+}
+.theme-toggle .tr > .hi,
+.theme-toggle .tr > .en {
+  white-space: nowrap;
+}
+
+/* ---- joining the table and signing in: an arch with a lamp over it ---- */
+
+.join {
+  position: relative;
+  overflow: hidden;
+}
+.join::before,
+.join::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+.join::before {
+  left: 12%;
+  top: 14%;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgb(255 214 140 / 70%), rgb(236 150 56 / 25%) 60%, transparent 72%);
+}
+.join::after {
+  right: 12%;
+  bottom: 12%;
+  width: 160px;
+  height: 160px;
+  border: 2px dashed var(--hair);
+  border-radius: 50%;
+}
+.join-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 28.75rem);
+  padding: 112px 40px 34px;
+  border-radius: 999px 999px 48px 48px;
+  text-align: center;
+}
+.join-card > .brand {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  margin: 0 0 0 -34px;
+  font-size: 0;
+}
+.join-card > .brand svg {
+  width: 68px;
+  height: 68px;
+  padding: 16px;
+  box-shadow: 0 0 0 8px var(--accent-soft), 0 10px 30px rgb(154 79 4 / 40%);
+}
+.join-card h1 {
+  margin: 0 0 0.2em;
+  font-size: 2.4rem;
+}
+.join-card label {
+  text-align: left;
+  padding-left: 12px;
+}
+.join-card label.check {
+  padding: 14px 18px;
+  border: 1px solid var(--hair);
+  border-radius: 28px;
+  background: var(--glass-strong);
+}
+.join-card .primary {
+  min-height: 50px;
+  font-size: 1.05rem;
+}
+.join-card .error {
+  margin: 0.6em 0;
+}
+
+/* ---- the Asset Studio and the Dataset gallery ---- */
+
+.vs-card {
+  padding: 18px 22px;
+  border-radius: 30px;
+}
+.vs-actions {
+  padding: 12px 20px;
+  border-radius: 34px;
+}
+.vs-item {
+  border-radius: 20px;
+}
+.vs-item[aria-current="true"] {
+  background: var(--glass-strong);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.vs-btn {
+  min-height: 36px;
+  padding: 0 1rem;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  background: var(--glass-strong);
+}
+.vs-btn-primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  box-shadow: var(--lamp-glow);
+}
+.vs-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  filter: brightness(1.06);
+}
+.vs-btn-quiet {
+  min-height: 30px;
+  padding: 0 0.8rem;
+}
+.vs-chip {
+  min-height: 30px;
+  padding: 0 0.85rem;
+}
+.vs-stages li {
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+}
+.vs-seg {
+  border-radius: 999px;
+}
+.vs-preview {
+  border-radius: 28px;
+}
+.vs-preview img,
+.vs-shot img,
+.ds-run img {
+  border-radius: 22px;
+}
+.vs-shot {
+  border-radius: 28px;
+  border-color: var(--hair);
+  background: var(--glass-strong);
+}
+.vs-count {
+  padding: 0 0.7rem;
+}
+.vs-meter progress,
+.queue-list progress {
+  border-radius: 999px;
+}
+.queue-portal {
+  border-radius: 30px;
+  box-shadow: var(--glass-shadow), 0 8px 28px rgb(0 0 0 / 22%);
+}
+.queue-list li {
+  border-radius: 20px;
+}
