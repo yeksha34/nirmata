@@ -239,7 +239,9 @@ const WORDS: Record<string, string> = {
   "Send it now": "अभी भेजें",
   "At the table": "पटल पर",
   "The table's turn": "पटल की बारी",
-  "No cards yet. Make the first one below.": "अभी कोई पत्रक नहीं। पहला नीचे बनाएँ।",
+  "No cards yet. Add the first one under any heading below.":
+    "अभी कोई पत्रक नहीं। नीचे किसी भी शीर्षक में पहला जोड़ें।",
+  "New {kind}": "नया {kind}",
   "Nothing matches.": "कुछ मेल नहीं खाता।",
   Object: "आपत्ति",
   Rename: "नाम बदलें",

@@ -1410,6 +1410,12 @@ button.dashed::before {
   font-weight: 400;
   text-align: left;
 }
+.card-row-line {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
 .card-row strong {
   font-weight: 700;
 }

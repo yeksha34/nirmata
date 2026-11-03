@@ -246,7 +246,43 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
     ),
   );
 
-  // delete a single asset
+  // plan a new asset in a visual novel; its image is made later in the Studio
+  app.post("/api/worlds/:name/vns/:slug/assets", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(
+      c,
+      z.object({
+        type: z.enum(ASSET_KINDS),
+        name: z.string().trim().min(1).max(64),
+        owner: z.string().trim().max(64).optional(),
+      }),
+    );
+    return c.json(
+      await table.addWorldVnAsset(seat, c.req.param("name"), c.req.param("slug"), body.type, {
+        name: body.name,
+        owner: body.owner,
+      }),
+      201,
+    );
+  });
+
+  // take an asset out of the plan and delete its image (its dataset runs stay)
+  app.delete("/api/worlds/:name/vns/:slug/assets/:type/:assetName", async (c) => {
+    const type = c.req.param("type");
+    if (!(ASSET_KINDS as readonly string[]).includes(type))
+      throw new HttpError(400, "bad_request", "That is not a kind of asset.");
+    return c.json(
+      await table.removeWorldVnAsset(
+        seatOf(c),
+        c.req.param("name"),
+        c.req.param("slug"),
+        type as AssetKind,
+        c.req.param("assetName"),
+      ),
+    );
+  });
+
+  // delete a single asset's rendered file
   app.delete("/api/worlds/:name/vns/:slug/asset-meta/:type/:assetName", async (c) =>
     c.json(
       await table.deleteWorldVnAsset(
