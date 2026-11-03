@@ -1,0 +1,15 @@
+{
+  "name": "@nirmata/adaptation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Turns a world's novel into a visual novel: the asset plan, character prep, workflow templates and VN content, kept in the database.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@nirmata/core": "workspace:*",
+    "@nirmata/db": "workspace:*",
+    "@nirmata/gen": "workspace:*"
+  }
+}

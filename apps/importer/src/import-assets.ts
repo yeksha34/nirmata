@@ -8,7 +8,7 @@ import { storesFromEnv } from "@nirmata/storage";
 /**
  * Imports a world's dataset images into the database and a file store. Run by a person:
  *
- *   pnpm --filter @nirmata/server import:assets <world folder> --world=<uuid> --user=<host uuid>
+ *   pnpm --filter @nirmata/importer import:assets <world folder> --world=<uuid> --user=<host uuid>
  *        [--target=supabase|local] [--select=latest|all] [--dry]
  *
  * `--world` is the world's id in the database and `--user` the host the import acts as. `--dry`

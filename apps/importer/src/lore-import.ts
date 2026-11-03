@@ -1,5 +1,5 @@
 import type { Db, Query } from "@nirmata/db";
-import { WorldFiles } from "./files";
+import { readCardFiles, readWorldManifest } from "./card-folder";
 import {
   CARD_SLUG,
   type CardRow,
@@ -57,8 +57,7 @@ class DryRunDone extends Error {}
 export async function importWorldLore(options: LoreImportOptions): Promise<LoreImportReport> {
   const { db, userId } = options;
   const log = options.log ?? (() => undefined);
-  const files = new WorldFiles(options.folder);
-  const manifest = await files.world();
+  const manifest = await readWorldManifest(options.folder);
   const slug = options.slug ?? slugFor(manifest.name);
   if (!SLUG.test(slug)) {
     throw new Error(`"${slug}" cannot be a world name in the database (letters, digits, hyphens).`);
@@ -67,7 +66,7 @@ export async function importWorldLore(options: LoreImportOptions): Promise<LoreI
   const skipped: string[] = [];
   const rows: CardRow[] = [];
   const seen = new Set<string>();
-  for (const file of await files.cardFiles()) {
+  for (const file of await readCardFiles(options.folder)) {
     if (!file.card) {
       skipped.push(`${file.path}: ${(file.problems ?? []).join("; ")}`);
       continue;

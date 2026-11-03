@@ -87,8 +87,8 @@ Routes (host only for now): `GET /api/health/db`, `GET /api/assets/renders/:id/f
 Do this before importing its images: the world has to exist in the database. A person runs it; it needs `DATABASE_URL_RW`, and `--user` is the id of an author (an account that may found worlds; your id is in `/api/auth/me` once signed in):
 
 ```bash
-pnpm --filter @nirmata/server import:world worlds/<world> --user=<author uuid> --dry
-pnpm --filter @nirmata/server import:world worlds/<world> --user=<author uuid>
+pnpm --filter @nirmata/importer import:world worlds/<world> --user=<author uuid> --dry
+pnpm --filter @nirmata/importer import:world worlds/<world> --user=<author uuid>
 ```
 
 It reads `world.json` and the card folders, creates the world if its name is not in the database yet (the name is the `world.json` name as lowercase letters and hyphens; `--slug=` overrides it), and writes each card as the author's draft: title, body, a `meta` object that keeps the card's id and path, its named parts, and the `secrets` part into the host-only Secrets table. A card id such as `character.ada` becomes the slug `character-ada`. Files that are not valid cards are listed and skipped. Nothing is published unless you add `--publish`, which freezes the draft as a new version when something changed or nothing is published yet. Run it again after editing: a card that has not changed is left alone, so nothing is marked as edited. Each card it writes is stamped with a hash of its content (`meta.imported`). If a card was edited in the app since, its content no longer matches its stamp: the importer keeps that edit, lists the card as kept, and exits with code 3. Add `--force` to overwrite those cards. A card imported before the stamp existed counts as edited when its content differs. It prints the world's id, which `import:assets` needs as `--world`. The folder is only read.
@@ -108,8 +108,8 @@ The Asset Studio remembers each asset's prompt and sampler settings: `PUT /api/w
 A person runs this; it needs `DATABASE_URL_RW` and, for `--target=supabase`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (or `NIRMATA_ASSET_DIR` for `--target=local`):
 
 ```bash
-pnpm --filter @nirmata/server import:assets worlds/<world> --world=<world uuid> --user=<host uuid> --dry
-pnpm --filter @nirmata/server import:assets worlds/<world> --world=<world uuid> --user=<host uuid>
+pnpm --filter @nirmata/importer import:assets worlds/<world> --world=<world uuid> --user=<host uuid> --dry
+pnpm --filter @nirmata/importer import:assets worlds/<world> --world=<world uuid> --user=<host uuid>
 ```
 
 For each `assets/dataset/<scope>/<name>/<run>/generated_image.png` (newest run per name; `--select=all` takes every run) it uploads the file, then creates the asset, a spec and the render in one transaction, with store, size and hash. It acts as the host (`--user`), checks the storage quota before each upload and stops at "block", skips files whose hash the world already has, and removes an uploaded file if recording it fails. `--dry` does everything except write. Kinds come from the name: `cg_…` is a CG, `bg_…` a background, anything else a sprite. `prompt.json` supplies the prompt; the other sampler settings are placeholders (`euler`, 20 steps, cfg 7, seed 0), and the size is read from the image.

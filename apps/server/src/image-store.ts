@@ -2,7 +2,7 @@ import { type Db, getRenderFile } from "@nirmata/db";
 import type { Stores } from "@nirmata/storage";
 import { HttpError } from "./errors";
 import type { DatasetImages } from "./files";
-import { slugFor } from "./lore-rows";
+import { slugFor } from "@nirmata/importer";
 
 /**
  * Dataset images of an imported world, read through the database and the file stores as the

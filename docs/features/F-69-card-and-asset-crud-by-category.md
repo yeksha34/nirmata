@@ -24,7 +24,7 @@ The author works on a card or an asset where it is listed: every kind of card an
 - Editing a shared-pool asset's plan (the pool has only images).
 
 ## Design
-`apps/server/src/asset-plan.ts` (pure add and remove on the manifest's `assets`), `WorldFiles.addVnAsset` / `removeVnAsset`, routes `POST /api/worlds/:name/vns/:slug/assets` and `DELETE …/assets/:type/:assetName`. Web: `CardList` in `screens/Manager.tsx`, `AddAsset` and the Remove asset button in `screens/VnStudio.tsx`.
+`apps/adaptation/src/asset-plan.ts` (pure add and remove on the manifest's `assets`), `WorldFiles.addVnAsset` / `removeVnAsset`, routes `POST /api/worlds/:name/vns/:slug/assets` and `DELETE …/assets/:type/:assetName`. Web: `CardList` in `screens/Manager.tsx`, `AddAsset` and the Remove asset button in `screens/VnStudio.tsx`.
 
 ## Verification log
 | Date | What was run | Result |

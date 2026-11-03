@@ -6,7 +6,7 @@ export * from "./errors";
 export * from "./files";
 export * from "./generation-ledger";
 export * from "./image-store";
-export * from "./lore-import";
+export { type LoreImportOptions, type LoreImportReport, importWorldLore } from "@nirmata/importer";
 export * from "./lore-store";
 export * from "./render-recorder";
 export * from "./table";

@@ -8,7 +8,7 @@ import { isNoise, settle } from "./watch-core";
 /**
  * Keeps a world that was imported from an older story in step with that story:
  *
- *   pnpm --filter @nirmata/server import:watch <story folder> <world folder> <recipe.json>
+ *   pnpm --filter @nirmata/importer import:watch <story folder> <world folder> <recipe.json>
  *
  * The world is the version that stories start from, so it follows its source: it is brought up to
  * date once, then the story folder is watched and, a moment after the changes stop, it is done
