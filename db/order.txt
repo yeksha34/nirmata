@@ -26,3 +26,4 @@ assets/migrations/20261102001900_storage_quota.sql
 assets/migrations/20261102002000_render_file.sql
 identity/migrations/20261102002100_invitation_email.sql
 membership/migrations/20261102002200_author_role.sql
+assets/migrations/20261103000100_asset_links.sql
