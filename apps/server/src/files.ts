@@ -2155,6 +2155,8 @@ export class Library {
       /** Workflows an imported world keeps in the database (ADR-0035). */
       /** What an imported world keeps in the database besides its cards (ADR-0035). */
       db?: DbSources | undefined;
+      /** Makes a world in the database. When set, a new world is not made as a folder at all. */
+      create?: ((input: { title: string; tagline: string; premise: string }) => Promise<WorldSummary>) | undefined;
     } = {},
   ) {
     this.root = resolve(root);
@@ -2191,6 +2193,13 @@ export class Library {
     for (const name of names.sort()) {
       if (!LIBRARY_NAME.test(name) || name.startsWith("_") || /\.tmp-[0-9a-f]+$/.test(name))
         continue;
+      const found = await this.summary(name);
+      if (found) out.push(found);
+    }
+    // worlds that live only in the database have no folder to find
+    const seen = new Set(out.map((w) => w.name));
+    for (const name of (await this.options.db?.world?.names?.()) ?? []) {
+      if (seen.has(name) || !LIBRARY_NAME.test(name) || name.startsWith("_")) continue;
       const found = await this.summary(name);
       if (found) out.push(found);
     }
@@ -2626,6 +2635,7 @@ export class Library {
    * title and is made unique.
    */
   async create(input: { title: string; tagline: string; premise: string }): Promise<WorldSummary> {
+    if (this.options.create) return this.options.create(input);
     const base = slugify(input.title);
     let name = base;
     for (let n = 2; await exists(join(this.root, name)); n++) {

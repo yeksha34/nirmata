@@ -16,7 +16,8 @@
 6. **Kinds are the world's.** A card's kind is a name of lowercase letters and digits. The six standard kinds keep their templates and editor; any other kind is only a name the world gives to a set of cards (`deity`, `playground`, `clothes`). The agent reuses a kind that exists before it invents one.
 7. **Chapters and what belongs to them are writings.** The story under each plot goes in as writings by path (`chapters/<plot>/scene|draft|chapter/<file>.md`, with `translations.md` and the plot's character arcs beside them) through the existing writing endpoints ([ADR-0036](0036-chapters-and-drafts-as-writings.md)), which accept either family of scopes.
 8. **A world's own guidance is stored with the world.** A world has skills (the author's guides to writing in it, `world_lore.world_skills`) and author rules (the author's rules of writing it, `world_lore.author_rules`). They are documents the author wrote, kept whole, readable by authors only, and separate from the rule cards the host checks during play.
-9. **The agent can publish.** `POST …/publish` publishes the draft cards as the world's next version, which a visual novel needs before it can be saved.
+9. **Worlds are made in the database.** "New world" creates the world, its manifest and its premise card as rows, for the signed-in author, and the world list includes database worlds. `worlds/` is temporary data and datasets, not where a world lives. Without a database the old folder behaviour remains.
+10. **The agent can publish.** `POST …/publish` publishes the draft cards as the world's next version, which a visual novel needs before it can be saved.
 
 ## Consequences
 + The same procedure serves any world; only the order and the extra kinds differ.
