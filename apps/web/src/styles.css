@@ -2870,3 +2870,61 @@ label.choice-opt:has(input:focus-visible) {
 .queue-clear {
   margin: 0 0.6rem 0.6rem;
 }
+
+/* Agent access: tokens for the agents that import and adapt a world */
+.token-form {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+.token-form button[type="submit"] {
+  justify-self: start;
+  margin-top: 8px;
+}
+.token-made {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+.token-made label {
+  flex: 1 1 100%;
+  font-weight: 600;
+}
+.token-made input {
+  flex: 1 1 100%;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.85rem;
+}
+.tokens {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tokens li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.tokens li > small {
+  grid-column: 1;
+  line-height: 1.5;
+}
+.tokens li > button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.tokens li[data-state="revoked"],
+.tokens li[data-state="expired"] {
+  opacity: 0.6;
+}
