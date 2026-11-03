@@ -4,7 +4,7 @@ import { useAct, useApp } from "./app-context";
 import { Tip } from "./controls";
 import { T } from "./i18n";
 import { JumpBox, SHORTCUT, useJump, useNav } from "./nav";
-import { Brand, SeatBadge } from "./ui";
+import { Brand, RoleBadge, SeatBadge } from "./ui";
 
 export function HeaderBar() {
   const { state, leave } = useApp();
@@ -14,6 +14,26 @@ export function HeaderBar() {
   const you = state.you;
   const isHost = you?.seat === "host";
   const [comfyOnline, setComfyOnline] = useState<boolean | null>(null);
+  const [role, setRole] = useState<"admin" | "author" | "player">();
+  const signedIn = you?.account === true;
+
+  // a signed-in person wears the platform role their account holds; everyone else wears their seat
+  useEffect(() => {
+    if (!signedIn) {
+      setRole(undefined);
+      return;
+    }
+    let active = true;
+    void api
+      .me()
+      .then((m) => {
+        if (active) setRole(m.profile?.role);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [signedIn]);
 
   useEffect(() => {
     let active = true;
@@ -119,7 +139,11 @@ export function HeaderBar() {
         <details className="menu">
           <summary>
             <bdi className="nick-text">{you.nick}</bdi>{" "}
-            <SeatBadge seat={you.seat} muted={you.muted} />
+            {role && !you.muted ? (
+              <RoleBadge role={role} />
+            ) : (
+              <SeatBadge seat={you.seat} muted={you.muted} />
+            )}
           </summary>
           <menu className="menu-body">
             <li>
