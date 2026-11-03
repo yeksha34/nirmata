@@ -1,0 +1,2682 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Nirmata agent API",
+    "version": "1.0.0",
+    "description": "What an AI agent calls to import a world and to adapt it. The agent never reaches the database. Make a token in the World tab (Agent access); it is shown once, belongs to one world and one author, and expires. Operations list the scopes that admit them under `x-scopes-any-of`: `import.*` for importing, `adaptation.*` for adapting; a token made in the panel carries all four. This file is kept in step with the routes by a test (apps/server/test/agent-openapi.test.ts). Token management (`/api/worlds/{name}/agent-tokens`) is for the signed-in author, not the agent, and is not listed."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8788",
+      "description": "The default local server (NIRMATA_PORT)."
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "agentToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "An agent token, `nga_…`."
+      }
+    },
+    "parameters": {
+      "world": {
+        "name": "name",
+        "in": "path",
+        "required": true,
+        "description": "The world's name (slug). The token must be for this world.",
+        "schema": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,62}$"
+        }
+      },
+      "cardId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "kind.name, lowercase.",
+        "schema": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]{0,39}\\.[a-z0-9][a-z0-9-]{0,60}$"
+        }
+      },
+      "guideSlug": {
+        "name": "slug",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,80}$"
+        }
+      },
+      "character": {
+        "name": "character",
+        "in": "path",
+        "required": true,
+        "description": "A character name as its card gives it.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "assetType": {
+        "name": "type",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/AssetKind"
+        }
+      },
+      "assetName": {
+        "name": "assetName",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "vnSlug": {
+        "name": "slug",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+        }
+      }
+    },
+    "schemas": {
+      "Ok": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "CardSave": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "The card's title."
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "keywords": {
+            "type": "array",
+            "maxItems": 60,
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          "always": {
+            "type": "boolean"
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "chapter",
+              "story",
+              "both"
+            ],
+            "description": "Rules only."
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "must",
+              "should"
+            ],
+            "description": "Rules only."
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Named parts, lowercase with hyphens. `secrets` is host-only. Blank parts are dropped."
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 400000
+          }
+        }
+      },
+      "CardView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "body": {
+            "type": "string"
+          }
+        }
+      },
+      "CardListed": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "size": {
+            "type": "integer",
+            "description": "Characters of text."
+          }
+        }
+      },
+      "GuideListed": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Bytes."
+          }
+        }
+      },
+      "Skill": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          }
+        }
+      },
+      "SkillSave": {
+        "type": "object",
+        "required": [
+          "title",
+          "body"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 1000000
+          }
+        }
+      },
+      "Rule": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          }
+        }
+      },
+      "RuleSave": {
+        "type": "object",
+        "required": [
+          "title",
+          "body"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 250000
+          }
+        }
+      },
+      "WorldSummary": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "manifest": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "chapters": {
+            "type": "integer"
+          },
+          "scenes": {
+            "type": "integer"
+          },
+          "drafts": {
+            "type": "integer"
+          }
+        }
+      },
+      "WritingInfo": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "WritingText": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "WritingSave": {
+        "type": "object",
+        "required": [
+          "path",
+          "text"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "maxLength": 400,
+            "description": "Markdown, under chapters/ or drafts/."
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 4194304
+          }
+        }
+      },
+      "CharacterPrep": {
+        "type": "object",
+        "required": [
+          "basePositive",
+          "baseNegative"
+        ],
+        "properties": {
+          "basePositive": {
+            "type": "string"
+          },
+          "baseNegative": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "cardHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Hash of the card text the prep was made from; filled in from the card as it is now when left out."
+          },
+          "expressions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "expression": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "outfits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "clothes",
+                    "adornment"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "tags": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "CharacterState": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "cardHash": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "none",
+              "stale",
+              "current"
+            ]
+          },
+          "prep": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CharacterPrep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "card": {
+            "type": "string"
+          }
+        }
+      },
+      "PlanInput": {
+        "type": "object",
+        "required": [
+          "type",
+          "name"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/AssetKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string",
+            "description": "The character a clothes or adornment belongs to."
+          },
+          "vnId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "PlanRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "vnId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "$ref": "#/components/schemas/AssetKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "AssetKind": {
+        "type": "string",
+        "enum": [
+          "sprite",
+          "cg",
+          "bg",
+          "clothes",
+          "adornment",
+          "object"
+        ]
+      },
+      "Need": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "character"
+            ],
+            "properties": {
+              "type": {
+                "const": "sprite"
+              },
+              "character": {
+                "type": "string"
+              },
+              "expression": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "character",
+              "name"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "clothes",
+                  "adornment"
+                ]
+              },
+              "character": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "name"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "cg",
+                  "bg",
+                  "object"
+                ]
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "TemplateInfo": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/AssetKind"
+          },
+          "versionId": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "world",
+              "vn"
+            ]
+          },
+          "checksum": {
+            "type": "string"
+          }
+        }
+      },
+      "ResolvedTemplate": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TemplateInfo"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "graph": {
+                "type": "object"
+              }
+            }
+          }
+        ]
+      },
+      "VnRecord": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "manifest": {
+            "type": "object"
+          },
+          "adaptationMd": {
+            "type": "string"
+          },
+          "slides": {},
+          "slideCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "VnParts": {
+        "type": "object",
+        "properties": {
+          "manifest": {
+            "type": "object",
+            "description": "manifest.json; see VnManifestSchema in packages/core."
+          },
+          "adaptationMd": {
+            "type": "string",
+            "maxLength": 4000000
+          },
+          "slides": {
+            "description": "A compiled slide deck; see VnSlideDeckSchema in packages/core."
+          }
+        },
+        "description": "At least one of the three."
+      }
+    },
+    "responses": {
+      "E400": {
+        "description": "The request is not valid; the message says what to change.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "E401": {
+        "description": "The token is missing, wrong, expired or revoked.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "E403": {
+        "description": "The token lacks the scope, is for another world, or the author may not do that.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "E404": {
+        "description": "There is no such thing.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/agent/me": {
+      "get": {
+        "tags": [
+          "Token"
+        ],
+        "summary": "Who the token speaks for",
+        "x-scopes-any-of": [
+          "adaptation.read",
+          "adaptation.write",
+          "import.read",
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "description": "Check the token before starting. Any scope will do. Note that this route has no world in its path.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "worldId": {
+                      "type": "string"
+                    },
+                    "scopes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/cards": {
+      "get": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "List the cards, without their text",
+        "x-scopes-any-of": [
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "description": "Only cards of this kind.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cards": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CardListed"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/cards/{id}": {
+      "get": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "Read one card in full",
+        "x-scopes-any-of": [
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/cardId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "Save a card, making it if it is new",
+        "x-scopes-any-of": [
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "description": "The id is `kind.name`. The kind is lowercase letters and digits and may be any name the world uses; the six standard kinds are lore, character, place, arc, rule, scene. Answers 201 when the card is new, 200 when it replaced one. A field named `secrets` is host-only.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/cardId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardSave"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "201": {
+            "description": "The card is new.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "Remove a card",
+        "x-scopes-any-of": [
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "description": "A card that was published keeps its history and only leaves the draft.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/cardId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/publish": {
+      "post": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "Publish the draft cards as the world's next version",
+        "x-scopes-any-of": [
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versionId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/skills": {
+      "get": {
+        "tags": [
+          "Import: guidance"
+        ],
+        "summary": "List the world's skills",
+        "x-scopes-any-of": [
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "skills": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GuideListed"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/skills/{slug}": {
+      "get": {
+        "tags": [
+          "Import: guidance"
+        ],
+        "summary": "Read a skill",
+        "x-scopes-any-of": [
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/guideSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Skill"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Import: guidance"
+        ],
+        "summary": "Save a skill",
+        "x-scopes-any-of": [
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/guideSlug"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillSave"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Import: guidance"
+        ],
+        "summary": "Remove a skill",
+        "x-scopes-any-of": [
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/guideSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/rules": {
+      "get": {
+        "tags": [
+          "Import: guidance"
+        ],
+        "summary": "List the author's rules of writing",
+        "x-scopes-any-of": [
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rules": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GuideListed"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/rules/{slug}": {
+      "get": {
+        "tags": [
+          "Import: guidance"
+        ],
+        "summary": "Read a rule",
+        "x-scopes-any-of": [
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/guideSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Rule"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Import: guidance"
+        ],
+        "summary": "Save a rule",
+        "x-scopes-any-of": [
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/guideSlug"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleSave"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Import: guidance"
+        ],
+        "summary": "Remove a rule",
+        "x-scopes-any-of": [
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/guideSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}": {
+      "get": {
+        "tags": [
+          "Story"
+        ],
+        "summary": "The world's manifest and how much story it has",
+        "x-scopes-any-of": [
+          "adaptation.read",
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/writings": {
+      "get": {
+        "tags": [
+          "Story"
+        ],
+        "summary": "List chapters, scenes and drafts without their text",
+        "x-scopes-any-of": [
+          "adaptation.read",
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "writings": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WritingInfo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/writing": {
+      "get": {
+        "tags": [
+          "Story"
+        ],
+        "summary": "Read one chapter or draft",
+        "x-scopes-any-of": [
+          "adaptation.read",
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "description": "A markdown path under chapters/ or drafts/, with forward slashes.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WritingText"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Story"
+        ],
+        "summary": "Save a chapter or draft",
+        "x-scopes-any-of": [
+          "adaptation.write",
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "description": "The title is the text's first heading, else its file name. Nested paths are fine: `chapters/<plot>/scene/<file>.md`.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WritingSave"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Story"
+        ],
+        "summary": "Remove a chapter or draft",
+        "x-scopes-any-of": [
+          "adaptation.write",
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "description": "A markdown path under chapters/ or drafts/.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/characters": {
+      "get": {
+        "tags": [
+          "Adaptation: characters"
+        ],
+        "summary": "Character cards with whether their prep is current",
+        "x-scopes-any-of": [
+          "adaptation.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "characters": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CharacterState"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/characters/{character}/prep": {
+      "put": {
+        "tags": [
+          "Adaptation: characters"
+        ],
+        "summary": "Save a character's prep",
+        "x-scopes-any-of": [
+          "adaptation.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/character"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterPrep"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "cardHash": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Adaptation: characters"
+        ],
+        "summary": "Remove a character's prep",
+        "x-scopes-any-of": [
+          "adaptation.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/character"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/assets": {
+      "get": {
+        "tags": [
+          "Adaptation: assets"
+        ],
+        "summary": "The asset plan: planned and generated assets",
+        "x-scopes-any-of": [
+          "adaptation.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "assets": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PlanRow"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Adaptation: assets"
+        ],
+        "summary": "Plan one asset",
+        "x-scopes-any-of": [
+          "adaptation.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/assets/{type}/{assetName}": {
+      "delete": {
+        "tags": [
+          "Adaptation: assets"
+        ],
+        "summary": "Remove an asset from the plan",
+        "x-scopes-any-of": [
+          "adaptation.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/assetType"
+          },
+          {
+            "$ref": "#/components/parameters/assetName"
+          },
+          {
+            "name": "vnId",
+            "in": "query",
+            "required": false,
+            "description": "A visual novel's id; leave out for the shared pool.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "result": {
+                      "type": "string",
+                      "enum": [
+                        "deleted",
+                        "retired"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/assets/gap": {
+      "post": {
+        "tags": [
+          "Adaptation: assets"
+        ],
+        "summary": "Of the states a chapter needs, the ones no asset expresses",
+        "x-scopes-any-of": [
+          "adaptation.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "description": "Plans nothing.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "needs"
+                ],
+                "properties": {
+                  "needs": {
+                    "type": "array",
+                    "maxItems": 500,
+                    "items": {
+                      "$ref": "#/components/schemas/Need"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "missing": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Need"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/baseline": {
+      "get": {
+        "tags": [
+          "Adaptation: assets"
+        ],
+        "summary": "The first assets still missing for the prepared characters",
+        "x-scopes-any-of": [
+          "adaptation.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "missing": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Need"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/workflows": {
+      "get": {
+        "tags": [
+          "Adaptation: workflows"
+        ],
+        "summary": "What each kind of asset resolves to, and from where",
+        "x-scopes-any-of": [
+          "adaptation.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "vnId",
+            "in": "query",
+            "required": false,
+            "description": "A visual novel's id, to see its pins.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workflows": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TemplateInfo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/workflows/{type}": {
+      "get": {
+        "tags": [
+          "Adaptation: workflows"
+        ],
+        "summary": "The workflow graph a kind resolves to",
+        "x-scopes-any-of": [
+          "adaptation.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/assetType"
+          },
+          {
+            "name": "vnId",
+            "in": "query",
+            "required": false,
+            "description": "A visual novel's id.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Adaptation: workflows"
+        ],
+        "summary": "Publish the world's (or a visual novel's) own workflow",
+        "x-scopes-any-of": [
+          "adaptation.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/assetType"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "graph"
+                ],
+                "properties": {
+                  "graph": {
+                    "type": "object",
+                    "description": "A ComfyUI API graph: an object of nodes, each with class_type and inputs."
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "vnId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versionId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Adaptation: workflows"
+        ],
+        "summary": "Back to the platform default",
+        "x-scopes-any-of": [
+          "adaptation.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/assetType"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/workflows/{type}/adopt": {
+      "post": {
+        "tags": [
+          "Adaptation: workflows"
+        ],
+        "summary": "The world takes its own copy of the platform default",
+        "x-scopes-any-of": [
+          "adaptation.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/assetType"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versionId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/vns": {
+      "get": {
+        "tags": [
+          "Adaptation: visual novels"
+        ],
+        "summary": "List the visual novels without their text",
+        "x-scopes-any-of": [
+          "adaptation.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "vns": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "manifest": {
+                            "type": "object"
+                          },
+                          "slideCount": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/vns/{slug}": {
+      "get": {
+        "tags": [
+          "Adaptation: visual novels"
+        ],
+        "summary": "One visual novel in full",
+        "x-scopes-any-of": [
+          "adaptation.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/vnSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VnRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Adaptation: visual novels"
+        ],
+        "summary": "Save any of the manifest, the script and the slides",
+        "x-scopes-any-of": [
+          "adaptation.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "description": "A new visual novel is made. The manifest's slug must equal the path's.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/vnSlug"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VnParts"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/vns/{slug}/compile": {
+      "post": {
+        "tags": [
+          "Adaptation: visual novels"
+        ],
+        "summary": "Compile the saved script into slides",
+        "x-scopes-any-of": [
+          "adaptation.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "$ref": "#/components/parameters/vnSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "slideCount": {
+                      "type": "integer"
+                    },
+                    "diagnostics": {
+                      "type": "array",
+                      "items": {}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      }
+    }
+  }
+}
