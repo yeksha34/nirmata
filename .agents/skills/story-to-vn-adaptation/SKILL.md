@@ -95,6 +95,8 @@ Document the structure in a **Route Map**: common route scenes → hinge → rou
 
 ## Step 0 — Prepare characters and the baseline (once per world, in Nirmata)
 
+Read the story from Nirmata too, not from the world's folder: `GET /api/agent/worlds/<world>` gives the world's manifest and how many chapters, scenes and drafts it has; `GET …/writings` lists them by path; `GET …/writing?path=chapters/chapter_1.md` returns one with its text. `PUT …/writing` with `{path, text}` saves a draft or a chapter (only under `chapters/` or `drafts/`).
+
 For a world that Nirmata holds in its database, do this before the first chapter. Use the endpoints with an agent token (an author makes it in Nirmata); never write to the database or to the world's folder. Send `Authorization: Bearer nga_…` to `/api/agent/…`.
 
 1. `GET /api/agent/worlds/<world>/characters` returns each character card with its prep state (`none`, `stale` or `current`).

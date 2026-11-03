@@ -4,7 +4,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { GoTrue, SessionStore } from "@nirmata/auth";
-import { PlanStore, PlanViews, TemplateStore, VnStore } from "@nirmata/adaptation";
+import {
+  PlanStore,
+  PlanViews,
+  TemplateStore,
+  VnStore,
+  WorldStore,
+  WritingStore,
+} from "@nirmata/adaptation";
 import { connectDb, type Db } from "@nirmata/db";
 import { storesFromEnv } from "@nirmata/storage";
 import { createApp } from "./app";
@@ -84,9 +91,15 @@ async function main(): Promise<void> {
   const library = new Library(config.libraryDir, {
     lore: db ? new DbLore(db, () => hostUser()) : undefined,
     images: db ? new DbImages(db, stores, () => hostUser()) : undefined,
-    workflows: db ? new TemplateStore(db).source(() => hostUser()) : undefined,
-    vnContent: db ? new VnStore(db).source(() => hostUser()) : undefined,
-    plan: db ? new PlanViews(db, new PlanStore(db)).source(() => hostUser()) : undefined,
+    db: db
+      ? {
+          workflows: new TemplateStore(db).source(() => hostUser()),
+          vnContent: new VnStore(db).source(() => hostUser()),
+          plan: new PlanViews(db, new PlanStore(db)).source(() => hostUser()),
+          writings: new WritingStore(db).source(() => hostUser()),
+          world: new WorldStore(db).source(() => hostUser()),
+        }
+      : undefined,
   });
 
   const ledger = db ? new DbGenerations(db, stores, () => hostUser(), log) : undefined;

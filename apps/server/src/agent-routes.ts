@@ -20,6 +20,10 @@ import {
   TemplateStore,
   VnError,
   VnStore,
+  WorldStore,
+  WritingError,
+  WritingStore,
+  parseWritingPath,
 } from "@nirmata/adaptation";
 import { compileVn, VnManifestSchema, VnSlideDeckSchema } from "@nirmata/core";
 import type { Db } from "@nirmata/db";
@@ -54,6 +58,7 @@ const NeedSchema = z.union([
   z.object({ type: z.enum(["cg", "bg", "object"]), name: Name }),
 ]);
 const Gap = z.object({ needs: z.array(NeedSchema).max(500) });
+const WritingBody = z.object({ path: z.string().min(1).max(400), text: z.string().max(4_194_304) });
 const VN_SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const VnParts = z
   .object({
@@ -80,7 +85,8 @@ async function asHttp<T>(work: () => Promise<T>): Promise<T> {
       e instanceof PrepError ||
       e instanceof AssetPlanError ||
       e instanceof TemplateError ||
-      e instanceof VnError
+      e instanceof VnError ||
+      e instanceof WritingError
     ) {
       throw new HttpError(400, "bad_request", e.message);
     }
@@ -158,6 +164,8 @@ export function registerAgentRoutes(
   const plan = new PlanStore(db);
   const templates = new TemplateStore(db);
   const vns = new VnStore(db);
+  const writings = new WritingStore(db);
+  const worlds = new WorldStore(db);
 
   /** The grant for this request, and the world it names, which must be the one the token is for. */
   const forWorld = async (c: Context, scope: AgentScope) => {
@@ -364,5 +372,52 @@ export function registerAgentRoutes(
     manifest.updatedAt = new Date().toISOString();
     await asHttp(() => vns.save(grant.userId, slug, name, { manifest, slides: result.deck }));
     return c.json({ slideCount: result.deck.slides.length, diagnostics: result.diagnostics });
+  });
+
+  // ---- the story itself: world.json, chapters and drafts -----------------------------------------
+
+  /** What world.json held, and how much story text the world has. */
+  app.get("/api/agent/worlds/:name", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.read");
+    const manifest = await asHttp(() => worlds.manifest(grant.userId, slug));
+    const list = (await asHttp(() => writings.list(grant.userId, slug))) ?? [];
+    return c.json({
+      name: slug,
+      manifest: manifest ?? null,
+      chapters: list.filter(
+        (w) => w.path.startsWith("chapters/") && !w.path.startsWith("chapters/scenes/"),
+      ).length,
+      scenes: list.filter((w) => w.path.startsWith("chapters/scenes/")).length,
+      drafts: list.filter((w) => w.path.startsWith("drafts/")).length,
+    });
+  });
+
+  /** The chapters and drafts, without their text. */
+  app.get("/api/agent/worlds/:name/writings", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.read");
+    return c.json({ writings: (await asHttp(() => writings.list(grant.userId, slug))) ?? [] });
+  });
+
+  /** One chapter or draft in full. The path is a query because it has slashes in it. */
+  app.get("/api/agent/worlds/:name/writing", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.read");
+    const path = await asHttp(async () => parseWritingPath(c.req.query("path")));
+    const found = await asHttp(() => writings.get(grant.userId, slug, path));
+    if (!found) throw new HttpError(404, "not_found", "There is no such chapter or draft.");
+    return c.json(found);
+  });
+
+  app.put("/api/agent/worlds/:name/writing", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.write");
+    const body = WritingBody.parse(await c.req.json().catch(() => ({})));
+    await asHttp(() => writings.save(grant.userId, slug, body.path, body.text));
+    return c.json({ ok: true });
+  });
+
+  app.delete("/api/agent/worlds/:name/writing", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.write");
+    const path = await asHttp(async () => parseWritingPath(c.req.query("path")));
+    await asHttp(() => writings.remove(grant.userId, slug, path));
+    return c.json({ ok: true });
   });
 }

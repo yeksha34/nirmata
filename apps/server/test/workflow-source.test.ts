@@ -43,36 +43,34 @@ const source = (
 describe("which workflow a world uses (ADR-0035)", () => {
   it("takes the world's own copy from the database before its files", async () => {
     const found = source("world");
-    const world = new WorldFiles(folder(true), undefined, found);
+    const world = new WorldFiles(folder(true), undefined, { workflows: found });
     expect(await world.loadWorkflowTemplate("sprite")).toEqual(OWN);
     expect(found.asked).toEqual(["sample-world:sprite"]);
   });
 
   it("takes a visual novel's pin before the files too", async () => {
-    const world = new WorldFiles(folder(true), undefined, source("vn"));
+    const world = new WorldFiles(folder(true), undefined, { workflows: source("vn") });
     expect(await world.loadWorkflowTemplate("sprite")).toEqual(OWN);
   });
 
   it("leaves the platform default to the files, which are the same workflow", async () => {
-    const world = new WorldFiles(folder(true), undefined, source("platform"));
+    const world = new WorldFiles(folder(true), undefined, { workflows: source("platform") });
     expect(await world.loadWorkflowTemplate("sprite")).toEqual(FILE);
   });
 
   it("uses the files when the database has nothing, or there is no database", async () => {
     expect(
-      await new WorldFiles(folder(true), undefined, source(undefined)).loadWorkflowTemplate(
-        "sprite",
-      ),
+      await new WorldFiles(folder(true), undefined, {
+        workflows: source(undefined),
+      }).loadWorkflowTemplate("sprite"),
     ).toEqual(FILE);
     expect(await new WorldFiles(folder(true)).loadWorkflowTemplate("sprite")).toEqual(FILE);
   });
 
   it("falls back to the bundled workflow when nothing else has one", async () => {
-    const graph = await new WorldFiles(
-      folder(false),
-      undefined,
-      source(undefined),
-    ).loadWorkflowTemplate("bg");
+    const graph = await new WorldFiles(folder(false), undefined, {
+      workflows: source(undefined),
+    }).loadWorkflowTemplate("bg");
     expect(
       Object.values(graph).some((n) => (n as { class_type: string }).class_type === "KSampler"),
     ).toBe(true);

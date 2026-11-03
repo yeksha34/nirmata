@@ -55,7 +55,7 @@ describe("a world's visual novels in the database (ADR-0035)", () => {
   it("scaffolds into the database and writes no files", async () => {
     const m = memory();
     const root = folder();
-    const world = new WorldFiles(root, undefined, undefined, m.source);
+    const world = new WorldFiles(root, undefined, { vnContent: m.source });
     const made = await world.scaffoldVn(scaffold);
     expect(made.slug).toBe("chapter-1");
     expect(m.rows.get("chapter-1")?.adaptationMd).toContain("Chapter 1");
@@ -65,7 +65,7 @@ describe("a world's visual novels in the database (ADR-0035)", () => {
 
   it("lists, reads, saves and compiles from the database", async () => {
     const m = memory();
-    const world = new WorldFiles(folder(), undefined, undefined, m.source);
+    const world = new WorldFiles(folder(), undefined, { vnContent: m.source });
     await world.scaffoldVn(scaffold);
     await world.scaffoldVn({ ...scaffold, slug: "chapter-2", title: "Chapter 2" });
 
@@ -87,7 +87,7 @@ describe("a world's visual novels in the database (ADR-0035)", () => {
   it("uses the folder when the world is not in the database", async () => {
     const m = memory(false);
     const root = folder();
-    const world = new WorldFiles(root, undefined, undefined, m.source);
+    const world = new WorldFiles(root, undefined, { vnContent: m.source });
     await world.scaffoldVn(scaffold);
     expect(existsSync(join(root, "vns", "chapter-1", "manifest.json"))).toBe(true);
     expect(m.rows.size).toBe(0);

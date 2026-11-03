@@ -41,7 +41,7 @@ function memory(inDatabase = true) {
   return { rows, source };
 }
 
-const world = (plan: PlanSource) => new WorldFiles(folder(), undefined, undefined, undefined, plan);
+const world = (plan: PlanSource) => new WorldFiles(folder(), undefined, { plan });
 
 describe("a world's asset plan in the database (ADR-0035)", () => {
   it("lists the planned assets by kind, with owners, links and the image the database holds", async () => {
@@ -91,7 +91,7 @@ describe("a world's asset plan in the database (ADR-0035)", () => {
   it("falls back to the manifest when the world is not in the database", async () => {
     const m = memory(false);
     const root = folder();
-    const w = new WorldFiles(root, undefined, undefined, undefined, m.source);
+    const w = new WorldFiles(root, undefined, { plan: m.source });
     await w.scaffoldVn({ slug: "chapter-1", title: "Chapter 1", source: "chapters/1.md" });
     await w.addVnAsset("chapter-1", "bg", { name: "harbor" });
     expect(m.rows).toEqual([]);

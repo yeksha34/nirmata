@@ -17,12 +17,12 @@ A visual novel's manifest, script (`adaptation.md`) and compiled slides are rows
 - [x] `import:world` also copies `vns/*` (manifest, script, slides); a visual novel that already differs in the database is kept and listed unless `--force`; `--no-vns` skips it.
 - [x] Agent endpoints: `GET …/vns`, `GET …/vns/:slug`, `PUT …/vns/:slug` (manifest validated, its slug must match), `POST …/vns/:slug/compile`.
 - [x] The migration and `db/tests/013_vn_draft_content.sql` run on a real database (owner, 2026-11-04).
-- [ ] `import:world` copies `vns/*` from a real world folder (held until chapters and drafts are importable too, F-73).
+- [ ] `import:world` copies `vns/*` from a real world folder (held to be run once with the story too, F-73).
 - [ ] Tried with a real agent: save a chapter's adaptation, compile, open it in the Studio.
 - [ ] The Studio's asset plan for an imported world reads the database plan (still the manifest's `assets`).
 
-## Non-goals (next: F-73)
-- Chapters, drafts and `world.json` (`reader.*`). The adaptation agent still reads the story's text from files until they are imported.
+## Non-goals
+- Chapters, drafts and `world.json`: done in [F-73](F-73-story-in-the-database.md).
 - Routes, scenes, scene revisions and `publish_vn`: a visual novel here is its working copy. Publishing it as versions comes with player access for non-authors; a non-author member cannot read a working copy.
 - The Studio "Agent access" panel.
 
