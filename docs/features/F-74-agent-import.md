@@ -21,6 +21,7 @@ A story's source is not made of cards. An agent with a token can read a file, de
 - [x] Lanes: a token may name the kinds of card it may write (`identity.agent_tokens.kinds`, migration `20261104000300_agent_token_kinds.sql`, pgTAP 016). A lane token has the import scopes only, is refused cards of other kinds and anything that is not a card, and reads everything. The Agent access panel makes tokens for "Characters only", "Accessories only", "Settings only" or typed kinds.
 - [x] `remnants.mjs` computes what the workers left from their ledgers; the skill describes the threads and the custom-kinds pass after them.
 - [ ] The migration `20261104000300_agent_token_kinds.sql` and `db/tests/016_agent_token_kinds.sql` run on a real database.
+- [x] "Import a world" (worlds page): one step makes the world and the four tokens (`POST /api/worlds/import`) and shows them once, with a prompt for the agent that carries the author's expectations. The Agent access panel remains for tokens by hand.
 - [x] The `story-import` skill describes the procedure (copy, characters first with attire, ornament and objects split out, remnants, lore, places, plots, report).
 - [x] Tests no longer read the removed `worlds/` folder; the example and template worlds are fixtures in `test-fixtures/`.
 - [ ] The migrations `20261104000100_agent_import_scopes.sql`, `20261104000200_world_skills_and_rules.sql` and `db/tests/015_world_skills_and_rules.sql` run on a real database.

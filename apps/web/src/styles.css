@@ -2928,3 +2928,23 @@ label.choice-opt:has(input:focus-visible) {
 .tokens li[data-state="expired"] {
   opacity: 0.6;
 }
+
+/* Import a world */
+.shelf-actions {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.import-made {
+  display: grid;
+  gap: 8px;
+}
+.import-made textarea {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.8rem;
+}
+.import-made button[type="button"]:not(.primary) {
+  justify-self: start;
+}

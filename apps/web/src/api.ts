@@ -5,6 +5,7 @@ import type {
   ComfyUiStatus,
   GenerateAssetInput,
   GenerationJob,
+  ImportedWorld,
   Mode,
   Perspective,
   RecentStory,
@@ -171,6 +172,8 @@ export const api = {
     get<Writing>(
       `/api/worlds/${encodeURIComponent(name)}/writing?path=${encodeURIComponent(path)}`,
     ),
+  importWorld: (args: { title: string; tagline?: string; settingsKinds: string[]; days: number }) =>
+    post<ImportedWorld>("/api/worlds/import", args),
   createWorld: (args: { title: string; tagline?: string; premise?: string }) =>
     post<{ world: WorldSummary }>("/api/worlds", args).then((r) => r.world),
   editWorld: (
