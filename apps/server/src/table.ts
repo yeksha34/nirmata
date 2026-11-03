@@ -624,8 +624,21 @@ export class Table {
       injected = used.workflow as typeof injected;
     }
 
+    const links = isLinkedKind(body.type)
+      ? await this.options.library
+          .listVnAssets(worldName, slug)
+          .then((l) => {
+            const pool = { clothes: l.clothes, adornment: l.adornments, object: l.objects }[
+              body.type as "clothes" | "adornment" | "object"
+            ];
+            const item = pool.find((a) => a.name === body.name);
+            return item ? { characters: item.lockedTo ?? [], cgs: item.linkedCgs ?? [] } : undefined;
+          })
+          .catch(() => undefined)
+      : undefined;
     await this.options.recorder?.begin({
       key: jobId,
+      links,
       worldName,
       scope: slug,
       type: body.type,

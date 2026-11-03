@@ -20,6 +20,8 @@ export interface BeginJob {
   sampler?: string | undefined;
   scheduler?: string | undefined;
   seed?: number | undefined;
+  /** Clothes, adornments and objects: the characters and CG names the asset is locked or linked to. */
+  links?: { characters: string[]; cgs: string[] } | undefined;
 }
 
 /** Keeps generation jobs in the database as well as in memory, and keeps a new render linked to its job. */
@@ -95,6 +97,16 @@ export class DbGenerations extends DbRecorder implements GenerationLedger {
         if (!world) return undefined; // the world is not in the database
         const assetId = await ensureAsset(q, String(world), job.type, job.name);
         const specId = await addSpec(q, assetId, job);
+        if (job.links && (job.links.characters.length > 0 || job.links.cgs.length > 0)) {
+          // a lock the database refuses must not stop the generation, so it is only logged
+          try {
+            const cgIds: string[] = [];
+            for (const cg of job.links.cgs) cgIds.push(await ensureAsset(q, String(world), "cg", cg));
+            await q("select assets.set_links($1, $2, $3)", [assetId, job.links.characters, cgIds]);
+          } catch (err) {
+            console.warn("asset links not recorded:", err instanceof Error ? err.message : err);
+          }
+        }
         // the key carries the visual novel's slug, which the job row has no column for
         const key = `${job.key}:${job.scope}`;
         const jobId = (

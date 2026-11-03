@@ -20,7 +20,7 @@ Authors adapting a story get character-locked clothes and adornments and interac
 - [x] Studio sections, filter, lock badges
 - [ ] pgTAP 008 run against a database
 - [ ] Studio checked in a browser against real data
-- [ ] Server writes `asset_links` when the DB recorder creates these assets
+- [x] Server writes `asset_links` when the DB recorder creates these assets (log-only on refusal; untested against a database)
 
 ## Non-goals
 Layered sprite compositing; reference slots on the new kinds.

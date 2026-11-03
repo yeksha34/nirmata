@@ -2110,10 +2110,7 @@ export class Library {
     return result;
   }
 
-  async listVnAssets(
-    name: string,
-    slug: string,
-  ): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+  async listVnAssets(name: string, slug: string): Promise<VnAssetLists> {
     return this.open(name).listVnAssets(slug);
   }
 

@@ -19,4 +19,4 @@ Adaptation assets were sprites, CGs and backgrounds. Things a character wears or
 ## Consequences
 - Worlds without these kinds are unaffected; `gen-assets-workflow-comfyui check` treats the new templates as optional.
 - The server list endpoints return `clothes`, `adornments`, `objects` beside the existing three.
-- `lockedTo` / `linkedCgs` on list items come from the manifest only; the database links are not yet written by the server (set_links is available, not wired).
+- `lockedTo` / `linkedCgs` come from the manifest; the generation ledger passes them to `assets.set_links` when it creates the asset (a refusal is logged, never stops the generation).
