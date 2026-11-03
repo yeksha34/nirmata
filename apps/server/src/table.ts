@@ -49,6 +49,7 @@ import {
   type CardInput,
   type Library,
   newStoryId,
+  type PromptSpecPatch,
   type RecentStory,
   type StoryFiles,
   type StorySummary,
@@ -515,6 +516,18 @@ export class Table {
     }
   }
 
+  /** Remember an asset's prompt and sampler settings, so they are there when it is selected again. Host only. */
+  async saveAssetPrompt(
+    seat: Seat,
+    worldName: string,
+    type: "sprite" | "cg" | "bg",
+    assetName: string,
+    patch: PromptSpecPatch,
+  ): Promise<void> {
+    requireCan(this.actor(seat), "source.edit");
+    await this.options.library.savePromptSpec(worldName, type, assetName, patch);
+  }
+
   /** The images of the reference sprites a generation asked for; a missing one stops it. */
   private async readReferences(
     worldName: string,
@@ -693,6 +706,22 @@ export class Table {
       scheduler: body.scheduler,
       seed: body.seed,
     });
+
+    // remember what made this image (the prompt after feedback), so the next visit starts from it
+    await this.options.library
+      .savePromptSpec(worldName, body.type, body.name, {
+        positivePrompt: positive,
+        negativePrompt: negative,
+        steps: body.steps,
+        cfg: body.cfg,
+        sampler: body.sampler,
+        scheduler: body.scheduler,
+      })
+      .catch((e) =>
+        this.options.log?.(
+          `The prompt was not remembered: ${e instanceof Error ? e.message : String(e)}`,
+        ),
+      );
 
     const assetUrl = `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/${targetPath}?t=${Date.now()}`;
 

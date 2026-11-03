@@ -97,6 +97,36 @@ describe("a world whose cards are in the database", () => {
     expect(fromFiles.source).toBe("files");
   });
 
+  it("reads the cards once for a few seconds, and again after an edit or when the time is up", async () => {
+    const f = fakeDb();
+    let now = 1_000;
+    const lore = new DbLore(
+      f.db,
+      () => USER,
+      5_000,
+      () => now,
+    );
+    const world = new WorldFiles(folder(), lore);
+    const reads = () => f.calls.filter((c) => c.includes("join world_lore.card_drafts d")).length;
+    await world.cardFiles();
+    await world.cardFiles();
+    expect(reads()).toBe(1);
+    now += 6_000;
+    await world.cardFiles();
+    expect(reads()).toBe(2);
+    const parsed = parseCard(
+      "lore/n.md",
+      `<card id="lore.n" kind="lore" name="N">
+B.
+</card>
+`,
+    );
+    if (!parsed.ok) throw new Error("fixture card is invalid");
+    await world.save(parsed.card);
+    await world.cardFiles();
+    expect(reads()).toBe(3);
+  });
+
   it("writes an edit to the database and leaves the folder alone", async () => {
     const root = folder();
     const f = fakeDb();

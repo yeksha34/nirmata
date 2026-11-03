@@ -69,6 +69,10 @@ export const HI_TEXT: Record<string, string> = {
   "Sign in": "प्रवेश करें",
   "Sign out": "बाहर निकलें",
   Database: "आँकड़ा-भंडार",
+  "Loading this asset…": "यह सामग्री खुल रही है…",
+  "Saving…": "सहेजा जा रहा है…",
+  "Prompt saved": "संकेत सहेजा गया",
+  "Could not save the prompt": "संकेत सहेजा नहीं जा सका",
   "Reference images": "संदर्भ-चित्र",
   "The ticked sprites are the starting point: this one is made from them, so the character stays the same.":
     "चिह्नित आकृतियाँ आरंभ-बिंदु हैं: यह उन्हीं से बनती है, इसलिए पात्र वही रहता है।",

@@ -94,6 +94,16 @@ export interface VnAssetPromptSpec {
   status?: string;
 }
 
+/** What the Studio saves about an asset's prompt: the text and the sampler settings, never the seed. */
+export interface PromptSpecPatch {
+  positivePrompt: string;
+  negativePrompt?: string | undefined;
+  steps?: number | undefined;
+  cfg?: number | undefined;
+  sampler?: string | undefined;
+  scheduler?: string | undefined;
+}
+
 export interface VnAssetDetail {
   id: string;
   type: "sprite" | "cg" | "bg";
@@ -116,6 +126,9 @@ export interface VnAssetDetail {
   /** Sprites that should influence this image, and every sprite that could (see reference-rules). */
   references?: Suggested;
 }
+
+/** The last save to each prompts file, so a later save waits for it. */
+const promptWrites = new Map<string, Promise<void>>();
 
 const NO_REFERENCE_SLOT =
   "This workflow has no place for a reference image. Use a workflow with a Reference Image node.";
@@ -722,6 +735,61 @@ export class WorldFiles implements SourceBackend {
    * The assets of a visual novel. `prompts: false` skips the default prompts (which read every
    * card and the prompt specs), for callers that only count or list them.
    */
+  /**
+   * Remembers an asset's prompt and sampler settings in the file `loadPromptSpecs` reads (the shared
+   * visual novel one if it exists, else the world's `assets/workflow/prompts.json`), keeping the file's
+   * shape (a map or a list) and every other field of the entry, the seed included. Saves to one file
+   * wait for each other.
+   */
+  async savePromptSpec(
+    name: string,
+    type: "sprite" | "cg" | "bg",
+    patch: PromptSpecPatch,
+  ): Promise<void> {
+    const shared = inside(this.root, "vns/_shared/assets/prompts.json");
+    const own = inside(this.root, "assets/workflow/prompts.json");
+    const file = (await readIfThere(shared)) ? shared : own;
+    const previous = promptWrites.get(file) ?? Promise.resolve();
+    const done = previous.then(async () => {
+      let data: unknown = {};
+      const text = await readIfThere(file);
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new HostError(
+            "bad_state",
+            "The prompts file cannot be read, so nothing was saved.",
+          );
+        }
+      }
+      const fields: Record<string, unknown> = { name, type, positivePrompt: patch.positivePrompt };
+      for (const key of ["negativePrompt", "steps", "cfg", "sampler", "scheduler"] as const) {
+        if (patch[key] !== undefined) fields[key] = patch[key];
+      }
+      if (Array.isArray(data)) {
+        const at = data.findIndex((e) => e && typeof e === "object" && e.name === name);
+        if (at >= 0) data[at] = { ...data[at], ...fields };
+        else data.push(fields);
+      } else {
+        const map = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
+        map[name] = { ...((map[name] as object | undefined) ?? {}), ...fields };
+        data = map;
+      }
+      await mkdir(dirname(file), { recursive: true });
+      await writeAtomic(
+        file,
+        `${JSON.stringify(data, null, 2)}
+`,
+      );
+    });
+    promptWrites.set(
+      file,
+      done.catch(() => undefined),
+    );
+    await done;
+  }
+
   async listVnAssets(
     slug: string,
     options: { prompts?: boolean } = {},
@@ -964,21 +1032,27 @@ export class WorldFiles implements SourceBackend {
     type: "sprite" | "cg" | "bg",
     name: string,
   ): Promise<VnAssetDetail> {
-    const list = await this.listVnAssets(slug);
+    // the list without prompts: only this asset needs one, and building every asset's reads the cards each time
+    const list = await this.listVnAssets(slug, { prompts: false });
     const pool = type === "sprite" ? list.sprites : type === "cg" ? list.cgs : list.backgrounds;
-    const item = pool.find((a) => a.name === name) || {
-      id: `${type}:${name}`,
-      type,
-      name,
-      targetPath: `${type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds"}/${name}.png`,
-      exists: false,
-      defaultPrompt:
-        type === "sprite"
-          ? synthesizeSpriteDanbooruPrompt(name, await this.cardFiles().catch(() => []))
-          : type === "cg"
-            ? synthesizeCgDanbooruPrompt(name, await this.cardFiles().catch(() => []))
-            : synthesizeBackgroundDanbooruPrompt(name, await this.cardFiles().catch(() => [])),
-    };
+    const cards = await this.cardFiles().catch(() => []);
+    const synth = (n: string) =>
+      type === "sprite"
+        ? synthesizeSpriteDanbooruPrompt(n, cards)
+        : type === "cg"
+          ? synthesizeCgDanbooruPrompt(n, cards)
+          : synthesizeBackgroundDanbooruPrompt(n, cards);
+    const found = pool.find((a) => a.name === name);
+    const item = found
+      ? { ...found, defaultPrompt: found.defaultPrompt ?? synth(name) }
+      : {
+          id: `${type}:${name}`,
+          type,
+          name,
+          targetPath: `${type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds"}/${name}.png`,
+          exists: false,
+          defaultPrompt: synth(name),
+        };
 
     let positivePrompt = item.defaultPrompt || "";
     let negativePrompt = getDefaultNegativePrompt(type);
@@ -1018,27 +1092,36 @@ export class WorldFiles implements SourceBackend {
 
     for (const dSlug of uniqueDatasetSlugs) {
       const datasetDir = inside(this.root, `assets/dataset/${dSlug}/${sanitizeSlug(name)}`);
+      let timestamps: string[] = [];
       try {
-        const timestamps = await readdir(datasetDir);
-        for (const ts of timestamps) {
-          if (seenTs.has(ts)) continue;
-          seenTs.add(ts);
+        timestamps = await readdir(datasetDir);
+      } catch {}
+      const fresh = timestamps.filter((ts) => !seenTs.has(ts));
+      for (const ts of fresh) seenTs.add(ts);
+      // each run is two small files; read them side by side (the folder may be on a slow disk)
+      const runs = await Promise.all(
+        fresh.map(async (ts): Promise<VnAssetDatasetEntry | undefined> => {
           try {
-            const promptFile = inside(datasetDir, `${ts}/prompt.json`);
-            const feedbackFile = inside(datasetDir, `${ts}/feedback.json`);
-            const promptData = JSON.parse((await readIfThere(promptFile)) || "{}");
-            const feedbackData = JSON.parse((await readIfThere(feedbackFile)) || "{}");
-            datasetHistory.push({
+            const [promptText, feedbackText] = await Promise.all([
+              readIfThere(inside(datasetDir, `${ts}/prompt.json`)),
+              readIfThere(inside(datasetDir, `${ts}/feedback.json`)),
+            ]);
+            const promptData = JSON.parse(promptText || "{}");
+            const feedbackData = JSON.parse(feedbackText || "{}");
+            return {
               timestamp: ts,
               imageFilename: `assets/dataset/${dSlug}/${sanitizeSlug(name)}/${ts}/generated_image.png`,
               imageUrl: `/api/worlds/${encodeURIComponent(basename(this.root))}/dataset/${encodeURIComponent(dSlug)}/${encodeURIComponent(name)}/${encodeURIComponent(ts)}/image`,
               prompt: promptData.positive || "",
               negativePrompt: promptData.negative || "",
               feedback: feedbackData,
-            });
-          } catch {}
-        }
-      } catch {}
+            };
+          } catch {
+            return undefined;
+          }
+        }),
+      );
+      for (const run of runs) if (run) datasetHistory.push(run);
     }
     datasetHistory.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
@@ -2031,6 +2114,15 @@ export class Library {
     variant?: "ref",
   ): Promise<Record<string, unknown>> {
     return this.open(name).loadWorkflowTemplate(type, variant);
+  }
+
+  async savePromptSpec(
+    name: string,
+    type: "sprite" | "cg" | "bg",
+    assetName: string,
+    patch: PromptSpecPatch,
+  ): Promise<void> {
+    return this.open(name).savePromptSpec(assetName, type, patch);
   }
 
   /** One chapter or draft of a world, in full, for reading. */

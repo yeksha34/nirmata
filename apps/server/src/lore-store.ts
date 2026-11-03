@@ -16,10 +16,19 @@ interface Place {
  * for a world that has been imported, and files are used for the rest.
  */
 export class DbLore implements LoreCards {
+  /**
+   * Cards read a moment ago. Selecting an asset reads the cards for its prompt, and each read is a
+   * round trip to the database, so a read is reused for a few seconds; any save or delete here drops it.
+   * (A change made elsewhere, like another import, shows within that time.)
+   */
+  private readonly recent = new Map<string, { at: number; files: CardFile[] | undefined }>();
+
   /** `userId` is whoever is signed in as the table's host right now, if anyone is. */
   constructor(
     private readonly db: Db,
     private readonly userId: () => string | undefined,
+    private readonly keepMs = 10_000,
+    private readonly now: () => number = Date.now,
   ) {}
 
   private async within<T>(
@@ -48,6 +57,15 @@ export class DbLore implements LoreCards {
   }
 
   async cardFiles(slug: string): Promise<CardFile[] | undefined> {
+    const key = `${this.userId() ?? ""}|${slug}`;
+    const had = this.recent.get(key);
+    if (had && this.now() - had.at < this.keepMs) return had.files;
+    const files = await this.readCardFiles(slug);
+    this.recent.set(key, { at: this.now(), files });
+    return files;
+  }
+
+  private async readCardFiles(slug: string): Promise<CardFile[] | undefined> {
     return this.within(slug, async (q, { worldId, line }) => {
       const cards = (
         await q(
@@ -98,6 +116,7 @@ export class DbLore implements LoreCards {
   }
 
   async save(slug: string, card: Card): Promise<boolean> {
+    this.recent.clear();
     const done = await this.within(slug, async (q, { worldId, line }, userId) => {
       const row = cardRow(card);
       const id = await upsertCard(q, worldId, row);
@@ -108,6 +127,7 @@ export class DbLore implements LoreCards {
   }
 
   async removeFile(slug: string, path: string): Promise<boolean> {
+    this.recent.clear();
     const done = await this.within(slug, async (q, { line }) => {
       const found = (
         await q(
