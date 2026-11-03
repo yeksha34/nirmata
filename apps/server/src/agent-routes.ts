@@ -28,6 +28,7 @@ import {
 import { compileVn, VnManifestSchema, VnSlideDeckSchema } from "@nirmata/core";
 import type { Db } from "@nirmata/db";
 import { ASSET_KINDS } from "@nirmata/gen";
+import { CardError, CardStore, GuideError, GuideStore } from "@nirmata/importer";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import { HttpError } from "./errors";
@@ -69,6 +70,29 @@ const VnParts = z
   .refine((v) => v.manifest || v.adaptationMd !== undefined || v.slides, {
     message: "Send a manifest, adaptationMd or slides.",
   });
+const CARD_ID = /^([a-z][a-z0-9]{0,39})\.([a-z0-9][a-z0-9-]{0,60})$/;
+const GUIDE_SLUG = /^[a-z0-9][a-z0-9-]{0,80}$/;
+const CardBody = z.object({
+  name: z.string().trim().min(1).max(200),
+  summary: z.string().max(2000).optional(),
+  keywords: z.array(z.string().trim().min(1).max(80)).max(60).optional(),
+  always: z.boolean().optional(),
+  role: z.string().max(80).optional(),
+  scope: z.enum(["chapter", "story", "both"]).optional(),
+  severity: z.enum(["must", "should"]).optional(),
+  fields: z.record(z.string().max(200_000)).optional(),
+  body: z.string().max(400_000).optional(),
+});
+const SkillBody = z.object({
+  title: z.string().trim().min(1).max(300),
+  description: z.string().max(2000).optional(),
+  body: z.string().min(1).max(1_000_000),
+});
+const RuleBody = z.object({
+  title: z.string().trim().min(1).max(300),
+  body: z.string().min(1).max(250_000),
+});
+const PublishBody = z.object({ note: z.string().trim().max(200).optional() });
 const Workflow = z.object({
   graph: z.record(z.unknown()),
   note: z.string().trim().max(200).optional(),
@@ -86,7 +110,9 @@ async function asHttp<T>(work: () => Promise<T>): Promise<T> {
       e instanceof AssetPlanError ||
       e instanceof TemplateError ||
       e instanceof VnError ||
-      e instanceof WritingError
+      e instanceof WritingError ||
+      e instanceof CardError ||
+      e instanceof GuideError
     ) {
       throw new HttpError(400, "bad_request", e.message);
     }
@@ -99,12 +125,13 @@ async function asHttp<T>(work: () => Promise<T>): Promise<T> {
 
 /** The agent's grant from `Authorization: Bearer nga_…`, or 401. */
 export function agentGrantOf(tokens: AgentTokens) {
-  return async (c: Context, scope: AgentScope): Promise<AgentGrant> => {
+  return async (c: Context, scope: AgentScope | readonly AgentScope[]): Promise<AgentGrant> => {
     const header = c.req.header("authorization") ?? "";
     const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
     const grant = token ? await tokens.resolve(token) : undefined;
     if (!grant) throw new HttpError(401, "unauthorized", "That agent token is not valid.");
-    if (!grant.scopes.includes(scope)) {
+    const wanted = typeof scope === "string" ? [scope] : scope;
+    if (!wanted.some((w) => grant.scopes.includes(w))) {
       throw new HttpError(403, "forbidden", "That agent token may not do that.");
     }
     return grant;
@@ -166,9 +193,14 @@ export function registerAgentRoutes(
   const vns = new VnStore(db);
   const writings = new WritingStore(db);
   const worlds = new WorldStore(db);
+  const cards = new CardStore(db);
+  const guides = new GuideStore(db);
+  /** The story is read and written by an adaptation and by an import alike. */
+  const READ = ["adaptation.read", "import.read"] as const;
+  const WRITE = ["adaptation.write", "import.write"] as const;
 
   /** The grant for this request, and the world it names, which must be the one the token is for. */
-  const forWorld = async (c: Context, scope: AgentScope) => {
+  const forWorld = async (c: Context, scope: AgentScope | readonly AgentScope[]) => {
     const grant = await grantOf(c, scope);
     const slug = world(c);
     const id = await db.asUser(grant.userId, async (q) => {
@@ -378,7 +410,7 @@ export function registerAgentRoutes(
 
   /** What world.json held, and how much story text the world has. */
   app.get("/api/agent/worlds/:name", async (c) => {
-    const { grant, slug } = await forWorld(c, "adaptation.read");
+    const { grant, slug } = await forWorld(c, READ);
     const manifest = await asHttp(() => worlds.manifest(grant.userId, slug));
     const list = (await asHttp(() => writings.list(grant.userId, slug))) ?? [];
     return c.json({
@@ -394,13 +426,13 @@ export function registerAgentRoutes(
 
   /** The chapters and drafts, without their text. */
   app.get("/api/agent/worlds/:name/writings", async (c) => {
-    const { grant, slug } = await forWorld(c, "adaptation.read");
+    const { grant, slug } = await forWorld(c, READ);
     return c.json({ writings: (await asHttp(() => writings.list(grant.userId, slug))) ?? [] });
   });
 
   /** One chapter or draft in full. The path is a query because it has slashes in it. */
   app.get("/api/agent/worlds/:name/writing", async (c) => {
-    const { grant, slug } = await forWorld(c, "adaptation.read");
+    const { grant, slug } = await forWorld(c, READ);
     const path = await asHttp(async () => parseWritingPath(c.req.query("path")));
     const found = await asHttp(() => writings.get(grant.userId, slug, path));
     if (!found) throw new HttpError(404, "not_found", "There is no such chapter or draft.");
@@ -408,16 +440,124 @@ export function registerAgentRoutes(
   });
 
   app.put("/api/agent/worlds/:name/writing", async (c) => {
-    const { grant, slug } = await forWorld(c, "adaptation.write");
+    const { grant, slug } = await forWorld(c, WRITE);
     const body = WritingBody.parse(await c.req.json().catch(() => ({})));
     await asHttp(() => writings.save(grant.userId, slug, body.path, body.text));
     return c.json({ ok: true });
   });
 
   app.delete("/api/agent/worlds/:name/writing", async (c) => {
-    const { grant, slug } = await forWorld(c, "adaptation.write");
+    const { grant, slug } = await forWorld(c, WRITE);
     const path = await asHttp(async () => parseWritingPath(c.req.query("path")));
     await asHttp(() => writings.remove(grant.userId, slug, path));
+    return c.json({ ok: true });
+  });
+  // ---- importing: cards, the world's skills and the author's rules ----------------------------------
+  // An importing agent works one file at a time: it reads a piece of the source, writes the cards it
+  // holds, and goes on. Nothing here reads a folder; the agent holds the source and sends the text.
+
+  const cardId = (c: Context): { kind: string; slug: string } => {
+    const m = CARD_ID.exec(c.req.param("id") ?? "");
+    if (!m) {
+      throw new HttpError(400, "bad_request", "A card id looks like kind.name, in lowercase.");
+    }
+    return { kind: m[1] as string, slug: m[2] as string };
+  };
+  const guideSlug = (c: Context): string => {
+    const slug = c.req.param("slug") ?? "";
+    if (!GUIDE_SLUG.test(slug)) {
+      throw new HttpError(400, "bad_request", "A name is lowercase letters, digits and hyphens.");
+    }
+    return slug;
+  };
+
+  /** The cards, without their text; ?kind= keeps one kind. */
+  app.get("/api/agent/worlds/:name/cards", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.read");
+    return c.json({ cards: await asHttp(() => cards.list(grant.userId, slug, c.req.query("kind"))) });
+  });
+
+  app.get("/api/agent/worlds/:name/cards/:id", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.read");
+    const { kind, slug: part } = cardId(c);
+    const found = await asHttp(() => cards.get(grant.userId, slug, `${kind}.${part}`));
+    if (!found) throw new HttpError(404, "not_found", "There is no such card.");
+    return c.json(found);
+  });
+
+  /** Save a card, making it if it is new. The id is kind.name; a kind of the world's own is fine. */
+  app.put("/api/agent/worlds/:name/cards/:id", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.write");
+    const { kind, slug: part } = cardId(c);
+    const body = CardBody.parse(await c.req.json().catch(() => ({})));
+    const done = await asHttp(() => cards.save(grant.userId, slug, { ...body, kind, slug: part }));
+    return c.json(
+      { ok: true, id: `${kind}.${part}`, created: done.created },
+      done.created ? 201 : 200,
+    );
+  });
+
+  app.delete("/api/agent/worlds/:name/cards/:id", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.write");
+    const { kind, slug: part } = cardId(c);
+    const removed = await asHttp(() => cards.remove(grant.userId, slug, `${kind}.${part}`));
+    if (!removed) throw new HttpError(404, "not_found", "There is no such card.");
+    return c.json({ ok: true });
+  });
+
+  /** Publish the cards as the world's next version, so readers and visual novels can use them. */
+  app.post("/api/agent/worlds/:name/publish", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.write");
+    const body = PublishBody.parse(await c.req.json().catch(() => ({})));
+    const version = await asHttp(() =>
+      cards.publish(grant.userId, slug, body.note || "import by agent"),
+    );
+    return c.json({ versionId: version ?? null });
+  });
+
+  /** The world's skills: the author's guides to writing in it. */
+  app.get("/api/agent/worlds/:name/skills", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.read");
+    return c.json({ skills: await asHttp(() => guides.skills(grant.userId, slug)) });
+  });
+  app.get("/api/agent/worlds/:name/skills/:slug", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.read");
+    const found = await asHttp(() => guides.skill(grant.userId, slug, guideSlug(c)));
+    if (!found) throw new HttpError(404, "not_found", "There is no such skill.");
+    return c.json(found);
+  });
+  app.put("/api/agent/worlds/:name/skills/:slug", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.write");
+    const body = SkillBody.parse(await c.req.json().catch(() => ({})));
+    await asHttp(() => guides.saveSkill(grant.userId, slug, { ...body, slug: guideSlug(c) }));
+    return c.json({ ok: true });
+  });
+  app.delete("/api/agent/worlds/:name/skills/:slug", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.write");
+    await asHttp(() => guides.removeSkill(grant.userId, slug, guideSlug(c)));
+    return c.json({ ok: true });
+  });
+
+  /** The author's rules of writing the world. */
+  app.get("/api/agent/worlds/:name/rules", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.read");
+    return c.json({ rules: await asHttp(() => guides.rules(grant.userId, slug)) });
+  });
+  app.get("/api/agent/worlds/:name/rules/:slug", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.read");
+    const found = await asHttp(() => guides.rule(grant.userId, slug, guideSlug(c)));
+    if (!found) throw new HttpError(404, "not_found", "There is no such rule.");
+    return c.json(found);
+  });
+  app.put("/api/agent/worlds/:name/rules/:slug", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.write");
+    const body = RuleBody.parse(await c.req.json().catch(() => ({})));
+    await asHttp(() => guides.saveRule(grant.userId, slug, { ...body, slug: guideSlug(c) }));
+    return c.json({ ok: true });
+  });
+  app.delete("/api/agent/worlds/:name/rules/:slug", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.write");
+    await asHttp(() => guides.removeRule(grant.userId, slug, guideSlug(c)));
     return c.json({ ok: true });
   });
 }

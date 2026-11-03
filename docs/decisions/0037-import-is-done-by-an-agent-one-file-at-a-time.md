@@ -1,0 +1,26 @@
+# ADR-0037: An agent imports a world, one file at a time, through the backend
+
+- Status: Proposed
+- Date: 2026-11-04
+- Related: [ADR-0005](0005-scaffold-content-neutral.md), [ADR-0027](0027-database-is-lore-source-of-truth.md), [ADR-0033](0033-clothes-adornments-objects-asset-kinds.md), [ADR-0035](0035-adaptation-data-in-the-database.md), [ADR-0036](0036-chapters-and-drafts-as-writings.md)
+
+## Context
+`import:world` copied a world's folder into the database file by file, trusting each file to be one card. Real source is not like that. A character file holds the character, what she wears, what she carries, and some of what later happens to her. A lore file holds several subjects, and plot consequences sit inside it. The `worlds/` folder of cards that the importer and the tests leaned on is obsolete and has been removed. A script cannot separate subjects; an agent can, if it has endpoints that take one card at a time and a procedure that keeps the result clean.
+
+## Decision
+1. **Import and adaptation are two jobs.** Both are done by an AI agent holding an agent token, and the token names what it may do: `import.read` / `import.write` for importing, `adaptation.read` / `adaptation.write` for adapting (a token made in the panel carries all four). An adaptation token cannot write cards, skills or rules; an import token cannot touch the asset plan.
+2. **The agent works on a copy.** It copies the source into a temporary folder outside the repository and works on that copy only. The backend never reads a folder; the agent reads the source and sends text. Nothing from a story's source is copied into this repository ([ADR-0005](0005-scaffold-content-neutral.md)).
+3. **One file at a time, and the copy shrinks.** For each file the agent writes the cards the file holds through `PUT …/cards/<kind.name>`, then removes the written text from its temporary copy. What is left in the copy is what still needs a home.
+4. **Order.** Characters first. A character file yields the character card and, separately, the cards for what she wears (`clothes`), her ornament (`adornment`) and the things she handles (`object`), each owned by that character ([ADR-0033](0033-clothes-adornments-objects-asset-kinds.md)). When every character file is done, the remnants of those files are sorted into cards of other kinds, including kinds the world makes up. Then the rest of the lore, then places, then the story. The order of folders is the author's: it is given to the agent for each world and is not global.
+5. **One subject per card, and only that subject.** A card holds what is true of its subject and nothing about the story's events. If information changes over the story, or is a consequence of a plot event, it is not written into the subject's card; it becomes its own card (an event, a state) of its own kind. A character card keeps the fields its template defines and the content those fields expect.
+6. **Kinds are the world's.** A card's kind is a name of lowercase letters and digits. The six standard kinds keep their templates and editor; any other kind is only a name the world gives to a set of cards (`deity`, `playground`, `clothes`). The agent reuses a kind that exists before it invents one.
+7. **Chapters and what belongs to them are writings.** The story under each plot goes in as writings by path (`chapters/<plot>/scene|draft|chapter/<file>.md`, with `translations.md` and the plot's character arcs beside them) through the existing writing endpoints ([ADR-0036](0036-chapters-and-drafts-as-writings.md)), which accept either family of scopes.
+8. **A world's own guidance is stored with the world.** A world has skills (the author's guides to writing in it, `world_lore.world_skills`) and author rules (the author's rules of writing it, `world_lore.author_rules`). They are documents the author wrote, kept whole, readable by authors only, and separate from the rule cards the host checks during play.
+9. **The agent can publish.** `POST …/publish` publishes the draft cards as the world's next version, which a visual novel needs before it can be saved.
+
+## Consequences
++ The same procedure serves any world; only the order and the extra kinds differ.
++ A re-run is safe: a card saved again replaces the one with the same id.
+- An agent's judgment decides where text goes. Nothing checks that a card is scoped to one subject; the skill tells the agent how, and a report of what was left over tells the author what to look at.
+- A card id is `kind.name`, so a card cannot change kind without a new id. The kinds the old importer made (`char.marrow`) are read as before but are edited by their own id only through the editor.
+- `import:world` still exists for a folder that already holds well-formed cards; it is not how a messy source is imported.

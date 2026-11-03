@@ -72,7 +72,7 @@ describe("parseCard", () => {
   it("reports schema problems with field names", () => {
     const r = parseCard(
       "x.md",
-      VALID.replace("id: char.marrow", "id: Marrow").replace("kind: character", "kind: dragon"),
+      VALID.replace("id: char.marrow", "id: Marrow").replace("kind: character", "kind: Dragon"),
     );
     expect(r.ok).toBe(false);
     if (r.ok) return;

@@ -413,8 +413,8 @@ export const HI_TEXT: Record<string, string> = {
   "Agent access": "एजेंट की पहुँच",
   "Agent access needs the database and an author who is signed in.":
     "एजेंट की पहुँच के लिए डेटाबेस और लॉग-इन किया हुआ एक लेखक चाहिए।",
-  "A token lets the adaptation agent read and write this world's adaptation data at {root}, and nothing else. It is shown once. Revoke it to stop it.":
-    "टोकन से रूपांतरण-एजेंट {root} पर इस संसार का रूपांतरण-डेटा पढ़ और लिख सकता है, और कुछ नहीं। यह एक ही बार दिखता है। रोकने के लिए इसे रद्द करें।",
+  "A token lets an agent import into this world and adapt it, at {root}, and nothing else. It is shown once. Revoke it to stop it.":
+    "टोकन से एजेंट {root} पर इस संसार में आयात और इसका रूपांतरण कर सकता है, और कुछ नहीं। यह एक ही बार दिखता है। रोकने के लिए इसे रद्द करें।",
   "Your new token. Copy it now: it will not be shown again.":
     "आपका नया टोकन। अभी नकल कर लें: यह दोबारा नहीं दिखेगा।",
   Copy: "नकल करें",

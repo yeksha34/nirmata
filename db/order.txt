@@ -34,3 +34,5 @@ platform/migrations/20261103000500_workflow_templates.sql
 vn_content/migrations/20261103000600_vn_draft_content.sql
 reader/migrations/20261103000700_writings.sql
 world_lore/migrations/20261103000710_world_manifest.sql
+identity/migrations/20261104000100_agent_import_scopes.sql
+world_lore/migrations/20261104000200_world_skills_and_rules.sql
