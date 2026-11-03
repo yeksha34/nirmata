@@ -27,6 +27,8 @@ A card is one subject: a person, a garment, a place, a species, an event. Its id
 
 ## The endpoints
 
+The full reference, with request and response shapes, is [docs/api/agent.openapi.json](../../../docs/api/agent.openapi.json). The ones you need most:
+
 | Do | Call |
 |---|---|
 | list cards (`?kind=`) | `GET …/cards` |
