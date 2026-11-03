@@ -42,7 +42,7 @@ select membership.grant_role(tx.id('world'), tx.id('P'), 'player');
 -- 1. an author makes a token; only its hash is kept ----------------------------------------------------------------
 insert into tx.txt select 'token', identity.create_agent_token(tx.id('world'), 'adaptation agent') ->> 'token';
 insert into tx.ids select 'tid', (select id from identity.agent_tokens where world_id = tx.id('world'));
-insert into tx.out (line) select like(tx.txt_of('token'), 'nga_%', 'a token is marked as an agent token');
+insert into tx.out (line) select ok(tx.txt_of('token') like 'nga_%', 'a token is marked as an agent token');
 insert into tx.out (line) select is((select count(*) from identity.agent_tokens where world_id = tx.id('world'))::int, 1, 'the author sees the token row');
 insert into tx.out (line) select throws_ok('select token_hash from identity.agent_tokens', '42501', null, 'the hash is never readable');
 insert into tx.out (line) select throws_ok(format('select identity.create_agent_token(%L, %L, array[%L])', tx.id('world'), 'x', 'story.write'),

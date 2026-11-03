@@ -56,7 +56,13 @@ import {
   parseLinkedCard,
   templateName,
 } from "@nirmata/gen";
-import { AssetPlanError, addToPlan, type PlannedAsset, removeFromPlan } from "@nirmata/adaptation";
+import {
+  AssetPlanError,
+  addToPlan,
+  type PlannedAsset,
+  removeFromPlan,
+  type WorkflowSource,
+} from "@nirmata/adaptation";
 import { HttpError } from "./errors";
 import { CARD_DIRS, type CardFile, markdownFiles, readCardFiles, slugFor } from "@nirmata/importer";
 import {
@@ -266,13 +272,14 @@ export class WorldFiles implements SourceBackend {
   constructor(
     root: string,
     private readonly lore?: LoreCards,
+    private readonly workflows?: WorkflowSource,
   ) {
     this.root = resolve(root);
   }
 
   /** The world's name in the database, when cards may live there. */
-  private async loreSlug(): Promise<string | undefined> {
-    if (!this.lore) return undefined;
+  private async loreSlug(anyStore = false): Promise<string | undefined> {
+    if (!this.lore && !anyStore) return undefined;
     try {
       return slugFor((await this.world()).name);
     } catch {
@@ -1509,6 +1516,10 @@ export class WorldFiles implements SourceBackend {
       if (!derived) throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
       return derived;
     }
+    // the world's own workflow in the database (its copy or a visual novel's) wins over every file
+    const slug = this.workflows ? await this.loreSlug(true) : undefined;
+    const own = slug ? await this.workflows?.find(slug, type) : undefined;
+    if (own && own.scope !== "platform") return own.graph;
     const bundled = templateName(type);
     const found = await this.readTemplate([
       inside(this.root, `assets/workflow/${type}.json`),
@@ -1978,6 +1989,8 @@ export class Library {
     private readonly options: {
       lore?: LoreCards | undefined;
       images?: DatasetImages | undefined;
+      /** Workflows an imported world keeps in the database (ADR-0035). */
+      workflows?: WorkflowSource | undefined;
     } = {},
   ) {
     this.root = resolve(root);
@@ -1986,7 +1999,7 @@ export class Library {
   open(name: string): WorldFiles {
     if (!LIBRARY_NAME.test(name))
       throw new HostError("nothing_to_do", `There is no world "${name}".`);
-    return new WorldFiles(join(this.root, name), this.options.lore);
+    return new WorldFiles(join(this.root, name), this.options.lore, this.options.workflows);
   }
 
   private readonly storyFiles = new Map<string, StoryFiles>();
