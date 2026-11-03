@@ -1,19 +1,20 @@
 ---
 name: "story-import"
-description: "Import a story's source files (characters, lore, settings, plot, chapters, drafts, translations, the author's rules and guide) into a Nirmata world through the agent endpoints, one file at a time, so every card holds one subject. Use when asked to import, load, migrate or break up a story folder into a world."
+description: "Import a story's source files (characters, lore, settings, plot, chapters, drafts, translations, the author's rules and guide) into a Nirmata world through the agent endpoints, as parallel workers each on its own kinds of card, so every card holds one subject. Use when asked to import, load, migrate or break up a story folder into a world."
 ---
 
 # Story import
 
-Fills a world in Nirmata from a story's source folder. The agent is the importer: the source is not shaped like cards, so the work is reading a file, deciding which subjects it holds, and writing one card for each. See [ADR-0037](../../../docs/decisions/0037-import-is-done-by-an-agent-one-file-at-a-time.md).
+Fills a world in Nirmata from a story's source folder. The agents are the importer: the source is not shaped like cards, so the work is reading a file, deciding which subjects it holds, and writing one card for each. See [ADR-0037](../../../docs/decisions/0037-import-is-done-by-an-agent-one-file-at-a-time.md). The calls are in [docs/api/agent.openapi.json](../../../docs/api/agent.openapi.json).
 
 ## Rules
 
-- **Endpoints only.** Use `Authorization: Bearer nga_…` with the author's token for this world, at `/api/agent/worlds/<world>`. Never the database, never a script that bypasses the endpoints (`AGENTS.md`). Check the token first with `GET /api/agent/me`: it needs `import.read` and `import.write`.
+- **Endpoints only.** Use `Authorization: Bearer nga_…` with a token for this world, at `/api/agent/worlds/<world>`. Never the database, never a script that bypasses the endpoints (`AGENTS.md`). Check your token first with `GET /api/agent/me`.
 - **The world already exists.** The author made it in the app (New world); it is in the database from the start. Importing does not make worlds.
-- **Work on a copy.** Copy the whole source folder into a new temporary folder outside the repository and work there. Never edit the original. Never copy source text into the repository, a commit, an issue or a log.
-- **One file at a time.** Finish a file (its cards saved, its written text removed from the copy) before opening the next.
-- **The order is the author's.** The author tells you the order of folders for this world, and any kinds to use. If they did not, use: guide and rules, characters, lore, settings, plots (scenes, drafts, chapters, arcs, translations).
+- **Work on a copy.** The author's source is copied into a temporary folder outside the repository and you work there. Never edit the original, and never edit the copy: a ledger (below) says what you took. Never copy source text into the repository, a commit, an issue or a log.
+- **One file at a time.** Finish a file (its cards saved, its ledger lines written) before opening the next.
+- **The order is the author's.** The author tells you the order of folders and any kinds to use for this world. The order below is the default.
+- **Keep to your lane.** A lane token can write cards of its own kinds only; the server refuses the rest. It can read everything.
 
 ## What a card is
 
@@ -22,37 +23,42 @@ A card is one subject: a person, a garment, a place, a species, an event. Its id
 - **Only what is true of the subject.** Not what the story later did to it, not another subject's details. If a plot event changed a character, the event is its own card (kind `event`), and the character card keeps what was true of her as the world defines her.
 - **Only the card's own fields.** A character uses the fields of her template (`appearance`, `manner`, `voice`, `wants`, `relations`, `history`, …) with the content each expects. Use `secrets` for what the host must not reveal. Put long prose in the `body`.
 - **Keep the author's words.** Move text; do not summarise it away. Tidy only what is needed to make it stand alone (a heading, a pronoun that pointed at a neighbour).
-- **Kinds.** Standard kinds: `character`, `place`, `lore`, `arc`, `rule`, `scene`. Make up others when the world needs them (`deity`, `playground`, `species`, `event`). Before you invent one, `GET …/cards` and reuse a kind already in use.
-- **No duplicates.** `GET …/cards?kind=<kind>` before you write; if the subject has a card, merge the new facts into it (read it with `GET …/cards/<id>`, then `PUT`).
+- **Kinds.** Standard kinds: `character`, `place`, `lore`, `arc`, `rule`, `scene`. Others when the world needs them (`deity`, `playground`, `species`, `event`, and `clothes`, `adornment`, `object`). Before you invent a kind, `GET …/cards` and reuse one already in use.
+- **No duplicates.** `GET …/cards?kind=<kind>` before you write; if the subject has a card, read it (`GET …/cards/<id>`) and `PUT` it with the new facts merged in.
 
-## The endpoints
+## Threads
 
-The full reference, with request and response shapes, is [docs/api/agent.openapi.json](../../../docs/api/agent.openapi.json). The ones you need most:
+The import runs as workers at the same time, each on its own kinds, so none waits for another and none overwrites another. The author's session starts them and makes one token for each in the Agent access panel ("Works on"). Give each worker its token in its own environment variable (`NIRMATA_TOKEN`); never paste it into a message.
 
-| Do | Call |
-|---|---|
-| list cards (`?kind=`) | `GET …/cards` |
-| read a card | `GET …/cards/<kind.name>` |
-| save a card | `PUT …/cards/<kind.name>` with `{name, summary, keywords, fields:{…}, body}` |
-| remove a card | `DELETE …/cards/<kind.name>` |
-| world skills (guides to writing the world) | `GET/PUT/DELETE …/skills[/<name>]` with `{title, description, body}` |
-| the author's rules of writing | `GET/PUT/DELETE …/rules[/<name>]` with `{title, body}` |
-| chapters, scenes, drafts, translations | `GET …/writings`, `GET/PUT/DELETE …/writing?path=` with `{path, text}` |
-| publish the cards as a version | `POST …/publish` with `{note}` |
+| Worker | Token's kinds | Reads | Writes |
+|---|---|---|---|
+| **characters** | `character` | the character files | one `character.<file-name>` card per character |
+| **accessories** | `clothes`, `adornment`, `object` | the same character files, for what she wears, bears and handles | one card per garment, ornament or object, each with an `owner` field naming its character |
+| **settings** | `place`, and the world's own kind for settings (for example `playground`) | the setting files | one card per place |
 
-## Procedure
+Rules that let them work together:
 
-1. **Guide and rules.** Save the world's skill (a `SKILL.md` the author kept with the world) with `PUT …/skills/<name>` and each of the author's rule files with `PUT …/rules/<name>`, whole and unchanged. Read them before you split anything else: they say what the author means by each thing.
-2. **Characters, file by file.** For a character file:
-   - Write the character card.
-   - Write separate cards for what she wears (`clothes`), ornament she bears (`adornment`) and things she handles (`object`), each naming its owner in an `owner` field. A garment two characters share is two cards.
-   - Remove from your copy everything you have written. What remains is a remnant.
-3. **Remnants of the characters.** When every character file is done, read what is left in each one and sort it into cards: relations to groups into the group's card, places into place cards, customs into lore, plot consequences into `event` cards. Make a kind of your own where none fits. Remove each piece as you write it.
-4. **Lore, file by file.** A lore file with several subjects becomes several cards. Same discipline: scoped, no plot leakage, remove what you wrote.
-5. **Settings and places.** The same, kind `place` or the world's own (`playground`).
-6. **Plots.** For each plot, save its scenes, drafts, chapters, translations and character arcs as writings: `chapters/<plot>/scene/<file>.md`, `…/draft/…`, `…/chapter/…`, `chapters/<plot>/translations.md`; save its arc notes as `arc` cards. One file per call.
-7. **Check.** `GET …/cards` and compare with the files you handled: every character has a card; every garment, ornament and object found in a character file has its own card. Anything left in your copy is unplaced: list it for the author.
-8. **Publish.** `POST …/publish` once, when the author says the cards are in.
+1. **A character's id is fixed by her file.** `character.` plus the file's name in lowercase, underscores as hyphens, no extension (`deity_areola.md` is `character.deity-areola`). The accessories worker uses that id as the `owner` without waiting for the characters worker.
+2. **Nobody edits the source.** Each worker keeps a ledger in `<temp>/ledger/<lane>.jsonl`, one line for each stretch of source it took: `{"file":"characters/deity_areola.md","from":3,"to":18,"card":"clothes.areola-gown"}` (lines are 1-based, both ends included). A line two workers took is counted once.
+3. **The lanes finish before the rest starts.** The author's session waits for all of them, then checks `GET …/cards`: every character file has a card; every garment, ornament and object in those files has its own card.
+
+### Then the cards no lane knew
+
+When the known kinds are done, one more worker (or one per folder, each with its own ledger) takes the rest. Its token has no kinds, or only the kinds the world invents.
+
+1. Work out what is left: `node <repo>/.agents/skills/story-import/remnants.mjs <temp>/source <temp>/ledger <temp>/left`. It writes each file's untaken lines under `<temp>/left` and lists any ledger line it could not use.
+2. **Remnants of the character and setting files first.** Sort each into cards: relations to groups into the group's card, customs into lore, plot consequences into `event` cards. Make a kind of your own where none fits.
+3. **Then the lore files, whole,** one card per subject. A file with several subjects becomes several cards.
+4. **Then the plots.** Save each plot's scenes, drafts, chapters and translations as writings, one file per call: `chapters/<plot>/scene/<file>.md`, `…/draft/…`, `…/chapter/…`, `chapters/<plot>/translations.md`, `chapters/<plot>/character_arcs.md`. Writings need an unrestricted token.
+5. Write ledger lines as before. Run `remnants.mjs` again: what it still lists is unplaced.
+
+### Guide, rules and publishing
+
+An unrestricted token saves the world's skill (`PUT …/skills/<name>`) and each of the author's rule files (`PUT …/rules/<name>`), whole and unchanged, before anything else. Read them before you split: they say what the author means by each thing. When the author says the cards are in, `POST …/publish` once. Lane tokens cannot do these.
+
+## One worker alone
+
+Without threads one agent with an unrestricted token does the same in order: guide and rules, characters, accessories, settings, then the rest, keeping the same ledger.
 
 ## Report
 

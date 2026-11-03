@@ -6,6 +6,32 @@ import { Panel } from "../ui";
 
 const DAYS = [7, 30, 90];
 
+/**
+ * What a token may work on. A lane limits it to some kinds of card, so several agents can import
+ * at once without touching each other's cards: one on characters, one on accessories, one on settings.
+ */
+export const LANES = [
+  { id: "all", label: "Everything", kinds: undefined },
+  { id: "characters", label: "Characters only", kinds: ["character"] },
+  { id: "accessories", label: "Accessories only", kinds: ["clothes", "adornment", "object"] },
+  { id: "settings", label: "Settings only", kinds: ["place"] },
+  { id: "custom", label: "Other kinds", kinds: undefined },
+] as const;
+
+/** The kinds a lane and a typed list give; undefined for any kind. Names that cannot be kinds are left out. */
+export function laneKinds(lane: string, typed: string): string[] | undefined {
+  if (lane !== "custom") return LANES.find((l) => l.id === lane)?.kinds?.slice();
+  const kinds = [
+    ...new Set(
+      typed
+        .toLowerCase()
+        .split(/[\s,]+/)
+        .filter((k) => /^[a-z][a-z0-9]{0,39}$/.test(k)),
+    ),
+  ];
+  return kinds.length ? kinds : undefined;
+}
+
 const day = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
@@ -26,6 +52,8 @@ export function AgentAccess({ world }: { world: string }) {
   const [problem, setProblem] = useState<string>();
   const [label, setLabel] = useState("");
   const [days, setDays] = useState(30);
+  const [lane, setLane] = useState("all");
+  const [typed, setTyped] = useState("");
   const [made, setMade] = useState<string>();
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -47,7 +75,7 @@ export function AgentAccess({ world }: { world: string }) {
     setBusy(true);
     setProblem(undefined);
     try {
-      const out = await api.makeAgentToken(world, label.trim(), days);
+      const out = await api.makeAgentToken(world, label.trim(), days, laneKinds(lane, typed));
       setMade(out.token);
       setCopied(false);
       setLabel("");
@@ -153,7 +181,39 @@ export function AgentAccess({ world }: { world: string }) {
             </option>
           ))}
         </select>
-        <button type="submit" className="primary" disabled={busy || label.trim() === ""}>
+        <label htmlFor="agent-token-lane">
+          <T>Works on</T>
+        </label>
+        <select id="agent-token-lane" value={lane} onChange={(e) => setLane(e.target.value)}>
+          {LANES.map((l) => (
+            <option key={l.id} value={l.id}>
+              <T>{l.label}</T>
+            </option>
+          ))}
+        </select>
+        {lane === "custom" && (
+          <>
+            <label htmlFor="agent-token-kinds">
+              <T>Kinds of card, separated by commas</T>
+            </label>
+            <input
+              id="agent-token-kinds"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              spellCheck={false}
+              placeholder="playground, deity"
+            />
+          </>
+        )}
+        <button
+          type="submit"
+          className="primary"
+          disabled={
+            busy ||
+            label.trim() === "" ||
+            (lane === "custom" && laneKinds(lane, typed) === undefined)
+          }
+        >
           <T>Make a token</T>
         </button>
       </form>
@@ -179,6 +239,12 @@ export function AgentAccess({ world }: { world: string }) {
                   <T>
                     {state === "active" ? "Active" : state === "revoked" ? "Revoked" : "Expired"}
                   </T>
+                  {" · "}
+                  {t.kinds ? (
+                    <T with={{ kinds: t.kinds.join(", ") }}>{"kinds: {kinds}"}</T>
+                  ) : (
+                    <T>any kind</T>
+                  )}
                   {" · "}
                   <T with={{ date: day(t.expiresAt) }}>{"until {date}"}</T>
                   {" · "}

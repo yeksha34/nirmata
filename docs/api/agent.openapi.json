@@ -3,7 +3,7 @@
   "info": {
     "title": "Nirmata agent API",
     "version": "1.0.0",
-    "description": "What an AI agent calls to import a world and to adapt it. The agent never reaches the database. Make a token in the World tab (Agent access); it is shown once, belongs to one world and one author, and expires. Operations list the scopes that admit them under `x-scopes-any-of`: `import.*` for importing, `adaptation.*` for adapting; a token made in the panel carries all four. This file is kept in step with the routes by a test (apps/server/test/agent-openapi.test.ts). Token management (`/api/worlds/{name}/agent-tokens`) is for the signed-in author, not the agent, and is not listed."
+    "description": "What an AI agent calls to import a world and to adapt it. The agent never reaches the database. Make a token in the World tab (Agent access); it is shown once, belongs to one world and one author, and expires. Operations list the scopes that admit them under `x-scopes-any-of`: `import.*` for importing, `adaptation.*` for adapting; a token made in the panel carries all four. This file is kept in step with the routes by a test (apps/server/test/agent-openapi.test.ts). Token management (`/api/worlds/{name}/agent-tokens`) is for the signed-in author, not the agent, and is not listed. A token may be a lane: it names the kinds of card it may write (for example only character, or only clothes, adornment and object), carries the import scopes only, and the server answers 403 to a card of another kind and to anything that is not a card (skills, rules, publishing, the story). A lane token reads everything."
   },
   "servers": [
     {
@@ -892,7 +892,7 @@
             "agentToken": []
           }
         ],
-        "description": "The id is `kind.name`. The kind is lowercase letters and digits and may be any name the world uses; the six standard kinds are lore, character, place, arc, rule, scene. Answers 201 when the card is new, 200 when it replaced one. A field named `secrets` is host-only.",
+        "description": "The id is `kind.name`. The kind is lowercase letters and digits and may be any name the world uses; the six standard kinds are lore, character, place, arc, rule, scene. Answers 201 when the card is new, 200 when it replaced one. A field named `secrets` is host-only. A lane token may write only the kinds it names.",
         "parameters": [
           {
             "$ref": "#/components/parameters/world"
@@ -978,7 +978,7 @@
             "agentToken": []
           }
         ],
-        "description": "A card that was published keeps its history and only leaves the draft.",
+        "description": "A card that was published keeps its history and only leaves the draft. A lane token may write only the kinds it names.",
         "parameters": [
           {
             "$ref": "#/components/parameters/world"
@@ -1076,7 +1076,8 @@
           "403": {
             "$ref": "#/components/responses/E403"
           }
-        }
+        },
+        "description": "Not for a lane token."
       }
     },
     "/api/agent/worlds/{name}/skills": {
@@ -1227,7 +1228,8 @@
           "403": {
             "$ref": "#/components/responses/E403"
           }
-        }
+        },
+        "description": "Not for a lane token."
       },
       "delete": {
         "tags": [
@@ -1270,7 +1272,8 @@
           "403": {
             "$ref": "#/components/responses/E403"
           }
-        }
+        },
+        "description": "Not for a lane token."
       }
     },
     "/api/agent/worlds/{name}/rules": {
@@ -1421,7 +1424,8 @@
           "403": {
             "$ref": "#/components/responses/E403"
           }
-        }
+        },
+        "description": "Not for a lane token."
       },
       "delete": {
         "tags": [
@@ -1464,7 +1468,8 @@
           "403": {
             "$ref": "#/components/responses/E403"
           }
-        }
+        },
+        "description": "Not for a lane token."
       }
     },
     "/api/agent/worlds/{name}": {
@@ -1629,7 +1634,7 @@
             "agentToken": []
           }
         ],
-        "description": "The title is the text's first heading, else its file name. Nested paths are fine: `chapters/<plot>/scene/<file>.md`.",
+        "description": "The title is the text's first heading, else its file name. Nested paths are fine: `chapters/<plot>/scene/<file>.md`. Not for a lane token.",
         "parameters": [
           {
             "$ref": "#/components/parameters/world"
@@ -1715,7 +1720,8 @@
           "403": {
             "$ref": "#/components/responses/E403"
           }
-        }
+        },
+        "description": "Not for a lane token."
       }
     },
     "/api/agent/worlds/{name}/characters": {

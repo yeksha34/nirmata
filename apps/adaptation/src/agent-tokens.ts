@@ -16,12 +16,15 @@ export interface AgentGrant {
   /** The author the agent acts as; row level security still decides what they may do. */
   userId: string;
   scopes: AgentScope[];
+  /** The kinds of card the token may write; null means any (a lane token names its own). */
+  kinds: string[] | null;
 }
 
 export interface AgentTokenRow {
   id: string;
   label: string;
   scopes: AgentScope[];
+  kinds: string[] | null;
   expiresAt: string;
   revokedAt: string | null;
   lastUsedAt: string | null;
@@ -31,6 +34,22 @@ export interface AgentTokenRow {
 export const TOKEN_PREFIX = "nga_";
 
 export class AgentTokenError extends Error {}
+
+/** A kind of card, as the database and the card ids spell it. */
+export const KIND_NAME = /^[a-z][a-z0-9]{0,39}$/;
+
+/** The kinds a lane names, checked and without repeats; undefined when it names none. */
+export function parseKinds(input: unknown): string[] | undefined {
+  if (input === undefined || input === null) return undefined;
+  const list = Array.isArray(input) ? input.map((k) => String(k).trim()) : [];
+  const kinds = [...new Set(list)];
+  if (kinds.length === 0 || kinds.length > 40 || !kinds.every((k) => KIND_NAME.test(k))) {
+    throw new AgentTokenError(
+      "A lane names kinds of lowercase letters and digits, one to forty of them.",
+    );
+  }
+  return kinds;
+}
 
 const iso = (v: unknown): string | null => (v === null || v === undefined ? null : String(v));
 
@@ -53,19 +72,19 @@ export class AgentTokens {
     userId: string,
     worldSlug: string,
     label: string,
-    options: { scopes?: AgentScope[]; days?: number } = {},
+    options: { scopes?: AgentScope[]; days?: number; kinds?: string[] } = {},
   ): Promise<{ id: string; token: string }> {
-    const scopes = options.scopes ?? [...AGENT_SCOPES];
+    // a lane works on cards of its own kinds and does nothing else: it never adapts
+    const kinds = parseKinds(options.kinds);
+    const scopes = options.scopes ?? (kinds ? ["import.read", "import.write"] : [...AGENT_SCOPES]);
     const days = options.days ?? 30;
     return this.db.asUser(userId, async (q) => {
       const world = await this.worldId(q, worldSlug);
       const out = (
-        await q("select identity.create_agent_token($1, $2, $3, make_interval(days => $4)) as made", [
-          world,
-          label,
-          scopes,
-          days,
-        ])
+        await q(
+          "select identity.create_agent_token($1, $2, $3, make_interval(days => $4), $5) as made",
+          [world, label, scopes, days, kinds ?? null],
+        )
       ).rows[0]?.made as { id: string; token: string } | undefined;
       if (!out) throw new AgentTokenError("The token could not be made.");
       return { id: String(out.id), token: String(out.token) };
@@ -78,7 +97,7 @@ export class AgentTokens {
       const world = await this.worldId(q, worldSlug);
       const rows = (
         await q(
-          `select id, label, scopes, expires_at, revoked_at, last_used_at, created_at
+          `select id, label, scopes, kinds, expires_at, revoked_at, last_used_at, created_at
              from identity.agent_tokens where world_id = $1 order by created_at desc`,
           [world],
         )
@@ -87,6 +106,7 @@ export class AgentTokens {
         id: String(r.id),
         label: String(r.label),
         scopes: r.scopes as AgentScope[],
+        kinds: (r.kinds as string[] | null | undefined) ?? null,
         expiresAt: String(iso(r.expires_at)),
         revokedAt: iso(r.revoked_at),
         lastUsedAt: iso(r.last_used_at),
@@ -116,6 +136,7 @@ export class AgentTokens {
       worldId: String(row.world_id),
       userId: String(row.user_id),
       scopes: row.scopes as AgentScope[],
+      kinds: (row.kinds as string[] | null | undefined) ?? null,
     };
   }
 }

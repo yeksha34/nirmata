@@ -6,6 +6,7 @@ const AUTHOR = "11111111-1111-4111-8111-111111111111";
 const WORLD = "22222222-2222-4222-8222-222222222222";
 const IMPORTER = "nga_import";
 const ADAPTER = "nga_adapt";
+const LANE = "nga_lane";
 
 interface Card {
   kind: string;
@@ -29,13 +30,16 @@ function fakeDb() {
         const t = text.replace(/\s+/g, " ");
         if (t.includes("resolve_agent_token")) {
           const scopes =
-            params[0] === IMPORTER
+            params[0] === IMPORTER || params[0] === LANE
               ? ["import.read", "import.write"]
               : params[0] === ADAPTER
                 ? ["adaptation.read", "adaptation.write"]
                 : undefined;
+          const kinds = params[0] === LANE ? ["clothes", "adornment", "object"] : null;
           return {
-            rows: scopes ? [{ token_id: "t1", world_id: WORLD, user_id: AUTHOR, scopes }] : [],
+            rows: scopes
+              ? [{ token_id: "t1", world_id: WORLD, user_id: AUTHOR, scopes, kinds }]
+              : [],
           };
         }
         if (t.includes("from world_lore.worlds where slug"))
@@ -343,6 +347,35 @@ describe("the agent's import routes", () => {
     );
     // an import token cannot touch the asset plan
     expect((await call(r, "GET", "/assets", undefined, IMPORTER)).status).toBe(403);
+  });
+
+  it("holds a lane token to the kinds it names, and to cards", async () => {
+    const { f, r } = await make();
+    // inside its lane
+    expect(
+      (await call(r, "PUT", "/cards/clothes.red-coat", { name: "Red coat" }, LANE)).status,
+    ).toBe(201);
+    expect((await call(r, "PUT", "/cards/object.lamp", { name: "Lamp" }, LANE)).status).toBe(201);
+    expect(f.cards.has("clothes-red-coat")).toBe(true);
+    // outside it
+    expect((await call(r, "PUT", "/cards/character.tina", { name: "Tina" }, LANE)).status).toBe(
+      403,
+    );
+    expect((await call(r, "DELETE", "/cards/character.tina", undefined, LANE)).status).toBe(403);
+    expect(f.cards.has("character-tina")).toBe(false);
+    // it may still read everything, to see what the other lanes wrote
+    await call(r, "PUT", "/cards/character.tina", { name: "Tina" });
+    expect((await call(r, "GET", "/cards/character.tina", undefined, LANE)).status).toBe(200);
+    expect((await call(r, "GET", "/cards", undefined, LANE)).status).toBe(200);
+    // and nothing that is not a card
+    expect((await call(r, "POST", "/publish", {}, LANE)).status).toBe(403);
+    expect((await call(r, "PUT", "/skills/x", { title: "x", body: "x" }, LANE)).status).toBe(403);
+    expect((await call(r, "PUT", "/rules/x", { title: "x", body: "x" }, LANE)).status).toBe(403);
+    expect(
+      (await call(r, "PUT", "/writing", { path: "chapters/a.md", text: "x" }, LANE)).status,
+    ).toBe(403);
+    // the unrestricted import token is not held to a lane
+    expect((await call(r, "PUT", "/cards/character.ravi", { name: "Ravi" })).status).toBe(201);
   });
 
   it("needs a valid token", async () => {

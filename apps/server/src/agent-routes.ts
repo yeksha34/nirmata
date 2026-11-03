@@ -39,6 +39,8 @@ import type { Seat } from "./table";
 const Make = z.object({
   label: z.string().trim().min(1).max(80),
   days: z.number().int().min(1).max(365).optional(),
+  /** A lane: the kinds of card the token may write. Leave out for any kind. */
+  kinds: z.array(z.string().trim().min(1).max(40)).min(1).max(40).optional(),
 });
 
 const Name = z.string().trim().min(1).max(120);
@@ -172,7 +174,10 @@ export function registerAgentRoutes(
     const user = author(c);
     const body = Make.parse(await c.req.json().catch(() => ({})));
     const made = await asHttp(() =>
-      tokens.create(user, world(c), body.label, body.days ? { days: body.days } : {}),
+      tokens.create(user, world(c), body.label, {
+        ...(body.days ? { days: body.days } : {}),
+        ...(body.kinds ? { kinds: body.kinds } : {}),
+      }),
     );
     return c.json(made, 201);
   });
@@ -211,6 +216,19 @@ export function registerAgentRoutes(
       throw new HttpError(403, "forbidden", "That agent token is for another world.");
     }
     return { grant, slug };
+  };
+
+  /** A lane token writes cards of its own kinds only. */
+  const mayWrite = (grant: AgentGrant, kind: string): void => {
+    if (grant.kinds && !grant.kinds.includes(kind)) {
+      throw new HttpError(403, "forbidden", "That agent token may not write cards of that kind.");
+    }
+  };
+  /** Skills, rules, publishing and the story are not cards: a lane token leaves them alone. */
+  const mayWriteMore = (grant: AgentGrant): void => {
+    if (grant.kinds) {
+      throw new HttpError(403, "forbidden", "That agent token may write cards of its kinds only.");
+    }
   };
 
   /** The world's character cards, read as the author the token stands for. */
@@ -441,6 +459,7 @@ export function registerAgentRoutes(
 
   app.put("/api/agent/worlds/:name/writing", async (c) => {
     const { grant, slug } = await forWorld(c, WRITE);
+    mayWriteMore(grant);
     const body = WritingBody.parse(await c.req.json().catch(() => ({})));
     await asHttp(() => writings.save(grant.userId, slug, body.path, body.text));
     return c.json({ ok: true });
@@ -448,6 +467,7 @@ export function registerAgentRoutes(
 
   app.delete("/api/agent/worlds/:name/writing", async (c) => {
     const { grant, slug } = await forWorld(c, WRITE);
+    mayWriteMore(grant);
     const path = await asHttp(async () => parseWritingPath(c.req.query("path")));
     await asHttp(() => writings.remove(grant.userId, slug, path));
     return c.json({ ok: true });
@@ -489,6 +509,7 @@ export function registerAgentRoutes(
   app.put("/api/agent/worlds/:name/cards/:id", async (c) => {
     const { grant, slug } = await forWorld(c, "import.write");
     const { kind, slug: part } = cardId(c);
+    mayWrite(grant, kind);
     const body = CardBody.parse(await c.req.json().catch(() => ({})));
     const done = await asHttp(() => cards.save(grant.userId, slug, { ...body, kind, slug: part }));
     return c.json(
@@ -500,6 +521,7 @@ export function registerAgentRoutes(
   app.delete("/api/agent/worlds/:name/cards/:id", async (c) => {
     const { grant, slug } = await forWorld(c, "import.write");
     const { kind, slug: part } = cardId(c);
+    mayWrite(grant, kind);
     const removed = await asHttp(() => cards.remove(grant.userId, slug, `${kind}.${part}`));
     if (!removed) throw new HttpError(404, "not_found", "There is no such card.");
     return c.json({ ok: true });
@@ -508,6 +530,7 @@ export function registerAgentRoutes(
   /** Publish the cards as the world's next version, so readers and visual novels can use them. */
   app.post("/api/agent/worlds/:name/publish", async (c) => {
     const { grant, slug } = await forWorld(c, "import.write");
+    mayWriteMore(grant);
     const body = PublishBody.parse(await c.req.json().catch(() => ({})));
     const version = await asHttp(() =>
       cards.publish(grant.userId, slug, body.note || "import by agent"),
@@ -528,12 +551,14 @@ export function registerAgentRoutes(
   });
   app.put("/api/agent/worlds/:name/skills/:slug", async (c) => {
     const { grant, slug } = await forWorld(c, "import.write");
+    mayWriteMore(grant);
     const body = SkillBody.parse(await c.req.json().catch(() => ({})));
     await asHttp(() => guides.saveSkill(grant.userId, slug, { ...body, slug: guideSlug(c) }));
     return c.json({ ok: true });
   });
   app.delete("/api/agent/worlds/:name/skills/:slug", async (c) => {
     const { grant, slug } = await forWorld(c, "import.write");
+    mayWriteMore(grant);
     await asHttp(() => guides.removeSkill(grant.userId, slug, guideSlug(c)));
     return c.json({ ok: true });
   });
@@ -551,12 +576,14 @@ export function registerAgentRoutes(
   });
   app.put("/api/agent/worlds/:name/rules/:slug", async (c) => {
     const { grant, slug } = await forWorld(c, "import.write");
+    mayWriteMore(grant);
     const body = RuleBody.parse(await c.req.json().catch(() => ({})));
     await asHttp(() => guides.saveRule(grant.userId, slug, { ...body, slug: guideSlug(c) }));
     return c.json({ ok: true });
   });
   app.delete("/api/agent/worlds/:name/rules/:slug", async (c) => {
     const { grant, slug } = await forWorld(c, "import.write");
+    mayWriteMore(grant);
     await asHttp(() => guides.removeRule(grant.userId, slug, guideSlug(c)));
     return c.json({ ok: true });
   });
