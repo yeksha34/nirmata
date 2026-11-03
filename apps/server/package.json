@@ -8,6 +8,7 @@
     "start": "tsx src/main.ts",
     "import": "tsx src/import.ts",
     "import:assets": "tsx src/import-assets.ts",
+    "import:linked": "tsx src/import-linked.ts",
     "import:world": "tsx src/import-world.ts",
     "import:watch": "tsx src/watch.ts"
   },

@@ -48,6 +48,10 @@ export interface LinkedDetails {
   prompt?: string;
   /** A world-relative path to an image the author made of this asset, used as a reference. */
   reference?: string;
+  /** The card's owner attribute (clothes, adornment) or owners attribute (object), as written. */
+  owners?: string[];
+  /** An object card's linked CG names. */
+  cgs?: string[];
 }
 
 const PARTS = [
@@ -69,6 +73,15 @@ export function parseLinkedCard(text: string): LinkedDetails {
   const head = /<card\b[^>]*>/.exec(text)?.[0] ?? "";
   const type = /\btype="([^"]*)"/.exec(head)?.[1];
   if (type) out.type = type;
+  const list = (attr: string) =>
+    (new RegExp(`\\b${attr}="([^"]*)"`).exec(head)?.[1] ?? "")
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  const owners = [...list("owner"), ...list("owners")];
+  if (owners.length > 0) out.owners = owners;
+  const cgs = list("cgs");
+  if (cgs.length > 0) out.cgs = cgs;
   for (const part of PARTS) {
     const m = new RegExp(`<${part}>([\\s\\S]*?)</${part}>`).exec(text);
     const value = m?.[1]?.replace(/\s+/g, " ").trim();

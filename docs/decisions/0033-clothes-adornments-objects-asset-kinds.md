@@ -15,7 +15,8 @@ Adaptation assets were sprites, CGs and backgrounds. Things a character wears or
 5. **Database.** `assets.asset_kinds` gains the three keys; `assets.asset_links` holds the character and CG links; `assets.set_links` enforces the locks; `assets.v_asset_link_issues` lists breaches; `assets.v_asset_list` shows the links.
 6. **Rendering.** Isolated-item art (768x768, alpha) from generic templates `clothes`, `adornment`, `object`; it serves as a reference image for the owner's sprite state or the linked CG (ADR-0031). No layer compositor. These kinds have no reference slot of their own.
 7. **Prompts are described, not named.** The image model does not know a world's items, so the prompt for a linked asset is composed from its card (`composeLinkedPrompt`: the card's `<prompt>`, then appearance, material, placement, use). A card may name a `<reference>` image in the world; the server feeds it to the render through the reference slot of the CG workflow. World detail lives in cards and the database, never in source.
-8. The kind list lives once per package (`VN_ASSET_KINDS` in core, `ASSET_KINDS` in gen) instead of repeated unions.
+8. **Import.** These cards are not story cards: they stay out of the card kinds the host injects during play. `import:linked` copies them into the database as assets, with a spec holding the composed prompt and the character / CG links (from the visual novel manifests, else the card's owner). Reference images are not uploaded, and prompts and references are still read from the world folder at generation time.
+9. The kind list lives once per package (`VN_ASSET_KINDS` in core, `ASSET_KINDS` in gen) instead of repeated unions.
 
 ## Consequences
 - Worlds without these kinds are unaffected; `gen-assets-workflow-comfyui check` treats the new templates as optional.
