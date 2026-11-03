@@ -763,11 +763,7 @@ export class WorldFiles implements SourceBackend {
    * shape (a map or a list) and every other field of the entry, the seed included. Saves to one file
    * wait for each other.
    */
-  async savePromptSpec(
-    name: string,
-    type: AssetKind,
-    patch: PromptSpecPatch,
-  ): Promise<void> {
+  async savePromptSpec(name: string, type: AssetKind, patch: PromptSpecPatch): Promise<void> {
     const shared = inside(this.root, "vns/_shared/assets/prompts.json");
     const own = inside(this.root, "assets/workflow/prompts.json");
     const file = (await readIfThere(shared)) ? shared : own;
@@ -865,7 +861,11 @@ export class WorldFiles implements SourceBackend {
           }
         }
       }
-      const linked = { clothes: [...shared.clothes], adornments: [...shared.adornments], objects: [...shared.objects] };
+      const linked = {
+        clothes: [...shared.clothes],
+        adornments: [...shared.adornments],
+        objects: [...shared.objects],
+      };
       for (const v of vns) {
         if (v.slug === "_shared") continue;
         const vAssets = await this.listVnAssets(v.slug, options);
@@ -905,10 +905,7 @@ export class WorldFiles implements SourceBackend {
       return { exists: false };
     };
 
-    const scanDir = async (
-      dirName: "sprites" | "cgs" | "backgrounds",
-      type: AssetKind,
-    ) => {
+    const scanDir = async (dirName: "sprites" | "cgs" | "backgrounds", type: AssetKind) => {
       const dirs: Array<{ path: string; isShared: boolean }> = [
         { path: inside(this.root, `vns/_shared/assets/${dirName}`), isShared: true },
       ];
@@ -1152,7 +1149,14 @@ export class WorldFiles implements SourceBackend {
       });
     }
 
-    for (const item of [...sprites, ...cgs, ...backgrounds, ...linked.clothes, ...linked.adornment, ...linked.object]) {
+    for (const item of [
+      ...sprites,
+      ...cgs,
+      ...backgrounds,
+      ...linked.clothes,
+      ...linked.adornment,
+      ...linked.object,
+    ]) {
       if (promptSpecs[item.name]?.positivePrompt) {
         item.defaultPrompt = promptSpecs[item.name]!.positivePrompt;
       }
@@ -1168,11 +1172,7 @@ export class WorldFiles implements SourceBackend {
     };
   }
 
-  async getVnAssetDetail(
-    slug: string,
-    type: AssetKind,
-    name: string,
-  ): Promise<VnAssetDetail> {
+  async getVnAssetDetail(slug: string, type: AssetKind, name: string): Promise<VnAssetDetail> {
     // the list without prompts: only this asset needs one, and building every asset's reads the cards each time
     const list = await this.listVnAssets(slug, { prompts: false });
     const pool = {
@@ -1475,10 +1475,7 @@ export class WorldFiles implements SourceBackend {
    * world's own `<type>_ref.json` if it has one, else the world's (or the bundled) plain workflow with a
    * reference slot added, so a customised workflow keeps its customisations.
    */
-  async loadWorkflowTemplate(
-    type: AssetKind,
-    variant?: "ref",
-  ): Promise<Record<string, unknown>> {
+  async loadWorkflowTemplate(type: AssetKind, variant?: "ref"): Promise<Record<string, unknown>> {
     if (variant) {
       if (type === "bg") {
         throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
@@ -1535,6 +1532,33 @@ export class WorldFiles implements SourceBackend {
     try {
       await writeFile(join(targetDir, "generated_image.png"), buffer);
     } catch {}
+  }
+
+  /**
+   * The run's record, kept beside its image so the pair stays one unit: `run.json` (what was asked,
+   * what the workflow applied, how it ended), `workflow.json` (the exact graph sent) and the
+   * reference images used. Written when the run starts and again when it ends. A failure to write is
+   * the caller's to log: a generation never fails because its record could not be kept.
+   */
+  async saveRunRecord(
+    targetDir: string,
+    run: {
+      record: Record<string, unknown>;
+      workflow?: unknown;
+      references?: Array<{ name: string; data: Buffer }>;
+    },
+  ): Promise<void> {
+    const base = resolve(this.root);
+    const dir = inside(base, resolve(targetDir).slice(base.length + 1));
+    await writeAtomic(join(dir, "run.json"), JSON.stringify(run.record, null, 2));
+    if (run.workflow !== undefined) {
+      await writeAtomic(join(dir, "workflow.json"), JSON.stringify(run.workflow, null, 2));
+    }
+    for (const [i, ref] of (run.references ?? []).entries()) {
+      const file = join(dir, "references", `${i + 1}-${sanitizeSlug(ref.name)}.png`);
+      await mkdir(dirname(file), { recursive: true });
+      await writeFile(file, ref.data);
+    }
   }
 
   /** The folder that holds this world and its siblings. */
@@ -2135,7 +2159,11 @@ export class Library {
     return result;
   }
 
-  async linkedReference(name: string, kind: LinkedKind, asset: string): Promise<Buffer | undefined> {
+  async linkedReference(
+    name: string,
+    kind: LinkedKind,
+    asset: string,
+  ): Promise<Buffer | undefined> {
     return this.open(name).linkedReference(kind, asset);
   }
 
@@ -2261,6 +2289,14 @@ export class Library {
 
   async saveDatasetGeneratedImage(name: string, targetDir: string, buffer: Buffer): Promise<void> {
     return this.open(name).saveDatasetGeneratedImage(targetDir, buffer);
+  }
+
+  async saveRunRecord(
+    name: string,
+    targetDir: string,
+    run: Parameters<WorldFiles["saveRunRecord"]>[1],
+  ): Promise<void> {
+    return this.open(name).saveRunRecord(targetDir, run);
   }
 
   async loadWorkflowTemplate(

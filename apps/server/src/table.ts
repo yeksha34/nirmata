@@ -40,6 +40,7 @@ import {
   GenerationJobs,
   injectReferences,
   injectWorkflowParams,
+  readRunSettings,
   type AssetKind,
   assetDir,
   assetSize,
@@ -127,6 +128,12 @@ function workflowSize(
     }
   }
   return assetSize(type);
+}
+
+/** The dataset folder of one generation run, and the record kept in it. */
+interface RunState {
+  dir: string;
+  record: Record<string, unknown>;
 }
 
 /** Someone who has joined: the token they present, and the nickname it speaks for. */
@@ -537,14 +544,14 @@ export class Table {
     worldName: string,
     slug: string,
     body: GenerateAssetInput,
-  ): Promise<Buffer[]> {
+  ): Promise<Array<{ name: string; data: Buffer }>> {
     if (isLinkedKind(body.type)) {
       // the author's own image of the asset, named by its card, guides the render
       const own = await this.options.library.linkedReference(worldName, body.type, body.name);
-      return own ? [own] : [];
+      return own ? [{ name: body.name, data: own }] : [];
     }
     if (!body.references?.length || body.type === "bg") return [];
-    const images: Buffer[] = [];
+    const images: Array<{ name: string; data: Buffer }> = [];
     for (const name of body.references.slice(0, 6)) {
       const found = await this.options.library.readVnAsset(worldName, slug, `sprites/${name}.png`);
       if (!found) {
@@ -554,7 +561,7 @@ export class Table {
           "A reference sprite does not exist yet. Generate it first, or remove it from the references.",
         );
       }
-      images.push(found.data);
+      images.push({ name, data: found.data });
     }
     return images;
   }
@@ -566,7 +573,6 @@ export class Table {
     slug: string,
     body: GenerateAssetInput,
   ): Promise<{ assetUrl: string; positivePrompt: string; negativePrompt: string }> {
-    const jobs = this.genJobs;
     let positive = body.positivePrompt;
     let negative = body.negativePrompt || "";
 
@@ -592,6 +598,66 @@ export class Table {
       },
     );
 
+    // the run's record lives beside its image: written when it starts, again when it ends
+    const state: RunState = {
+      dir: archivedDir,
+      record: {
+        status: "started",
+        startedAt: new Date().toISOString(),
+        type: body.type,
+        name: body.name,
+        scope: slug,
+        positive,
+        negative,
+        feedback: body.feedback ?? {},
+      },
+    };
+    try {
+      return await this.sendWorldVnAsset(jobId, signal, worldName, slug, body, references, state);
+    } catch (e) {
+      await this.keepRunRecord(worldName, state, {
+        status: signal.aborted ? "cancelled" : "failed",
+        endedAt: new Date().toISOString(),
+        error: e instanceof Error ? e.message : String(e),
+      });
+      throw e;
+    }
+  }
+
+  /** Writes the run's record into its dataset folder. The generation never waits on, or fails for, it. */
+  private async keepRunRecord(
+    worldName: string,
+    state: RunState,
+    patch: Record<string, unknown>,
+    files?: { workflow?: unknown; references?: Array<{ name: string; data: Buffer }> },
+  ): Promise<void> {
+    state.record = { ...state.record, ...patch };
+    try {
+      await this.options.library.saveRunRecord(worldName, state.dir, {
+        record: state.record,
+        ...files,
+      });
+    } catch (e) {
+      this.options.log?.(
+        `The run's record was not saved: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+
+  private async sendWorldVnAsset(
+    jobId: string,
+    signal: AbortSignal,
+    worldName: string,
+    slug: string,
+    body: GenerateAssetInput,
+    references: Array<{ name: string; data: Buffer }>,
+    state: RunState,
+  ): Promise<{ assetUrl: string; positivePrompt: string; negativePrompt: string }> {
+    const jobs = this.genJobs;
+    const positive = String(state.record.positive);
+    const negative = String(state.record.negative);
+    const archivedDir = state.dir;
+
     const template = (body.workflowOverride ||
       (await this.options.library.loadWorkflowTemplate(
         worldName,
@@ -613,8 +679,8 @@ export class Table {
     if (references.length > 0) {
       const uploaded: string[] = [];
       for (const image of references) {
-        const hash = createHash("sha256").update(image).digest("hex").slice(0, 16);
-        uploaded.push(await this.comfy.uploadImage(`nirmata_ref_${hash}.png`, image));
+        const hash = createHash("sha256").update(image.data).digest("hex").slice(0, 16);
+        uploaded.push(await this.comfy.uploadImage(`nirmata_ref_${hash}.png`, image.data));
       }
       const used = injectReferences(injected as any, uploaded, {
         strength: body.referenceStrength,
@@ -637,10 +703,27 @@ export class Table {
               body.type as "clothes" | "adornment" | "object"
             ];
             const item = pool.find((a) => a.name === body.name);
-            return item ? { characters: item.lockedTo ?? [], cgs: item.linkedCgs ?? [] } : undefined;
+            return item
+              ? { characters: item.lockedTo ?? [], cgs: item.linkedCgs ?? [] }
+              : undefined;
           })
           .catch(() => undefined)
       : undefined;
+    // what the workflow really applies, not what was asked: an unset value is the workflow's own
+    const settings = readRunSettings(injected as any, {
+      references: references.map((r) => ({
+        name: r.name,
+        sha256: createHash("sha256").update(r.data).digest("hex"),
+      })),
+      referenceStrength: body.referenceStrength,
+    });
+    const { workflow: sentWorkflow, ...settingsOnly } = settings;
+    await this.keepRunRecord(
+      worldName,
+      state,
+      { settings: settingsOnly },
+      { workflow: sentWorkflow, references },
+    );
     await this.options.recorder?.begin({
       key: jobId,
       links,
@@ -651,11 +734,12 @@ export class Table {
       positive,
       negative,
       ...workflowSize(injected, body.type),
-      steps: body.steps,
-      cfg: body.cfg,
-      sampler: body.sampler,
-      scheduler: body.scheduler,
-      seed: body.seed,
+      steps: settings.steps,
+      cfg: settings.cfg,
+      sampler: settings.sampler,
+      scheduler: settings.scheduler,
+      seed: settings.seed,
+      runSettings: settings,
     });
 
     jobs.patch(jobId, {
@@ -712,6 +796,15 @@ export class Table {
     const targetPath = body.targetPath || `${dirName}/${body.name}.png`;
     await this.options.library.saveGeneratedVnAsset(worldName, slug, targetPath, imageBytes);
     await this.options.library.saveDatasetGeneratedImage(worldName, archivedDir, imageBytes);
+    await this.keepRunRecord(worldName, state, {
+      status: "succeeded",
+      endedAt: new Date().toISOString(),
+      output: {
+        file: "generated_image.png",
+        bytes: imageBytes.byteLength,
+        sha256: createHash("sha256").update(imageBytes).digest("hex"),
+      },
+    });
     await this.recordGeneration({
       worldName,
       scope: slug,
@@ -722,11 +815,12 @@ export class Table {
       image: Buffer.from(imageBytes),
       positive,
       negative,
-      steps: body.steps,
-      cfg: body.cfg,
-      sampler: body.sampler,
-      scheduler: body.scheduler,
-      seed: body.seed,
+      steps: settings.steps,
+      cfg: settings.cfg,
+      sampler: settings.sampler,
+      scheduler: settings.scheduler,
+      seed: settings.seed,
+      runSettings: settings,
     });
 
     // remember what made this image (the prompt after feedback), so the next visit starts from it

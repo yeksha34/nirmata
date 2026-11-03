@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -255,5 +255,72 @@ describe("generating with reference sprites", () => {
     });
     expect(job.state).toBe("error");
     expect(job.error).toContain("no place for a reference image");
+  });
+});
+
+describe("the record kept beside each image", () => {
+  /** The one run folder of an asset in the dataset. */
+  async function runFolder(root: string, name: string): Promise<string> {
+    const base = join(root, "assets", "dataset", "ch01", name);
+    const runs = await readdir(base);
+    expect(runs).toHaveLength(1);
+    return join(base, runs[0] as string);
+  }
+
+  it("keeps the inputs, the exact workflow, the references and the output together", async () => {
+    const { r, files, generate } = await setup();
+    const job = await generate({
+      type: "sprite",
+      name: "tina_happy",
+      references: ["tina_naked"],
+      referenceStrength: 0.5,
+    });
+    expect(job.state).toBe("done");
+    const dir = await runFolder(r.world.root, "tina_happy");
+    const run = JSON.parse(await readFile(join(dir, "run.json"), "utf8"));
+    expect(run.status).toBe("succeeded");
+    expect(run.positive).toBe("a figure");
+    expect(run.settings.denoise).toBe(0.5); // what the graph applied
+    expect(run.settings.referenceStrength).toBe(0.5); // what was asked
+    expect(run.settings.references).toEqual([
+      {
+        name: "tina_naked",
+        sha256: createHash("sha256")
+          .update(files.tina_naked as Buffer)
+          .digest("hex"),
+      },
+    ]);
+    expect(run.settings.workflow).toBeUndefined(); // the graph is its own file
+    expect(run.output.sha256).toBe(createHash("sha256").update(png("made")).digest("hex"));
+    const workflow = JSON.parse(await readFile(join(dir, "workflow.json"), "utf8"));
+    expect(Object.values(workflow).some((n) => (n as Json).class_type === "VAEEncode")).toBe(true);
+    expect(
+      (await readFile(join(dir, "references", "1-tina_naked.png"))).equals(
+        files.tina_naked as Buffer,
+      ),
+    ).toBe(true);
+    expect(await readFile(join(dir, "generated_image.png"))).toBeTruthy();
+  });
+
+  it("marks a run that failed, keeping its inputs", async () => {
+    const { r, generate } = await setup();
+    const plain = {
+      "1": { class_type: "CLIPTextEncode", inputs: { text: "x" } },
+      "2": { class_type: "SaveImage", inputs: { images: ["1", 0] } },
+    };
+    const job = await generate({
+      type: "sprite",
+      name: "tina_happy",
+      references: ["tina_naked"],
+      workflowOverride: plain,
+    });
+    expect(job.state).toBe("error");
+    const run = JSON.parse(
+      await readFile(join(await runFolder(r.world.root, "tina_happy"), "run.json"), "utf8"),
+    );
+    expect(run.status).toBe("failed");
+    expect(run.error).toContain("no place for a reference image");
+    expect(run.positive).toBe("a figure");
+    expect(run.output).toBeUndefined();
   });
 });

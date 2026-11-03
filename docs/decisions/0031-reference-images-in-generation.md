@@ -19,7 +19,7 @@ Every expression of a character must look like that character, and a CG must sho
 + Existing workflows are unchanged.
 - The derived workflows were checked against the node definitions of a running ComfyUI with `ComfyUI_IPAdapter_plus`, `ip-adapter-plus_sd15` and the ViT-H CLIP vision model installed, but not executed end to end. Another version of the IPAdapter node may need its inputs adjusted in a world's own `cg_ref.json`.
 - A reference is read from the visual novel's current sprite file, not from the database store.
-- References are not yet recorded in the asset's spec.
+- The references and their strength are recorded with each run (see [ADR-0034](0034-current-image-in-supabase-history-local.md)).
 
 ## Alternatives considered
 IPAdapter for sprites too (loses pose and outfit consistency, needs an install); image-to-image for CGs (copies the sprite's pose and framing); picking references automatically with no say for the author.

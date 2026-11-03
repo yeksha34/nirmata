@@ -31,4 +31,5 @@ Generation history and the dataset survive restarts and count against a visible 
 ## History
 | Date | Change |
 |---|---|
+| 2026-11-03 | Specs also keep the run settings and unknown values stay null; older images move to the local store ([F-68](F-68-run-record-and-local-history.md)). |
 | 2026-11-03 | Written for release v0.3.0-supabase-database; state Review. |

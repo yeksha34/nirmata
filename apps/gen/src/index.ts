@@ -7,4 +7,5 @@ export * from "./import-dataset";
 export * from "./png-transparency";
 export * from "./record-render";
 export * from "./reference-images";
+export * from "./run-settings";
 export * from "./workflow-injector";

@@ -1,4 +1,11 @@
-import { addSpec, type AssetKind, ensureAsset, type GenerationJob, type GenerationJobs } from "@nirmata/gen";
+import {
+  addSpec,
+  type AssetKind,
+  ensureAsset,
+  type GenerationJob,
+  type GenerationJobs,
+  type RunSettings,
+} from "@nirmata/gen";
 import { slugFor } from "./lore-rows";
 import { DbRecorder, type RenderRecorder } from "./render-recorder";
 
@@ -20,6 +27,8 @@ export interface BeginJob {
   sampler?: string | undefined;
   scheduler?: string | undefined;
   seed?: number | undefined;
+  /** What the run will use, read from the workflow about to be sent: kept in the spec. */
+  runSettings?: RunSettings | undefined;
   /** Clothes, adornments and objects: the characters and CG names the asset is locked or linked to. */
   links?: { characters: string[]; cgs: string[] } | undefined;
 }
@@ -101,7 +110,8 @@ export class DbGenerations extends DbRecorder implements GenerationLedger {
           // a lock the database refuses must not stop the generation, so it is only logged
           try {
             const cgIds: string[] = [];
-            for (const cg of job.links.cgs) cgIds.push(await ensureAsset(q, String(world), "cg", cg));
+            for (const cg of job.links.cgs)
+              cgIds.push(await ensureAsset(q, String(world), "cg", cg));
             await q("select assets.set_links($1, $2, $3)", [assetId, job.links.characters, cgIds]);
           } catch (err) {
             console.warn("asset links not recorded:", err instanceof Error ? err.message : err);

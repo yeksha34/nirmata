@@ -112,7 +112,7 @@ select r.id as render_id, r.asset_id, r.world_id, r.storage_path, r.archived_at,
        sp.width, sp.height,
        (select coalesce(jsonb_object_agg(f.tag, f.choice_key), '{}'::jsonb)
           from assets.render_feedback f where f.render_id = r.id) as feedback,
-       r.store, r.bytes, r.sha256
+       r.store, r.bytes, r.sha256, sp.run_settings
 from assets.renders r
 join assets.asset_specs sp on sp.id = r.spec_id
 where r.archived_at is not null;

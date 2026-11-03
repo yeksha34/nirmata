@@ -1,5 +1,6 @@
 import type { AssetKind } from "./asset-kind";
 import type { Query } from "@nirmata/db";
+import type { RunSettings } from "./run-settings";
 
 export interface RenderToRecord {
   worldId: string;
@@ -16,6 +17,8 @@ export interface RenderToRecord {
   cfg?: number | undefined;
   sampler?: string | undefined;
   scheduler?: string | undefined;
+  /** What the run used (exact workflow, checkpoint, references); absent for an image of unknown origin. */
+  runSettings?: RunSettings | undefined;
   store: "supabase" | "local";
   bytes: number;
   sha256: string;
@@ -39,27 +42,41 @@ export async function ensureAsset(
   return String(id);
 }
 
-/** Adds the spec that describes an image to be (or that was) made: prompts, sampler settings, size. */
+/**
+ * Adds the spec that describes an image to be (or that was) made: prompts, sampler settings, size, and
+ * what the run used. A sampler setting that is not known is stored as unknown (null), never as a
+ * made-up default; a run's settings are read from the workflow that was sent, so they are known.
+ */
 export async function addSpec(
   q: Query,
   assetId: string,
   r: Pick<
     RenderToRecord,
-    "positive" | "negative" | "width" | "height" | "seed" | "steps" | "cfg" | "sampler" | "scheduler"
+    | "positive"
+    | "negative"
+    | "width"
+    | "height"
+    | "seed"
+    | "steps"
+    | "cfg"
+    | "sampler"
+    | "scheduler"
+    | "runSettings"
   >,
 ): Promise<string> {
   const spec = (
-    await q("select assets.add_spec($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id", [
+    await q("select assets.add_spec($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, null, $11::jsonb) as id", [
       assetId,
       r.positive,
       r.negative,
-      r.seed ?? 0,
-      r.steps ?? 20,
-      r.cfg ?? 7,
-      r.sampler ?? "euler",
-      r.scheduler ?? "normal",
+      r.seed ?? null,
+      r.steps ?? null,
+      r.cfg ?? null,
+      r.sampler ?? null,
+      r.scheduler ?? null,
       r.width,
       r.height,
+      JSON.stringify(r.runSettings ?? {}),
     ])
   ).rows[0]?.id;
   return String(spec);
@@ -75,16 +92,19 @@ export async function recordRender(
   q: Query,
   r: RenderToRecord,
   existing?: { assetId: string; specId: string; jobId?: string | undefined },
-): Promise<void> {
+): Promise<{ assetId: string; renderId: string }> {
   const assetId = existing?.assetId ?? (await ensureAsset(q, r.worldId, r.kind, r.name));
   const specId = existing?.specId ?? (await addSpec(q, assetId, r));
-  await q("select assets.record_render($1, $2, $3, $4, $5, $6, $7, 'image/png')", [
-    assetId,
-    specId,
-    r.path,
-    existing?.jobId ?? null,
-    r.store,
-    r.bytes,
-    r.sha256,
-  ]);
+  const renderId = (
+    await q("select assets.record_render($1, $2, $3, $4, $5, $6, $7, 'image/png') as id", [
+      assetId,
+      specId,
+      r.path,
+      existing?.jobId ?? null,
+      r.store,
+      r.bytes,
+      r.sha256,
+    ])
+  ).rows[0]?.id;
+  return { assetId, renderId: String(renderId) };
 }

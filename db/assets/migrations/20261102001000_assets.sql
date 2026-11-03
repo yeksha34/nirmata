@@ -111,8 +111,11 @@ end $$;
 create trigger assets_guard before update on assets.assets
   for each row execute function assets.guard_asset();
 
--- the prompt record of one generation attempt: immutable; sampler settings are columns because the
--- dataset compares them
+-- the record of one generation attempt: immutable; sampler settings are columns because the
+-- dataset compares them. A sampler setting is null when it is not known (an image imported from
+-- before settings were kept): never a made-up default, so training can leave those rows out.
+-- run_settings holds the rest of what made the image: the exact workflow sent, the checkpoint and
+-- LoRAs, the reference images and their strength.
 create table assets.asset_specs (
   id                          uuid primary key default gen_random_uuid(),
   asset_id                    uuid not null,
@@ -120,13 +123,15 @@ create table assets.asset_specs (
   spec_no                     int not null check (spec_no > 0),
   positive                    text not null check (char_length(positive) <= 8000),
   negative                    text not null default '' check (char_length(negative) <= 8000),
-  seed                        bigint not null,
-  steps                       int not null check (steps between 1 and 150),
-  cfg                         numeric(5, 2) not null check (cfg between 0 and 30),
-  sampler                     text not null check (char_length(sampler) between 1 and 60),
-  scheduler                   text not null check (char_length(scheduler) between 1 and 60),
+  seed                        bigint,
+  steps                       int check (steps between 1 and 150),
+  cfg                         numeric(5, 2) check (cfg between 0 and 30),
+  sampler                     text check (char_length(sampler) between 1 and 60),
+  scheduler                   text check (char_length(scheduler) between 1 and 60),
   width                       int not null check (width between 64 and 4096),
   height                      int not null check (height between 64 and 4096),
+  run_settings                jsonb not null default '{}'::jsonb
+                              check (jsonb_typeof(run_settings) = 'object' and pg_column_size(run_settings) <= 262144),
   workflow_template_version_id uuid,                      -- soft reference: platform.template_versions
   created_by                  uuid references identity.profiles (user_id) on delete restrict,
   created_at                  timestamptz not null default now(),
@@ -209,7 +214,8 @@ end $$;
 
 create function assets.add_spec(
   p_asset uuid, p_positive text, p_negative text, p_seed bigint, p_steps int, p_cfg numeric,
-  p_sampler text, p_scheduler text, p_width int, p_height int, p_template_version uuid default null
+  p_sampler text, p_scheduler text, p_width int, p_height int, p_template_version uuid default null,
+  p_run_settings jsonb default '{}'::jsonb
 ) returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -233,9 +239,9 @@ begin
   end if;
   select coalesce(max(spec_no), 0) + 1 into v_no from assets.asset_specs where asset_id = p_asset;
   insert into assets.asset_specs (asset_id, world_id, spec_no, positive, negative, seed, steps, cfg, sampler,
-                                  scheduler, width, height, workflow_template_version_id, created_by)
+                                  scheduler, width, height, workflow_template_version_id, run_settings, created_by)
     values (p_asset, v_a.world_id, v_no, p_positive, coalesce(p_negative, ''), p_seed, p_steps, p_cfg, p_sampler,
-            p_scheduler, p_width, p_height, p_template_version, (select platform.uid()))
+            p_scheduler, p_width, p_height, p_template_version, coalesce(p_run_settings, '{}'::jsonb), (select platform.uid()))
     returning id into v_id;
   update assets.assets set current_spec_id = v_id where id = p_asset;
   return v_id;
@@ -399,7 +405,7 @@ grant select on assets.v_asset_list, assets.v_dataset_runs to authenticated, app
 revoke execute on all functions in schema assets from public, anon;
 grant execute on function
   assets.create_asset(uuid, uuid, text, text),
-  assets.add_spec(uuid, text, text, bigint, int, numeric, text, text, int, int, uuid),
+  assets.add_spec(uuid, text, text, bigint, int, numeric, text, text, int, int, uuid, jsonb),
   assets.record_render(uuid, uuid, text, uuid), assets.set_current_render(uuid, uuid),
   assets.retire_asset(uuid), assets.archive_render(uuid, boolean),
   assets.set_feedback(uuid, text, text), assets.remove_feedback(uuid, text)

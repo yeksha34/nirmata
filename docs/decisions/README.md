@@ -38,5 +38,6 @@ Use `.agents/skills/record-decision`.
 | [0031](0031-reference-images-in-generation.md) | Reference images in generation | Accepted |
 | [0032](0032-sign-in-through-the-server.md) | Sign-in through the server: email and password, invitation only | Accepted |
 | [0033](0033-clothes-adornments-objects-asset-kinds.md) | Clothes, adornments and objects as VN asset kinds | Proposed |
+| [0034](0034-current-image-in-supabase-history-local.md) | Supabase keeps the current image; the history and the run record stay local | Accepted |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.
