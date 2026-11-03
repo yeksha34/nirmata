@@ -53,6 +53,7 @@ node .agents/skills/gen-assets-workflow-comfyui/driver.mjs list
    - Sprites: `sprite.api.json` (and `sprite.json`)
    - Event CGs: `cg.api.json` (and `cg.json`)
    - Backgrounds: `bg.api.json` and `background.api.json` (and `.json`)
+   - Optional, character-linked kinds (`"clothes"`, `"adornment"`, `"object"`): `clothes.api.json`, `adornment.api.json`, `object.api.json` (and `.json`). `check` does not fail when they are missing.
 
 ---
 
@@ -80,6 +81,12 @@ node .agents/skills/gen-assets-workflow-comfyui/driver.mjs list
 * **Lighting & Atmosphere:** Support prompt swapping for times of day (day, overcast, dusk, night, rainy).
 * **Geometry Preservation:** For repeated visits to the same location, use ControlNet Depth with a 0.50–0.60 denoise lock to preserve architectural line consistency across lighting changes.
 
+### 4. Clothes, Adornments, Objects (`clothes.api.json`, `adornment.api.json`, `object.api.json`)
+* **Purpose:** Reference art for things a character wears or touches, which a generic sprite/CG prompt cannot draw once the world customises them. Output feeds the owner's sprite state (`<char>_<state>`) or the linked CG as a reference image (ADR-0031); there is no layer compositor.
+* **Locks:** Clothes and adornments are locked to one character (the unclad base `naked` is the only unlocked state). Objects link to characters and/or CGs, and exist only when a character interacts with them and the world makes them non-generic.
+* **Canvas:** $768 	imes 768$, isolated item on alpha (RMBG), no person in frame.
+* **Manifest:** `assets.clothes` and `assets.adornments` are `{ character: [names] }`; `assets.objects` is `[{ name, owners?, cgs? }]`. `scaffold` writes one `prompts.json` entry per name.
+
 ---
 
 ## Execution Checklist
@@ -94,6 +101,7 @@ node .agents/skills/gen-assets-workflow-comfyui/driver.mjs list
    * `sprite.api.json` (and `sprite.json`)
    * `cg.api.json` (and `cg.json`)
    * `bg.api.json` & `background.api.json` (and `.json`)
+   * `clothes.api.json`, `adornment.api.json`, `object.api.json` (and `.json`), if the world uses them
    Ensure checkpoints (`AOM3A1B_orangemixs.safetensors`, `ponyDiffusionV6XL_fp16.safetensors`, etc.) match available hardware.
 3. **Verify Compliance:**
    Run:
