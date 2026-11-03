@@ -12,8 +12,12 @@ import {
   PlanStore,
   PrepError,
   PrepStore,
+  parseGraph,
+  parseKind,
   parsePrep,
   prepStates,
+  TemplateError,
+  TemplateStore,
 } from "@nirmata/adaptation";
 import type { Db } from "@nirmata/db";
 import { ASSET_KINDS } from "@nirmata/gen";
@@ -47,13 +51,23 @@ const NeedSchema = z.union([
   z.object({ type: z.enum(["cg", "bg", "object"]), name: Name }),
 ]);
 const Gap = z.object({ needs: z.array(NeedSchema).max(500) });
+const Workflow = z.object({
+  graph: z.record(z.unknown()),
+  note: z.string().trim().max(200).optional(),
+  vnId: z.string().uuid().optional(),
+});
 
 /** A database refusal (`42501`) or a problem with the request, in the words callers get. */
 async function asHttp<T>(work: () => Promise<T>): Promise<T> {
   try {
     return await work();
   } catch (e) {
-    if (e instanceof AgentTokenError || e instanceof PrepError || e instanceof AssetPlanError) {
+    if (
+      e instanceof AgentTokenError ||
+      e instanceof PrepError ||
+      e instanceof AssetPlanError ||
+      e instanceof TemplateError
+    ) {
       throw new HttpError(400, "bad_request", e.message);
     }
     if ((e as { code?: string }).code === "42501") {
@@ -128,6 +142,7 @@ export function registerAgentRoutes(
   const grantOf = agentGrantOf(tokens);
   const prep = new PrepStore(db);
   const plan = new PlanStore(db);
+  const templates = new TemplateStore(db);
 
   /** The grant for this request, and the world it names, which must be the one the token is for. */
   const forWorld = async (c: Context, scope: AgentScope) => {
@@ -238,5 +253,51 @@ export function registerAgentRoutes(
     const existing = await asHttp(() => plan.existing(grant.userId, slug));
     const needs = [...stored].flatMap(([name, p]) => baselineNeeds(name, p));
     return c.json({ missing: missingAssets(needs, existing) });
+  });
+
+  // ---- workflow templates: the world's copy of the generation workflows --------------------------
+
+  /** What each kind of asset resolves to, and from where: the platform default, the world's copy, or a visual novel's pin. */
+  app.get("/api/agent/worlds/:name/workflows", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.read");
+    const vnId = c.req.query("vnId");
+    return c.json({ workflows: await asHttp(() => templates.list(grant.userId, slug, vnId)) });
+  });
+
+  app.get("/api/agent/worlds/:name/workflows/:type", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.read");
+    const type = await asHttp(async () => parseKind(c.req.param("type")));
+    const found = await asHttp(() => templates.get(grant.userId, slug, type, c.req.query("vnId")));
+    if (!found) throw new HttpError(404, "not_found", "There is no workflow for that kind.");
+    return c.json(found);
+  });
+
+  /** The world takes its own copy of the platform default, to customise later. */
+  app.post("/api/agent/worlds/:name/workflows/:type/adopt", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.write");
+    const type = await asHttp(async () => parseKind(c.req.param("type")));
+    return c.json({ versionId: await asHttp(() => templates.adopt(grant.userId, slug, type)) });
+  });
+
+  /** Publish the world's (or a visual novel's) own workflow for a kind. */
+  app.put("/api/agent/worlds/:name/workflows/:type", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.write");
+    const type = await asHttp(async () => parseKind(c.req.param("type")));
+    const body = Workflow.parse(await c.req.json().catch(() => ({})));
+    const versionId = await asHttp(async () =>
+      templates.override(grant.userId, slug, type, parseGraph(body.graph), {
+        note: body.note,
+        vnId: body.vnId,
+      }),
+    );
+    return c.json({ versionId }, 201);
+  });
+
+  /** Back to the platform default. */
+  app.delete("/api/agent/worlds/:name/workflows/:type", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.write");
+    const type = await asHttp(async () => parseKind(c.req.param("type")));
+    await asHttp(() => templates.reset(grant.userId, slug, type));
+    return c.json({ ok: true });
   });
 }

@@ -17,7 +17,7 @@ The adaptation agent no longer writes files into a world's folder. An author giv
 - [x] `GET/PUT/DELETE /api/agent/worlds/:name/characters…` read each character card with its prep state (`none`, `stale`, `current`) and store the prep (server tests with a fake database).
 - [x] `GET …/baseline` lists the unclad base and each equipable still missing; `POST/DELETE …/assets` plans and unplans an asset under the rules of `asset-plan.ts`; `POST …/assets/gap` reports only the needs no existing asset expresses (unit and server tests).
 - [x] A token works only for its own world and its scopes (`adaptation.read`, `adaptation.write`); a revoked, expired or unknown token is refused (server tests).
-- [ ] The database objects run on a real database: `db/identity/migrations/20261103000300_agent_tokens.sql`, `db/assets/migrations/20261103000400_character_prep.sql`, the changed unique indexes in `20261102001000_assets.sql`, and pgTAP `010_agent_tokens.sql` and `011_character_prep.sql`. **Not run: there is no Postgres on the machine this was built on.**
+- [x] The database objects run on a real database: `db/identity/migrations/20261103000300_agent_tokens.sql`, `db/assets/migrations/20261103000400_character_prep.sql`, the changed unique indexes in `20261102001000_assets.sql`, and pgTAP `010_agent_tokens.sql` and `011_character_prep.sql` (run by the owner after a reset, 2026-11-03).
 - [ ] Tried with a real agent against a real imported world (create token, prep a character, plan the baseline).
 - [ ] The Studio lists an imported world's planned assets from the database (it still reads the manifest) and the world manager has an "Agent access" panel.
 
@@ -37,7 +37,7 @@ The adaptation agent no longer writes files into a world's folder. An author giv
 | Date | What was run | Result |
 |---|---|---|
 | 2026-11-03 | `tsc -b`; full test suite (796) | Pass |
-| 2026-11-03 | SQL migrations and pgTAP 010, 011 | Not run (no Postgres here) |
+| 2026-11-03 | SQL migrations and pgTAP 010, 011 | Pass (owner, after fixing a `like()` call in 010 and resetting for the index change) |
 
 ## History
 | Date | Change |

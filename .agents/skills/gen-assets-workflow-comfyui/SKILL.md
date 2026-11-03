@@ -45,6 +45,7 @@ node .agents/skills/gen-assets-workflow-comfyui/driver.mjs list
 
 ## Principles & Boundaries
 
+0. **Imported worlds.** For a world Nirmata holds in its database the workflows are in the database (F-71): use the agent endpoints under `/api/agent/worlds/<world>/workflows` (see `story-to-vn-adaptation`, Step 0) instead of `scaffold`. The rest of this skill applies to worlds that are still folders.
 1. **Adaptation Ownership:** Workflows belong to the world and adaptation. The server (`apps/server`) and web client (`apps/web`) are execution harnesses; they do not synthesize diffusion graphs from scratch. The world's `assets/workflow/` directory must contain the prepared templates before generation can proceed.
 2. **Storage Location:** All customized workflows for a specific world are written to:
    `worlds/<world-slug>/assets/workflow/`

@@ -101,6 +101,8 @@ For a world that Nirmata holds in its database, do this before the first chapter
 2. For each character, read the card and `PUT …/characters/<name>/prep` with `{basePositive, baseNegative, notes, expressions:[{expression, tags}], outfits:[{kind:"clothes"|"adornment", name, tags}]}`. Keep the characterization: the tags come from the card, not from invention. A `stale` prep means the card changed; read it again.
 3. `GET …/baseline` lists the first assets still missing: the unclad base (`<character>_naked`) and each item of clothes or adornment in the prep. `POST …/assets` each one with `{type, name, owner}`. Plan the important objects (`{type:"object", name, owner?}`) and the locations (`{type:"bg", name}`) the same way.
 
+4. **Workflows.** `GET …/workflows` shows which generation workflow each kind of asset uses and where it comes from (`platform`, `world`, `vn`). Customise only what the story needs (a checkpoint, steps, a sampler): `POST …/workflows/<type>/adopt` takes the world's own copy, `GET …/workflows/<type>` returns its `graph`, and `PUT …/workflows/<type>` with `{graph, note}` publishes the changed graph (a ComfyUI API graph; the database refuses nodes outside its allow-list and any address or file path). `DELETE …/workflows/<type>` goes back to the default. Do not copy workflow files into the world's folder.
+
 Step 6 then only adds what a chapter needs and the existing assets do not express (below).
 
 ## Step 6 — Characters and assets

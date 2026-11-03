@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { GoTrue, SessionStore } from "@nirmata/auth";
+import { TemplateStore } from "@nirmata/adaptation";
 import { connectDb, type Db } from "@nirmata/db";
 import { storesFromEnv } from "@nirmata/storage";
 import { createApp } from "./app";
@@ -83,6 +84,7 @@ async function main(): Promise<void> {
   const library = new Library(config.libraryDir, {
     lore: db ? new DbLore(db, () => hostUser()) : undefined,
     images: db ? new DbImages(db, stores, () => hostUser()) : undefined,
+    workflows: db ? new TemplateStore(db).source(() => hostUser()) : undefined,
   });
 
   const ledger = db ? new DbGenerations(db, stores, () => hostUser(), log) : undefined;
