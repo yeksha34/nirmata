@@ -263,6 +263,7 @@ describe("the card templates", () => {
       "..",
       "..",
       "..",
+      "test-fixtures",
       "worlds",
       "_template",
     );
