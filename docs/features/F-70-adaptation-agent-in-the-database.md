@@ -20,7 +20,7 @@ The adaptation agent no longer writes files into a world's folder. An author giv
 - [x] The database objects run on a real database: `db/identity/migrations/20261103000300_agent_tokens.sql`, `db/assets/migrations/20261103000400_character_prep.sql`, the changed unique indexes in `20261102001000_assets.sql`, and pgTAP `010_agent_tokens.sql` and `011_character_prep.sql` (run by the owner after a reset, 2026-11-03).
 - [ ] Tried with a real agent against a real imported world (create token, prep a character, plan the baseline).
 - [x] The Studio lists an imported world's planned assets from the database (names, owners, links, the image and prompt the database holds), and planning or removing an asset there writes the database. A world that is not in the database keeps using the manifest. (2026-11-04; tests with a fake database, not tried in a browser.)
-- [ ] The world manager has an "Agent access" panel (an author makes a token through the API until then).
+- [x] The World tab of the workspace has an "Agent access" panel: an author makes a token (a label and 7, 30 or 90 days), copies it once, sees each token's state and last use, and revokes it. (2026-11-04; unit-tested standing and Hindi strings; not seen in a browser.)
 
 ## Non-goals
 - Workflow templates in the database (F-71) and visual novel content in the database (F-72).

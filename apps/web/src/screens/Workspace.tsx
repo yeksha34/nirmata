@@ -26,6 +26,7 @@ import {
   useTemplates,
   WorldFacts,
 } from "./Manager";
+import { AgentAccess } from "./agent-access";
 import { WritingDetail, WritingsList } from "./Writings";
 import {
   CreateWorld,
@@ -396,6 +397,7 @@ export function Workspace({ name }: { name: string }) {
                   {detail.manifest && (
                     <WorldFacts manifest={detail.manifest} onEdit={() => setEditing(true)} />
                   )}
+                  <AgentAccess world={name} />
                   <section className="world-danger">
                     <button type="button" className="danger" onClick={() => setPutting(true)}>
                       <T>Put away</T>

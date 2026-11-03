@@ -1,4 +1,5 @@
 import type {
+  AgentToken,
   CardForm,
   CardTemplate,
   ComfyUiStatus,
@@ -152,6 +153,18 @@ export const api = {
   closeStory: () => post("/api/story/close"),
 
   // the worlds page: every world, without opening any of them
+  agentTokens: (worldName: string) =>
+    get<{ tokens: AgentToken[] }>(`/api/worlds/${encodeURIComponent(worldName)}/agent-tokens`).then(
+      (r) => r.tokens,
+    ),
+  /** Makes a token for the adaptation agent. The token is in the answer once and cannot be read again. */
+  makeAgentToken: (worldName: string, label: string, days: number) =>
+    post<{ id: string; token: string }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/agent-tokens`,
+      { label, days },
+    ),
+  revokeAgentToken: (worldName: string, id: string) =>
+    del(`/api/worlds/${encodeURIComponent(worldName)}/agent-tokens/${encodeURIComponent(id)}`),
   recent: () => get<{ stories: RecentStory[] }>("/api/recent").then((r) => r.stories),
   worldDetail: (name: string) => get<WorldDetail>(`/api/worlds/${encodeURIComponent(name)}`),
   writing: (name: string, path: string) =>

@@ -17,7 +17,7 @@ The text the adaptation agent adapts, and the manifest the host runs the world b
 - [x] `WorldFiles.writings/writing` list and read chapters and drafts from the database for a world that is in it (scenes and index files left out of the lists as before); what the database does not hold is not found. `world()` and `exists()` read the manifest from the database first, then `world.json`.
 - [x] `import:world` also copies `world.json` and every markdown file under `chapters/` and `drafts/` (`--no-story` skips); an unchanged text is skipped, a file newer than an unedited copy replaces it, a text edited in the database is kept and listed unless `--force`.
 - [x] Agent endpoints: `GET …/worlds/:name` (manifest and counts), `GET …/writings`, `GET/PUT/DELETE …/writing?path=`.
-- [ ] The migrations and `db/tests/014_story_in_the_database.sql` run on a real database.
+- [x] The migrations and `db/tests/014_story_in_the_database.sql` run on a real database (owner, 2026-11-04; the first try failed on a non-immutable generated column, fixed).
 - [ ] `import:world --publish` on a real world folder copies everything (cards, story, visual novels) and the Studio and workspace show it with the folder moved away.
 - [ ] Tried with a real agent reading a chapter and saving an adaptation.
 
@@ -36,7 +36,8 @@ The text the adaptation agent adapts, and the manifest the host runs the world b
 | Date | What was run | Result |
 |---|---|---|
 | 2026-11-04 | `tsc -b`; full test suite | Pass |
-| 2026-11-04 | Migrations, pgTAP 014, `import:world` on a folder | Not run yet |
+| 2026-11-04 | Migrations and pgTAP 014 | Pass (owner) |
+| | `import:world` on a folder | Not run yet |
 
 ## History
 | Date | Change |
