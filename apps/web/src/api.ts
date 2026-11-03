@@ -310,4 +310,19 @@ export const api = {
     del<{ ok: boolean; name: string }>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}`,
     ),
+  /** Plans a new asset in a visual novel; its image is made later. A sprite, clothes or adornment names its character as `owner`. */
+  addVnAsset: (
+    worldName: string,
+    slug: string,
+    body: { type: AssetKind; name: string; owner?: string },
+  ) =>
+    post<{ ok: boolean; name: string }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets`,
+      body,
+    ),
+  /** Takes an asset out of the plan and deletes its image; its dataset runs stay. */
+  removeVnAsset: (worldName: string, slug: string, type: AssetKind, name: string) =>
+    del<{ ok: boolean; name: string }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/${type}/${encodeURIComponent(name)}`,
+    ),
 };

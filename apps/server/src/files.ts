@@ -56,6 +56,7 @@ import {
   parseLinkedCard,
   templateName,
 } from "@nirmata/gen";
+import { AssetPlanError, addToPlan, type PlannedAsset, removeFromPlan } from "./asset-plan";
 import { HttpError } from "./errors";
 import { slugFor } from "./lore-rows";
 import {
@@ -1406,6 +1407,60 @@ export class WorldFiles implements SourceBackend {
     return { ok: true, name };
   }
 
+  /** Plan a new asset in a visual novel. Its image is made later, in the Studio. */
+  async addVnAsset(
+    slug: string,
+    type: AssetKind,
+    input: PlannedAsset,
+  ): Promise<{ ok: boolean; name: string }> {
+    const safeSlug = sanitizeSlug(slug);
+    if (safeSlug === "_all" || safeSlug === "all" || safeSlug === "_shared")
+      throw new HostError("bad_state", "Pick one visual novel to plan the asset in.");
+    const manifest = await this.vnManifest(safeSlug);
+    try {
+      const { assets, name } = addToPlan(manifest.assets, type, input);
+      await this.saveVn(safeSlug, {
+        manifest: { ...manifest, assets, updatedAt: new Date().toISOString() },
+      });
+      return { ok: true, name };
+    } catch (e) {
+      if (e instanceof AssetPlanError) throw new HostError("bad_state", e.message);
+      throw e;
+    }
+  }
+
+  /**
+   * Take an asset out of a visual novel's plan and delete its image there. Its runs in the dataset
+   * stay: they are what a model is trained on. An asset of the shared pool has no plan, only images.
+   */
+  async removeVnAsset(
+    slug: string,
+    type: AssetKind,
+    name: string,
+  ): Promise<{ ok: boolean; name: string }> {
+    const safeSlug = sanitizeSlug(slug);
+    if (safeSlug === "_all" || safeSlug === "all")
+      throw new HostError("bad_state", "Pick one visual novel to remove the asset from.");
+    if (safeSlug !== "_shared") {
+      const manifest = await this.vnManifest(safeSlug);
+      const { assets, removed } = removeFromPlan(manifest.assets, type, name);
+      if (removed)
+        await this.saveVn(safeSlug, {
+          manifest: { ...manifest, assets, updatedAt: new Date().toISOString() },
+        });
+    }
+    // the name is a file name as the Studio listed it (an owner may be capitalised), so it is checked, not rewritten
+    if (!STORED_PART.test(name) || name.includes(".."))
+      throw new HostError("invalid_card", `Invalid asset name "${name}".`);
+    const dirName = assetDir(type);
+    for (const ext of ["png", "jpg", "jpeg", "webp"]) {
+      await rm(inside(this.root, `vns/${safeSlug}/assets/${dirName}/${name}.${ext}`), {
+        force: true,
+      });
+    }
+    return { ok: true, name };
+  }
+
   async deleteAllVnAssets(slug: string): Promise<{ ok: boolean; deletedCount: number }> {
     const safeSlug = sanitizeSlug(slug);
     const subDirs = ["sprites", "cgs", "backgrounds"];
@@ -2218,6 +2273,24 @@ export class Library {
     nameKey: string,
   ): Promise<{ ok: boolean; name: string }> {
     return this.open(name).deleteOneVnAsset(slug, type, nameKey);
+  }
+
+  async addVnAsset(
+    name: string,
+    slug: string,
+    type: AssetKind,
+    input: PlannedAsset,
+  ): Promise<{ ok: boolean; name: string }> {
+    return this.open(name).addVnAsset(slug, type, input);
+  }
+
+  async removeVnAsset(
+    name: string,
+    slug: string,
+    type: AssetKind,
+    nameKey: string,
+  ): Promise<{ ok: boolean; name: string }> {
+    return this.open(name).removeVnAsset(slug, type, nameKey);
   }
 
   async deleteAllVnAssets(

@@ -98,8 +98,6 @@ export function CardList({
   onNew: (kind: CardKind) => void;
   onDialog: (d: Dialog) => void;
 }) {
-  const [picking, setPicking] = useState(false);
-  const present = KINDS.filter((k) => cards.some((c) => c.fm.kind === k.id));
   return (
     <section className="card-index" aria-label="Cards">
       {broken.length > 0 && (
@@ -144,19 +142,19 @@ export function CardList({
 
       {cards.length === 0 && broken.length === 0 && (
         <p className="empty">
-          <T>No cards yet. Make the first one below.</T>
+          <T>No cards yet. Add the first one under any heading below.</T>
         </p>
       )}
-      {present.map((k) => (
-        <section key={k.id} className="card-group" aria-label={k.group}>
-          <h3 className="eyebrow quiet">
-            <T>{k.group}</T>
-          </h3>
-          <ul className="card-rows">
-            {cards
-              .filter((c) => c.fm.kind === k.id)
-              .map((c) => (
-                <li key={c.path}>
+      {KINDS.map((k) => {
+        const mine = cards.filter((c) => c.fm.kind === k.id);
+        return (
+          <section key={k.id} className="card-group" aria-label={k.group}>
+            <h3 className="eyebrow quiet">
+              <T>{k.group}</T> <small>{mine.length}</small>
+            </h3>
+            <ul className="card-rows">
+              {mine.map((c) => (
+                <li key={c.path} className="card-row-line">
                   <button
                     type="button"
                     className="card-row"
@@ -166,38 +164,23 @@ export function CardList({
                     <strong>{c.fm.name}</strong>
                     {c.fm.summary && <small className="muted">{c.fm.summary}</small>}
                   </button>
+                  <button
+                    type="button"
+                    className="plain"
+                    aria-label={`Remove ${c.fm.name}`}
+                    onClick={() => onDialog({ is: "remove", path: c.path, name: c.fm.name })}
+                  >
+                    <T>Remove</T>
+                  </button>
                 </li>
               ))}
-          </ul>
-        </section>
-      ))}
-
-      {picking ? (
-        <fieldset className="kind-picker">
-          <legend className="eyebrow quiet">
-            <T>New card</T>
-          </legend>
-          {KINDS.map((k) => (
-            <button
-              key={k.id}
-              type="button"
-              onClick={() => {
-                setPicking(false);
-                onNew(k.id);
-              }}
-            >
-              <T>{k.one}</T>
+            </ul>
+            <button type="button" className="dashed" onClick={() => onNew(k.id)}>
+              <T with={{ kind: <T>{k.one}</T> }}>{"New {kind}"}</T>
             </button>
-          ))}
-          <button type="button" className="plain" onClick={() => setPicking(false)}>
-            <T>Cancel</T>
-          </button>
-        </fieldset>
-      ) : (
-        <button type="button" className="dashed" onClick={() => setPicking(true)}>
-          <T>New card</T>
-        </button>
-      )}
+          </section>
+        );
+      })}
     </section>
   );
 }

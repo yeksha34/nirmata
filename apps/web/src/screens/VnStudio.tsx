@@ -50,6 +50,83 @@ function lockLabel(item: VnAssetItem): string | null {
   return /(^|_)naked$/i.test(item.name) && item.type !== "object" ? "" : null;
 }
 
+/** Whose asset it is: a sprite, clothes or an adornment belong to one character; an object may. */
+const NEEDS_OWNER: Record<AssetKind, "yes" | "maybe" | "no"> = {
+  sprite: "yes",
+  clothes: "yes",
+  adornment: "yes",
+  object: "maybe",
+  cg: "no",
+  bg: "no",
+};
+
+/** Plans one more asset in the visual novel on show. The name is a lower-case file name. */
+function AddAsset({
+  disabled,
+  onAdd,
+}: {
+  disabled: boolean;
+  onAdd: (body: { type: AssetKind; name: string; owner?: string }) => Promise<boolean>;
+}) {
+  const [type, setType] = useState<AssetKind>("sprite");
+  const [owner, setOwner] = useState("");
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const owned = NEEDS_OWNER[type];
+  return (
+    <form
+      className="vs-menu-body"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        const done = await onAdd({
+          type,
+          name: name.trim(),
+          ...(owned !== "no" && owner.trim() ? { owner: owner.trim() } : {}),
+        });
+        setBusy(false);
+        if (done) setName("");
+      }}
+    >
+      {disabled && (
+        <small className="vs-muted">
+          <T>Pick one visual novel above to add to it.</T>
+        </small>
+      )}
+      <select aria-label="Kind" value={type} onChange={(e) => setType(e.target.value as AssetKind)}>
+        {(Object.keys(KIND_LABEL) as AssetKind[]).map((k) => (
+          <option key={k} value={k}>
+            {bilingual(KIND_LABEL[k])}
+          </option>
+        ))}
+      </select>
+      {owned !== "no" && (
+        <input
+          aria-label="Character"
+          placeholder={bilingual(owned === "yes" ? "Character" : "Character (optional)")}
+          value={owner}
+          required={owned === "yes"}
+          onChange={(e) => setOwner(e.target.value)}
+        />
+      )}
+      <input
+        aria-label="Name"
+        placeholder={bilingual(
+          type === "sprite" ? "Expression, e.g. neutral" : "Name, e.g. harbour_dusk",
+        )}
+        value={name}
+        required
+        pattern="[a-z0-9][a-z0-9_\-]*"
+        title="Lower-case letters, digits, - and _"
+        onChange={(e) => setName(e.target.value)}
+      />
+      <button type="submit" className="vs-btn" disabled={disabled || busy}>
+        <T>Add</T>
+      </button>
+    </form>
+  );
+}
+
 const baseTag = (tag: string) =>
   (tag.replace(/^\(+/, "").replace(/\)+$/, "").split(":")[0] ?? "").trim();
 
@@ -512,6 +589,56 @@ export function VnStudio() {
       return bilingual("Deleted {name}; back to Pending.", { name: activeName });
     });
 
+  const allItems = (): VnAssetItem[] =>
+    assets
+      ? [
+          ...assets.sprites,
+          ...assets.cgs,
+          ...assets.backgrounds,
+          ...(assets.clothes ?? []),
+          ...(assets.adornments ?? []),
+          ...(assets.objects ?? []),
+        ]
+      : [];
+
+  /** Plans a new asset in the visual novel on show, then picks it so its prompt can be written. */
+  const handleAdd = async (body: { type: AssetKind; name: string; owner?: string }) => {
+    if (!activeWorld || !activeSlug) return false;
+    try {
+      const res = await api.addVnAsset(activeWorld, activeSlug, body);
+      await loadAssets();
+      nav.toVn(activeWorld, activeSlug, body.type, res.name);
+      setMessage(bilingual("Added {name}. Write its prompt and generate it.", { name: res.name }));
+      return true;
+    } catch (e) {
+      setMessage((e as Error).message);
+      return false;
+    }
+  };
+
+  const handleRemove = () =>
+    run(async () => {
+      if (!activeWorld || !activeSlug || !activeName) return;
+      if (
+        !window.confirm(
+          bilingual(
+            "Remove {name} from the plan and delete its image? Its earlier runs stay in the dataset.",
+            { name: activeName },
+          ),
+        )
+      )
+        return;
+      const item = allItems().find((a) => a.name === activeName && a.type === activeType);
+      const slug = item?.vnSlug ?? activeSlug;
+      const res = await act(() => api.removeVnAsset(activeWorld, slug, activeType, activeName));
+      if (!res?.ok) return;
+      setPreviewUrl(undefined);
+      const list = await loadAssets();
+      const next = list?.sprites[0] ?? list?.cgs[0] ?? list?.backgrounds[0];
+      if (next) nav.toVn(activeWorld, activeSlug, next.type, next.name);
+      return bilingual("Removed {name}.", { name: activeName });
+    });
+
   const handleArchiveAll = () =>
     run(async () => {
       if (!activeWorld || !activeSlug) return;
@@ -679,6 +806,16 @@ export function VnStudio() {
 
           <details className="vs-menu">
             <summary>
+              <T>Add an asset</T>
+            </summary>
+            <AddAsset
+              disabled={!activeWorld || !activeSlug || activeSlug === "_all" || activeSlug === "_shared"}
+              onAdd={handleAdd}
+            />
+          </details>
+
+          <details className="vs-menu">
+            <summary>
               <T>Batch actions</T>
             </summary>
             <nav className="vs-menu-body">
@@ -736,6 +873,9 @@ export function VnStudio() {
                     onClick={handleDeleteOne}
                   >
                     <T>Delete</T>
+                  </button>
+                  <button type="button" className="vs-btn vs-btn-danger" onClick={handleRemove}>
+                    <T>Remove asset</T>
                   </button>
                 </nav>
               </header>

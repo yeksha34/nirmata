@@ -929,6 +929,30 @@ export class Table {
     return this.options.library.deleteOneVnAsset(worldName, slug, type, name);
   }
 
+  /** Plan a new asset in a visual novel (its image is made later). Host only. */
+  async addWorldVnAsset(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+    type: AssetKind,
+    input: { name: string; owner?: string | undefined },
+  ): Promise<{ ok: boolean; name: string }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.addVnAsset(worldName, slug, type, input);
+  }
+
+  /** Take an asset out of a visual novel's plan and delete its image; its dataset runs stay. Host only. */
+  async removeWorldVnAsset(
+    seat: Seat,
+    worldName: string,
+    slug: string,
+    type: AssetKind,
+    name: string,
+  ): Promise<{ ok: boolean; name: string }> {
+    requireCan(this.actor(seat), "source.edit");
+    return this.options.library.removeVnAsset(worldName, slug, type, name);
+  }
+
   async deleteAllWorldVnAssets(
     seat: Seat,
     worldName: string,

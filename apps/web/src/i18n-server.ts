@@ -311,6 +311,15 @@ export const HI_SERVER: Record<string, string> = {
     "{target} के आसन पर एक छिपी पट्टी पलट जाती है; उस पर लिखा नाम अब {newName} कहता है।",
 
   // visual novel adaptations
+  "That is not a kind of asset.": "यह संसाधन का कोई प्रकार नहीं है।",
+  "Pick one visual novel to plan the asset in.": "संसाधन जोड़ने के लिए एक दृश्य-उपन्यास चुनें।",
+  "Pick one visual novel to remove the asset from.": "संसाधन हटाने के लिए एक दृश्य-उपन्यास चुनें।",
+  'Invalid asset name "{name}".': 'संसाधन का अमान्य नाम "{name}"।',
+  "A name uses lower-case letters, digits, - and _, and starts with a letter or digit.":
+    "नाम में छोटे अक्षर, अंक, - और _ चलते हैं, और वह अक्षर या अंक से शुरू होता है।",
+  "Say which character it is for.": "बताएँ यह किस पात्र के लिए है।",
+  "A character name has no spaces or slashes.": "पात्र के नाम में खाली जगह या स्लैश नहीं होते।",
+  '"{name}" is already planned.': '"{name}" पहले से योजना में है।',
   'Invalid visual novel slug "{slug}".': 'दृश्य-उपन्यास का अमान्य स्लग "{slug}"।',
   'There is no visual novel adaptation "{slug}".': 'कोई दृश्य-उपन्यास रूपांतरण "{slug}" नहीं है।',
   'Visual novel adaptation "{slug}" already exists.': 'दृश्य-उपन्यास रूपांतरण "{slug}" पहले से मौजूद है।',
