@@ -37,5 +37,6 @@ Use `.agents/skills/record-decision`.
 | [0030](0030-imported-worlds-read-lore-from-the-database.md) | An imported world reads its cards and images from the database | Accepted |
 | [0031](0031-reference-images-in-generation.md) | Reference images in generation | Accepted |
 | [0032](0032-sign-in-through-the-server.md) | Sign-in through the server: email and password, invitation only | Accepted |
+| [0033](0033-clothes-adornments-objects-asset-kinds.md) | Clothes, adornments and objects as VN asset kinds | Proposed |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.

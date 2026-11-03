@@ -18,6 +18,7 @@ Read `worlds/_template/README.md` for the folder layers and `.agents/skills/stor
 - Put host-only information under **Secrets** and nothing that must be known by the player there.
 - Link related cards with relative markdown links; every card should be reachable from the world `README.md` or another card.
 - Keep scene order out of lore, and lore explanation out of scenes.
+- For visual-novel art, optional `clothes/`, `adornments/` and `objects/` cards (templates in `worlds/_template/`): clothes and adornments name one `owner` character; objects name `owners` and/or `cgs`, plus `<interaction>` and `<why-custom>`. Only add an object when a character interacts with it and a generic prompt would fail. Check with `node .agents/skills/world-lint/driver.mjs assets`.
 
 ## Rules
 Rule cards live in `.agents/rules/`: a `Rule` sentence, a yes/no `Check` question, and a `Why`. Mark `scope: story` for play-time rules.

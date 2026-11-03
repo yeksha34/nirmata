@@ -105,8 +105,12 @@ Then make an **Asset List** and check it against the budget:
 - backgrounds (with time-of-day variants),
 - sprite characters and their expressions,
 - CGs, each tied to a scene and a must-keep moment,
+- clothes and adornments, each locked to one character (the unclad base `naked` is the only unlocked state),
+- objects, only those a character interacts with on screen and that the world customises so a generic prompt would fail (each names its characters and/or CGs, how it is used, and why it is custom),
 - music tracks by mood,
 - key sound effects.
+
+Clothes cover a body; adornments dress it without necessarily covering it (jewellery, body art, grown or attached ornament), so a world whose characters stay unclothed still has them. Cards live in `worlds/<world>/{clothes,adornments,objects}/`; the manifest lists them as `assets.clothes` / `assets.adornments` (`{ character: [names] }`) and `assets.objects` (`[{ name, owners?, cgs? }]`). Their art feeds the owner's sprite state or the linked CG as a reference image; there is no layer compositor. Skip anything a generic sprite or CG prompt already draws. See ADR-0033.
 
 When the list is over budget, merge locations and drop expressions before cutting must-keep CGs.
 
@@ -116,6 +120,8 @@ Adapting is an incremental decision; you cannot anticipate upfront whether an as
 2. **Just-In-Time (JIT) Promotion:** When adapting a new slug, check existing visual novel adaptations in `worlds/<world>/vns/`. If an asset (character sprite, background, BGM, or SFX) is already present in an earlier slug and needed again, **move/promote that asset to `worlds/<world>/vns/_shared/assets/`**. Do not duplicate existing files. Both earlier and later adaptations will resolve it from `_shared/assets/`.
 3. **Expression Fallback (No Duplicate Sprites):** Never copy base portraits to simulate expression variants (e.g. duplicating `hero.png` into `hero_smile.png`, `hero_angry.png`). The presentation engine and server asset resolver automatically resolve requests for `<character>_<expression>.<ext>` to the base portrait `<character>.<ext>` (or `<character>_neutral.<ext>`) in either the local scene or `_shared/assets/sprites/`. Only add separate expression files when distinct artwork exists.
 4. **Character State & Costume Variants (`<character>_<state>_<expression>.<ext>`):** Characters frequently change wardrobe, uniforms, forms, or roles across narrative arcs (e.g. Elena as `clerk` vs `uniform`). When placing or promoting sprites to `_shared/assets/sprites/`, never overwrite an existing state with a generic `<character>.png`. Instead, use state-qualified filenames (`<character>_<state>.<ext>` and `<character>_<state>_<expression>.<ext>`, e.g. `elena_clerk.png`, `elena_uniform.png`). Script directives specify states using `[show <character>:<state> <expression> <slot>]` (e.g. `[show Elena:uniform submissive center]`), `[show <character> <state> <expression> <slot>]`, or `[show <character>_<state> <expression> <slot>]`. The engine and server resolve these hierarchically while keeping player-facing nameplates clean.
+
+5. **Clothes, adornments, objects:** stored under `assets/clothes/`, `assets/adornments/`, `assets/objects/` as `<character>_<name>.<ext>` (objects: `<name>.<ext>`); promotion to `_shared/assets/` follows the same rule as other assets. Run `node .agents/skills/world-lint/driver.mjs assets` to check owners and links.
 
 ## Step 7 — Scene list
 
