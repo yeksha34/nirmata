@@ -46,6 +46,13 @@ import {
   synthesizeCgDanbooruPrompt,
   synthesizeSpriteDanbooruPrompt,
   type Workflow,
+  type AssetKind,
+  assetDir,
+  isLinkedKind,
+  LINKED_KINDS,
+  type LinkedKind,
+  synthesizeLinkedPrompt,
+  templateName,
 } from "@nirmata/gen";
 import { HttpError } from "./errors";
 import { slugFor } from "./lore-rows";
@@ -58,7 +65,7 @@ import {
 
 export interface VnAssetItem {
   id: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath: string;
   exists: boolean;
@@ -66,6 +73,15 @@ export interface VnAssetItem {
   defaultPrompt?: string;
   isShared?: boolean;
   vnSlug?: string;
+}
+
+export interface VnAssetLists {
+  sprites: VnAssetItem[];
+  cgs: VnAssetItem[];
+  backgrounds: VnAssetItem[];
+  clothes: VnAssetItem[];
+  adornments: VnAssetItem[];
+  objects: VnAssetItem[];
 }
 
 export interface VnAssetDatasetEntry {
@@ -79,7 +95,7 @@ export interface VnAssetDatasetEntry {
 
 export interface VnAssetPromptSpec {
   name: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   positivePrompt: string;
   negativePrompt?: string;
   aspectRatio?: string;
@@ -106,7 +122,7 @@ export interface PromptSpecPatch {
 
 export interface VnAssetDetail {
   id: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath: string;
   exists: boolean;
@@ -743,7 +759,7 @@ export class WorldFiles implements SourceBackend {
    */
   async savePromptSpec(
     name: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     patch: PromptSpecPatch,
   ): Promise<void> {
     const shared = inside(this.root, "vns/_shared/assets/prompts.json");
@@ -790,10 +806,7 @@ export class WorldFiles implements SourceBackend {
     await done;
   }
 
-  async listVnAssets(
-    slug: string,
-    options: { prompts?: boolean } = {},
-  ): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+  async listVnAssets(slug: string, options: { prompts?: boolean } = {}): Promise<VnAssetLists> {
     const withPrompts = options.prompts !== false;
     const safeSlug = sanitizeSlug(slug);
 
@@ -829,7 +842,19 @@ export class WorldFiles implements SourceBackend {
           }
         }
       }
-      return { sprites: allSprites, cgs: allCgs, backgrounds: allBgs };
+      const linked = { clothes: [...shared.clothes], adornments: [...shared.adornments], objects: [...shared.objects] };
+      for (const v of vns) {
+        if (v.slug === "_shared") continue;
+        const vAssets = await this.listVnAssets(v.slug, options);
+        for (const key of ["clothes", "adornments", "objects"] as const) {
+          for (const item of vAssets[key]) {
+            if (!linked[key].some((existing) => existing.name === item.name)) {
+              linked[key].push({ ...item, vnSlug: v.slug });
+            }
+          }
+        }
+      }
+      return { sprites: allSprites, cgs: allCgs, backgrounds: allBgs, ...linked };
     }
 
     const sprites: VnAssetItem[] = [];
@@ -859,7 +884,7 @@ export class WorldFiles implements SourceBackend {
 
     const scanDir = async (
       dirName: "sprites" | "cgs" | "backgrounds",
-      type: "sprite" | "cg" | "bg",
+      type: AssetKind,
     ) => {
       const dirs: Array<{ path: string; isShared: boolean }> = [
         { path: inside(this.root, `vns/_shared/assets/${dirName}`), isShared: true },
@@ -903,6 +928,71 @@ export class WorldFiles implements SourceBackend {
     await scanDir("sprites", "sprite");
     await scanDir("cgs", "cg");
     await scanDir("backgrounds", "bg");
+
+    // clothes, adornments and objects: reference art kept beside the stage art, named <owner>_<name>
+    const linked: Record<LinkedKind, VnAssetItem[]> = { clothes: [], adornment: [], object: [] };
+    const linkedPrompt = (kind: LinkedKind, name: string, owner?: string) =>
+      withPrompts ? synthesizeLinkedPrompt(kind, name, owner) : undefined;
+    for (const kind of LINKED_KINDS) {
+      const dirName = assetDir(kind);
+      const seen = new Set<string>();
+      for (const { path: d, isShared } of [
+        { path: inside(this.root, `vns/_shared/assets/${dirName}`), isShared: true },
+        ...(safeSlug === "_shared"
+          ? []
+          : [{ path: inside(this.root, `vns/${safeSlug}/assets/${dirName}`), isShared: false }]),
+      ]) {
+        try {
+          for (const f of await readdir(d)) {
+            if (!/\.(png|jpg|jpeg|webp)$/i.test(f)) continue;
+            const stem = f.replace(/\.[^.]+$/, "");
+            if (seen.has(stem)) continue;
+            seen.add(stem);
+            const targetPath = `${dirName}/${f}`;
+            linked[kind].push({
+              id: `${kind}:${stem}`,
+              type: kind,
+              name: stem,
+              targetPath,
+              exists: true,
+              url: `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`,
+              isShared,
+              vnSlug: isShared ? "_shared" : safeSlug,
+            });
+          }
+        } catch {}
+      }
+    }
+    try {
+      const m = (await this.vnManifest(safeSlug)).assets;
+      const planned: Array<{ kind: LinkedKind; name: string; owner?: string }> = [];
+      for (const [owner, names] of Object.entries(m?.clothes ?? {})) {
+        for (const n of names) planned.push({ kind: "clothes", name: `${owner}_${n}`, owner });
+      }
+      for (const [owner, names] of Object.entries(m?.adornments ?? {})) {
+        for (const n of names) planned.push({ kind: "adornment", name: `${owner}_${n}`, owner });
+      }
+      for (const o of m?.objects ?? []) planned.push({ kind: "object", name: o.name, owner: o.owners?.[0] });
+      for (const { kind, name, owner } of planned) {
+        if (linked[kind].some((a) => a.name === name)) continue;
+        const targetPath = `${assetDir(kind)}/${name}.png`;
+        const check = await checkAsset(targetPath);
+        linked[kind].push({
+          id: `${kind}:${name}`,
+          type: kind,
+          name,
+          targetPath,
+          exists: check.exists,
+          url: check.exists
+            ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
+            : undefined,
+          defaultPrompt: linkedPrompt(kind, name, owner),
+        });
+      }
+    } catch {}
+    for (const kind of LINKED_KINDS) {
+      for (const item of linked[kind]) item.defaultPrompt ??= linkedPrompt(kind, item.name);
+    }
 
     try {
       const manifestAssets = (await this.vnManifest(safeSlug)).assets;
@@ -1018,30 +1108,46 @@ export class WorldFiles implements SourceBackend {
       });
     }
 
-    for (const item of [...sprites, ...cgs, ...backgrounds]) {
+    for (const item of [...sprites, ...cgs, ...backgrounds, ...linked.clothes, ...linked.adornment, ...linked.object]) {
       if (promptSpecs[item.name]?.positivePrompt) {
         item.defaultPrompt = promptSpecs[item.name]!.positivePrompt;
       }
     }
 
-    return { sprites, cgs, backgrounds };
+    return {
+      sprites,
+      cgs,
+      backgrounds,
+      clothes: linked.clothes,
+      adornments: linked.adornment,
+      objects: linked.object,
+    };
   }
 
   async getVnAssetDetail(
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
   ): Promise<VnAssetDetail> {
     // the list without prompts: only this asset needs one, and building every asset's reads the cards each time
     const list = await this.listVnAssets(slug, { prompts: false });
-    const pool = type === "sprite" ? list.sprites : type === "cg" ? list.cgs : list.backgrounds;
+    const pool = {
+      sprite: list.sprites,
+      cg: list.cgs,
+      bg: list.backgrounds,
+      clothes: list.clothes,
+      adornment: list.adornments,
+      object: list.objects,
+    }[type];
     const cards = await this.cardFiles().catch(() => []);
     const synth = (n: string) =>
-      type === "sprite"
-        ? synthesizeSpriteDanbooruPrompt(n, cards)
-        : type === "cg"
-          ? synthesizeCgDanbooruPrompt(n, cards)
-          : synthesizeBackgroundDanbooruPrompt(n, cards);
+      isLinkedKind(type)
+        ? synthesizeLinkedPrompt(type, n)
+        : type === "sprite"
+          ? synthesizeSpriteDanbooruPrompt(n, cards)
+          : type === "cg"
+            ? synthesizeCgDanbooruPrompt(n, cards)
+            : synthesizeBackgroundDanbooruPrompt(n, cards);
     const found = pool.find((a) => a.name === name);
     const item = found
       ? { ...found, defaultPrompt: found.defaultPrompt ?? synth(name) }
@@ -1049,7 +1155,7 @@ export class WorldFiles implements SourceBackend {
           id: `${type}:${name}`,
           type,
           name,
-          targetPath: `${type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds"}/${name}.png`,
+          targetPath: `${assetDir(type)}/${name}.png`,
           exists: false,
           defaultPrompt: synth(name),
         };
@@ -1158,7 +1264,7 @@ export class WorldFiles implements SourceBackend {
 
   async archiveVnAsset(
     slug: string,
-    type: string,
+    type: AssetKind,
     name: string,
     data: {
       prompt: string;
@@ -1185,7 +1291,7 @@ export class WorldFiles implements SourceBackend {
       await writeAtomic(join(targetDir, "workflow.json"), JSON.stringify(data.workflow, null, 2));
     }
 
-    const dirName = type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds";
+    const dirName = assetDir(type);
     const exts = ["png", "jpg", "jpeg", "webp"];
     const candidates: string[] = [];
     for (const ext of exts) {
@@ -1205,7 +1311,7 @@ export class WorldFiles implements SourceBackend {
 
   async archiveOneVnAsset(
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
   ): Promise<{ ok: boolean; timestamp: string; targetDir: string }> {
     const detail = await this.getVnAssetDetail(slug, type, name);
@@ -1232,12 +1338,12 @@ export class WorldFiles implements SourceBackend {
 
   async deleteOneVnAsset(
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
   ): Promise<{ ok: boolean; name: string }> {
     const safeSlug = sanitizeSlug(slug);
     const safeName = sanitizeSlug(name);
-    const dirName = type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds";
+    const dirName = assetDir(type);
     const exts = ["png", "jpg", "jpeg", "webp"];
     const candidates: string[] = [];
     for (const ext of exts) {
@@ -1325,11 +1431,11 @@ export class WorldFiles implements SourceBackend {
    * reference slot added, so a customised workflow keeps its customisations.
    */
   async loadWorkflowTemplate(
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     variant?: "ref",
   ): Promise<Record<string, unknown>> {
     if (variant) {
-      if (type === "bg") {
+      if (type === "bg" || isLinkedKind(type)) {
         throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
       }
       const own = await this.readTemplate([
@@ -1341,7 +1447,7 @@ export class WorldFiles implements SourceBackend {
       if (!derived) throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
       return derived;
     }
-    const bundled = type === "bg" ? "background" : type;
+    const bundled = templateName(type);
     const found = await this.readTemplate([
       inside(this.root, `assets/workflow/${type}.json`),
       inside(this.root, `assets/workflow/${type}.api.json`),
@@ -1991,7 +2097,7 @@ export class Library {
   async getVnAssetDetail(
     name: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     nameKey: string,
   ): Promise<VnAssetDetail> {
     return this.open(name).getVnAssetDetail(slug, type, nameKey);
@@ -2000,7 +2106,7 @@ export class Library {
   async archiveVnAsset(
     name: string,
     slug: string,
-    type: string,
+    type: AssetKind,
     nameKey: string,
     data: {
       prompt: string;
@@ -2015,7 +2121,7 @@ export class Library {
   async archiveOneVnAsset(
     name: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     nameKey: string,
   ): Promise<{ ok: boolean; timestamp: string; targetDir: string }> {
     return this.open(name).archiveOneVnAsset(slug, type, nameKey);
@@ -2031,7 +2137,7 @@ export class Library {
   async deleteOneVnAsset(
     name: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     nameKey: string,
   ): Promise<{ ok: boolean; name: string }> {
     return this.open(name).deleteOneVnAsset(slug, type, nameKey);
@@ -2110,7 +2216,7 @@ export class Library {
 
   async loadWorkflowTemplate(
     name: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     variant?: "ref",
   ): Promise<Record<string, unknown>> {
     return this.open(name).loadWorkflowTemplate(type, variant);
@@ -2118,7 +2224,7 @@ export class Library {
 
   async savePromptSpec(
     name: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     assetName: string,
     patch: PromptSpecPatch,
   ): Promise<void> {

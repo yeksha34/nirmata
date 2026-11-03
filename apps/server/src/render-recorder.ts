@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Db } from "@nirmata/db";
-import { pngSize, recordRender } from "@nirmata/gen";
+import { type AssetKind, pngSize, recordRender } from "@nirmata/gen";
 import type { Stores } from "@nirmata/storage";
 import { STORED_PART, sanitizeSlug } from "./files";
 import { slugFor } from "./lore-rows";
@@ -11,7 +11,7 @@ export interface GeneratedImage {
   scope: string;
   /** The dataset folder's name for this run (a timestamp). */
   run: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   /** The generation's job (in memory), so its render is linked to the job recorded for it. */
   jobKey?: string | undefined;

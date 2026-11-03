@@ -1,4 +1,4 @@
-import { addSpec, ensureAsset, type GenerationJob, type GenerationJobs } from "@nirmata/gen";
+import { addSpec, type AssetKind, ensureAsset, type GenerationJob, type GenerationJobs } from "@nirmata/gen";
 import { slugFor } from "./lore-rows";
 import { DbRecorder, type RenderRecorder } from "./render-recorder";
 
@@ -9,7 +9,7 @@ export interface BeginJob {
   worldName: string;
   /** The visual novel's slug (or `_shared`). Kept so a restored job can still be opened. */
   scope: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   positive: string;
   negative: string;

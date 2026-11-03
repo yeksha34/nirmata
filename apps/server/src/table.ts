@@ -40,6 +40,10 @@ import {
   GenerationJobs,
   injectReferences,
   injectWorkflowParams,
+  type AssetKind,
+  assetDir,
+  assetSize,
+  isLinkedKind,
 } from "@nirmata/gen";
 import { HttpError } from "./errors";
 import type { GenerationLedger } from "./generation-ledger";
@@ -73,7 +77,7 @@ import {
 import type { VnAssetDetail, VnAssetItem } from "./files";
 
 export interface GenerateAssetInput {
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath?: string;
   positivePrompt: string;
@@ -113,7 +117,7 @@ export interface TableOptions {
 /** The image size a workflow asks for (its latent image node), else the usual size for the kind. */
 function workflowSize(
   workflow: Record<string, { class_type?: string; inputs?: Record<string, unknown> }>,
-  type: "sprite" | "cg" | "bg",
+  type: AssetKind,
 ): { width: number; height: number } {
   for (const node of Object.values(workflow)) {
     const w = Number(node.inputs?.width);
@@ -122,7 +126,7 @@ function workflowSize(
       return { width: Math.min(4096, w), height: Math.min(4096, h) };
     }
   }
-  return type === "sprite" ? { width: 512, height: 768 } : { width: 1024, height: 576 };
+  return assetSize(type);
 }
 
 /** Someone who has joined: the token they present, and the nickname it speaks for. */
@@ -447,7 +451,7 @@ export class Table {
     seat: Seat,
     worldName: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
   ): Promise<VnAssetDetail> {
     requireCan(this.actor(seat), "source.edit");
@@ -520,7 +524,7 @@ export class Table {
   async saveAssetPrompt(
     seat: Seat,
     worldName: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     assetName: string,
     patch: PromptSpecPatch,
   ): Promise<void> {
@@ -534,7 +538,7 @@ export class Table {
     slug: string,
     body: GenerateAssetInput,
   ): Promise<Buffer[]> {
-    if (!body.references?.length || body.type === "bg") return [];
+    if (!body.references?.length || body.type === "bg" || isLinkedKind(body.type)) return [];
     const images: Buffer[] = [];
     for (const name of body.references.slice(0, 6)) {
       const found = await this.options.library.readVnAsset(worldName, slug, `sprites/${name}.png`);
@@ -686,7 +690,7 @@ export class Table {
     const imageBytes =
       body.type === "sprite" ? ensureTransparentSpritePng(rawImageBytes) : rawImageBytes;
 
-    const dirName = body.type === "sprite" ? "sprites" : body.type === "cg" ? "cgs" : "backgrounds";
+    const dirName = assetDir(body.type);
     const targetPath = body.targetPath || `${dirName}/${body.name}.png`;
     await this.options.library.saveGeneratedVnAsset(worldName, slug, targetPath, imageBytes);
     await this.options.library.saveDatasetGeneratedImage(worldName, archivedDir, imageBytes);
@@ -786,7 +790,7 @@ export class Table {
     seat: Seat,
     worldName: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
   ): Promise<{ ok: boolean; timestamp: string }> {
     requireCan(this.actor(seat), "source.edit");
@@ -806,7 +810,7 @@ export class Table {
     seat: Seat,
     worldName: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
   ): Promise<{ ok: boolean; name: string }> {
     requireCan(this.actor(seat), "source.edit");

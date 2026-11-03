@@ -1,3 +1,4 @@
+import type { AssetKind } from "./asset-kind";
 /**
  * Danbooru-tag prompt synthesis architecture (Content-Neutral / ADR-0005).
  *
@@ -390,7 +391,10 @@ export function synthesizeBackgroundDanbooruPrompt(
 /**
  * Default negative prompts per asset type.
  */
-export function getDefaultNegativePrompt(type: "sprite" | "cg" | "bg"): string {
+export function getDefaultNegativePrompt(type: AssetKind): string {
+  if (type === "clothes" || type === "adornment" || type === "object") {
+    return "person, body, face, hands, multiple items, text, watermark, signature, blurry, lowres, worst quality, low quality";
+  }
   if (type === "sprite") {
     return "2girls, multiple girls, 2bodies, bad anatomy, bad hands, missing fingers, extra digits, blurry, worst quality, low quality, normal quality, signature, watermark, cropped, censored, bar censor, mosaic censor";
   }

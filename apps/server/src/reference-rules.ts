@@ -1,3 +1,4 @@
+import { type AssetKind, isLinkedKind } from "@nirmata/gen";
 /**
  * Which images should influence a new one (the owner's rules):
  * - a character's base sprite influences the character's other sprites (image-to-image);
@@ -45,7 +46,7 @@ export function characterOf(spriteName: string): string {
 }
 
 export interface SuggestInput {
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   positivePrompt: string;
   /** The visual novel's sprites that exist as images. */
@@ -72,7 +73,7 @@ function mentions(text: string, character: string): boolean {
 export function suggestReferences(input: SuggestInput): Suggested {
   const { type, name, sprites, settings } = input;
   const available = sprites.filter((s) => s !== name);
-  if (type === "bg") return { suggested: [], available: [] };
+  if (type === "bg" || isLinkedKind(type)) return { suggested: [], available: [] };
 
   if (type === "sprite") {
     const character = characterOf(name);

@@ -1,3 +1,4 @@
+import { ASSET_KINDS, type AssetKind } from "@nirmata/gen";
 import { CARD_KINDS, CARD_TEMPLATES, PlayerMode } from "@nirmata/core";
 import { FLAVOR_STYLES } from "@nirmata/host";
 import { type Context, Hono } from "hono";
@@ -96,7 +97,7 @@ const PromptSpec = z.object({
 });
 
 const GenerateAsset = z.object({
-  type: z.enum(["sprite", "cg", "bg"]),
+  type: z.enum(ASSET_KINDS),
   name: z.string().trim().min(1),
   targetPath: z.string().optional(),
   positivePrompt: z.string().trim().min(1),
@@ -185,7 +186,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
         seatOf(c),
         c.req.param("name"),
         c.req.param("slug"),
-        c.req.param("type") as "sprite" | "cg" | "bg",
+        c.req.param("type") as AssetKind,
         c.req.param("assetName"),
       ),
     ),
@@ -225,7 +226,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
     await table.saveAssetPrompt(
       seat,
       c.req.param("name"),
-      c.req.param("type") as "sprite" | "cg" | "bg",
+      c.req.param("type") as AssetKind,
       c.req.param("assetName"),
       body,
     );
@@ -239,7 +240,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
         seatOf(c),
         c.req.param("name"),
         c.req.param("slug"),
-        c.req.param("type") as "sprite" | "cg" | "bg",
+        c.req.param("type") as AssetKind,
         c.req.param("assetName"),
       ),
     ),
@@ -252,7 +253,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
         seatOf(c),
         c.req.param("name"),
         c.req.param("slug"),
-        c.req.param("type") as "sprite" | "cg" | "bg",
+        c.req.param("type") as AssetKind,
         c.req.param("assetName"),
       ),
     ),

@@ -1,8 +1,9 @@
+import type { AssetKind } from "./asset-kind";
 import type { Query } from "@nirmata/db";
 
 export interface RenderToRecord {
   worldId: string;
-  kind: "sprite" | "cg" | "bg";
+  kind: AssetKind;
   name: string;
   /** The stored file's path: `<world id>/<scope>/<name>/<run>.png`. */
   path: string;
@@ -24,7 +25,7 @@ export interface RenderToRecord {
 export async function ensureAsset(
   q: Query,
   worldId: string,
-  kind: "sprite" | "cg" | "bg",
+  kind: AssetKind,
   name: string,
 ): Promise<string> {
   const found = await q(
