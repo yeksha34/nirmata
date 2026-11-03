@@ -63,7 +63,7 @@ describe("a host", () => {
       code: "invalid_card",
     });
     await expect(
-      source.editFromText(host, "x.md", "---\nid: Bad Id\nkind: dragon\nname: X\n---\n"),
+      source.editFromText(host, "x.md", "---\nid: Bad Id\nkind: Dragon\nname: X\n---\n"),
     ).rejects.toThrow(/id must look like.*kind:/s);
     expect(writes).toEqual([]);
   });

@@ -326,6 +326,11 @@ export const HI_SERVER: Record<string, string> = {
   "That is not a visual novel name.": "यह किसी विज़ुअल नॉवेल का नाम नहीं है।",
   "There is no such visual novel.": "ऐसा कोई विज़ुअल नॉवेल नहीं है।",
   "There is no such chapter or draft.": "ऐसा कोई अध्याय या मसौदा नहीं है।",
+  "There is no such card.": "ऐसा कोई कार्ड नहीं है।",
+  "There is no such skill.": "ऐसा कोई कौशल-मार्गदर्शक नहीं है।",
+  "There is no such rule.": "ऐसा कोई नियम नहीं है।",
+  "A card id looks like kind.name, in lowercase.": "कार्ड की पहचान प्रकार.नाम जैसी होती है, छोटे अक्षरों में।",
+  "A name is lowercase letters, digits and hyphens.": "नाम में केवल छोटे अक्षर, अंक और हाइफ़न होते हैं।",
   "The manifest names another visual novel.": "मैनिफ़ेस्ट किसी और विज़ुअल नॉवेल का नाम बताता है।",
 
   // visual novel adaptations

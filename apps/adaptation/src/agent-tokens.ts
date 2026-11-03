@@ -1,7 +1,12 @@
 import type { Db, Query } from "@nirmata/db";
 
-/** What a token may do (ADR-0035). Both are limited to the one world the token was made for. */
-export const AGENT_SCOPES = ["adaptation.read", "adaptation.write"] as const;
+/** What a token may do (ADR-0035, ADR-0037). All are limited to the one world the token was made for. */
+export const AGENT_SCOPES = [
+  "adaptation.read",
+  "adaptation.write",
+  "import.read",
+  "import.write",
+] as const;
 export type AgentScope = (typeof AGENT_SCOPES)[number];
 
 /** Who a presented token speaks for: the author who made it, in the one world it was made for. */

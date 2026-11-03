@@ -102,7 +102,7 @@ export function AgentAccess({ world }: { world: string }) {
       <p className="hint">
         <T with={{ root: <code>{`${window.location.origin}/api/agent/`}</code> }}>
           {
-            "A token lets the adaptation agent read and write this world's adaptation data at {root}, and nothing else. It is shown once. Revoke it to stop it."
+            "A token lets an agent import into this world and adapt it, at {root}, and nothing else. It is shown once. Revoke it to stop it."
           }
         </T>
       </p>

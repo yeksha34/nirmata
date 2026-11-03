@@ -52,7 +52,7 @@ describe("agent tokens", () => {
     const made = await f.tokens.create(AUTHOR, "sample-world", "agent", { days: 7 });
     expect(made).toEqual({ id: "t1", token: "nga_secret" });
     const call = f.seen.find((s) => s.text.includes("create_agent_token"));
-    expect(call?.params).toEqual([WORLD, "agent", ["adaptation.read", "adaptation.write"], 7]);
+    expect(call?.params).toEqual([WORLD, "agent", ["adaptation.read", "adaptation.write", "import.read", "import.write"], 7]);
   });
 
   it("refuses a world that is not in the database", async () => {

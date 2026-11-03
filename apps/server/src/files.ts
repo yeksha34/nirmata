@@ -13,6 +13,7 @@ import {
 import { basename, dirname, join, posix, resolve, sep } from "node:path";
 import {
   type Card,
+  type CardKind,
   CardFrontmatter,
   checkCards,
   compileVn,
@@ -2112,7 +2113,7 @@ export interface WorldDetail {
 
 /** What the manager's form sends for a card; the id, path and any extra fields stay as they were. */
 export interface CardForm {
-  kind: Card["fm"]["kind"];
+  kind: CardKind;
   name: string;
   keywords: string[];
   summary: string;
@@ -2131,7 +2132,7 @@ export type CardInput =
   | { path: string; text: string };
 
 /** The folder and id prefix a new card of each kind starts with. */
-const KIND_HOME: Record<Card["fm"]["kind"], { dir: string; prefix: string }> = {
+const KIND_HOME: Record<CardKind, { dir: string; prefix: string }> = {
   lore: { dir: "lore", prefix: "lore" },
   character: { dir: "characters", prefix: "char" },
   place: { dir: "setting/places", prefix: "place" },

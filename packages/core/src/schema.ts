@@ -4,6 +4,17 @@ export const CARD_KINDS = ["lore", "character", "place", "arc", "rule", "scene"]
 export const CardKind = z.enum(CARD_KINDS);
 export type CardKind = z.infer<typeof CardKind>;
 
+/**
+ * A world may define kinds of its own (a deity, a playground, a garment). Its name is lowercase
+ * letters and digits, so a card id `kind.name` stays unambiguous. The kinds above have templates and
+ * a place in the editor; a custom kind is only a name the world gives to a set of cards.
+ */
+export const CUSTOM_KIND = /^[a-z][a-z0-9]{0,39}$/;
+export const AnyCardKind = z.union([
+  CardKind,
+  z.string().regex(CUSTOM_KIND, "a kind is lowercase letters and digits, starting with a letter"),
+]);
+
 const Keywords = z
   .union([
     z.array(z.string().trim().min(1)),
@@ -43,7 +54,7 @@ export const isFieldId = (id: string): boolean =>
 export const CardFrontmatter = z
   .object({
     id: CardId,
-    kind: CardKind,
+    kind: AnyCardKind,
     name: z.string().trim().min(1),
     keywords: Keywords,
     summary: z.string().trim().default(""),

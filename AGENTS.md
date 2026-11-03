@@ -21,6 +21,7 @@ Nirmata: build worlds, then host stories in them. Start at [docs/README.md](docs
 | `story-host` | Run or specify a hosted story |
 | `world-lint` | Validate links, orphans, stats; navigate cards |
 | `story-direction` | Layering discipline: lore vs scenes vs drafts vs chapters |
+| `story-import` | Import a story's source into a world through the agent endpoints, one file at a time |
 | `story-to-vn-adaptation` | Adapt a story into a visual novel: routes, scenes, script, asset budget |
 | `structured-prompts` | Write host/system prompts with clean context/output separation |
 | `rules-check-manual` | Judge a draft against a world's rule cards, using the agent itself |
