@@ -3,6 +3,15 @@
 -- chapter (reader.chapters is for what a reader is shown); it is the author's text that adaptation and
 -- the Studio read. Authors only: drafts are unreleased by nature.
 
+-- The hash of a text's UTF-8 bytes. convert_to is only stable, because it depends on the database encoding,
+-- which is UTF8 here and never changes; declaring this immutable lets the hash be a generated column.
+create function reader.text_hash(p_text text) returns text
+language sql immutable parallel safe set search_path = '' as $$
+  select encode(sha256(convert_to(p_text, 'UTF8')), 'hex')
+$$;
+revoke execute on function reader.text_hash(text) from public, anon;
+grant execute on function reader.text_hash(text) to authenticated, app_rw, app_ro;
+
 create table reader.writings (
   id             uuid primary key default gen_random_uuid(),
   world_id       uuid not null references world_lore.worlds (id) on delete cascade,
@@ -13,7 +22,7 @@ create table reader.writings (
                    and path !~ '(^|/)\.\.(/|$)' and path !~ '[\\\x01-\x1f]'),
   title          text not null check (char_length(title) between 1 and 300),
   body           text not null check (octet_length(body) <= 4194304),
-  body_hash      text generated always as (encode(sha256(convert_to(body, 'UTF8')), 'hex')) stored,
+  body_hash      text generated always as (reader.text_hash(body)) stored,
   imported_hash  text,                                  -- body_hash of what an import wrote; differs once edited here
   updated_by     uuid references identity.profiles (user_id) on delete restrict,
   created_at     timestamptz not null default now(),
