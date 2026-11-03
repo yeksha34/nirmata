@@ -18,7 +18,10 @@ import {
   prepStates,
   TemplateError,
   TemplateStore,
+  VnError,
+  VnStore,
 } from "@nirmata/adaptation";
+import { compileVn, VnManifestSchema, VnSlideDeckSchema } from "@nirmata/core";
 import type { Db } from "@nirmata/db";
 import { ASSET_KINDS } from "@nirmata/gen";
 import type { Context, Hono } from "hono";
@@ -51,6 +54,16 @@ const NeedSchema = z.union([
   z.object({ type: z.enum(["cg", "bg", "object"]), name: Name }),
 ]);
 const Gap = z.object({ needs: z.array(NeedSchema).max(500) });
+const VN_SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/;
+const VnParts = z
+  .object({
+    manifest: VnManifestSchema.optional(),
+    adaptationMd: z.string().max(4_000_000).optional(),
+    slides: VnSlideDeckSchema.optional(),
+  })
+  .refine((v) => v.manifest || v.adaptationMd !== undefined || v.slides, {
+    message: "Send a manifest, adaptationMd or slides.",
+  });
 const Workflow = z.object({
   graph: z.record(z.unknown()),
   note: z.string().trim().max(200).optional(),
@@ -66,7 +79,8 @@ async function asHttp<T>(work: () => Promise<T>): Promise<T> {
       e instanceof AgentTokenError ||
       e instanceof PrepError ||
       e instanceof AssetPlanError ||
-      e instanceof TemplateError
+      e instanceof TemplateError ||
+      e instanceof VnError
     ) {
       throw new HttpError(400, "bad_request", e.message);
     }
@@ -143,6 +157,7 @@ export function registerAgentRoutes(
   const prep = new PrepStore(db);
   const plan = new PlanStore(db);
   const templates = new TemplateStore(db);
+  const vns = new VnStore(db);
 
   /** The grant for this request, and the world it names, which must be the one the token is for. */
   const forWorld = async (c: Context, scope: AgentScope) => {
@@ -299,5 +314,55 @@ export function registerAgentRoutes(
     const type = await asHttp(async () => parseKind(c.req.param("type")));
     await asHttp(() => templates.reset(grant.userId, slug, type));
     return c.json({ ok: true });
+  });
+
+  // ---- visual novels: the manifest, the script and the compiled slides ------------------------------
+
+  const vnSlug = (c: Context): string => {
+    const slug = c.req.param("slug") ?? "";
+    if (!VN_SLUG.test(slug))
+      throw new HttpError(400, "bad_request", "That is not a visual novel name.");
+    return slug;
+  };
+
+  /** The world's visual novels, without their text. */
+  app.get("/api/agent/worlds/:name/vns", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.read");
+    const list = (await asHttp(() => vns.list(grant.userId, slug))) ?? [];
+    return c.json({
+      vns: list.map((v) => ({ slug: v.slug, manifest: v.manifest, slideCount: v.slideCount })),
+    });
+  });
+
+  app.get("/api/agent/worlds/:name/vns/:slug", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.read");
+    const found = await asHttp(() => vns.get(grant.userId, slug, vnSlug(c)));
+    if (!found) throw new HttpError(404, "not_found", "There is no such visual novel.");
+    return c.json(found);
+  });
+
+  /** Save any of the manifest, the script (adaptation.md) and the slides. A new visual novel is made. */
+  app.put("/api/agent/worlds/:name/vns/:slug", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.write");
+    const body = VnParts.parse(await c.req.json().catch(() => ({})));
+    const name = vnSlug(c);
+    if (body.manifest && body.manifest.slug !== name) {
+      throw new HttpError(400, "bad_request", "The manifest names another visual novel.");
+    }
+    await asHttp(() => vns.save(grant.userId, slug, name, body));
+    return c.json({ ok: true });
+  });
+
+  /** Compile the saved script into slides, save them, and say what was wrong with it. */
+  app.post("/api/agent/worlds/:name/vns/:slug/compile", async (c) => {
+    const { grant, slug } = await forWorld(c, "adaptation.write");
+    const name = vnSlug(c);
+    const found = await asHttp(() => vns.get(grant.userId, slug, name));
+    if (!found) throw new HttpError(404, "not_found", "There is no such visual novel.");
+    const manifest = VnManifestSchema.parse(found.manifest);
+    const result = compileVn(found.adaptationMd, { manifest });
+    manifest.updatedAt = new Date().toISOString();
+    await asHttp(() => vns.save(grant.userId, slug, name, { manifest, slides: result.deck }));
+    return c.json({ slideCount: result.deck.slides.length, diagnostics: result.diagnostics });
   });
 }

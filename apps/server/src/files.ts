@@ -61,6 +61,7 @@ import {
   addToPlan,
   type PlannedAsset,
   removeFromPlan,
+  type VnSource,
   type WorkflowSource,
 } from "@nirmata/adaptation";
 import { HttpError } from "./errors";
@@ -265,6 +266,15 @@ export interface LoreCards {
   removeFile(slug: string, path: string): Promise<boolean>;
 }
 
+/** The parts of a saved visual novel, as the database store takes them. */
+function toParts(data: { manifest?: VnManifest; adaptationMd?: string; slides?: VnSlideDeck }) {
+  return {
+    manifest: data.manifest,
+    adaptationMd: data.adaptationMd,
+    slides: data.slides,
+  };
+}
+
 /** One world on disk: `world.json` and its card folders. The source cards (ADR-0009). */
 export class WorldFiles implements SourceBackend {
   readonly root: string;
@@ -273,6 +283,7 @@ export class WorldFiles implements SourceBackend {
     root: string,
     private readonly lore?: LoreCards,
     private readonly workflows?: WorkflowSource,
+    private readonly vnContent?: VnSource,
   ) {
     this.root = resolve(root);
   }
@@ -418,7 +429,58 @@ export class WorldFiles implements SourceBackend {
     return join(this.root, "vns");
   }
 
+  /** The world's name in the database when its visual novels may live there. */
+  private async vnWorld(): Promise<string | undefined> {
+    return this.vnContent ? this.loreSlug(true) : undefined;
+  }
+
+  private summaryOf(manifest: VnManifest, slideCount: number | undefined): VnSummary {
+    return {
+      slug: manifest.slug,
+      title: manifest.title,
+      source: manifest.source,
+      mode: manifest.mode,
+      mc: manifest.mc,
+      tier: manifest.tier,
+      slideCount,
+      routes: manifest.routes,
+      updatedAt: manifest.updatedAt,
+      order: manifest.order,
+      nextSlug: manifest.nextSlug,
+    };
+  }
+
+  /** Sorted by `order`, then by name; each one points at the next unless it says otherwise. */
+  private ordered(summaries: VnSummary[]): VnSummary[] {
+    summaries.sort((a, b) => {
+      if (a.order !== undefined && b.order !== undefined) {
+        return a.order - b.order;
+      }
+      if (a.order !== undefined) return -1;
+      if (b.order !== undefined) return 1;
+      return a.slug.localeCompare(b.slug, undefined, { numeric: true, sensitivity: "base" });
+    });
+    for (let i = 0; i < summaries.length; i++) {
+      const cur = summaries[i];
+      const nxt = summaries[i + 1];
+      if (cur && !cur.nextSlug && nxt) {
+        cur.nextSlug = nxt.slug;
+      }
+    }
+    return summaries;
+  }
+
   async vns(): Promise<VnSummary[]> {
+    const world = await this.vnWorld();
+    const stored = world ? await this.vnContent?.list(world) : undefined;
+    if (stored) {
+      const summaries: VnSummary[] = [];
+      for (const rec of stored) {
+        const parsed = VnManifestSchema.safeParse(rec.manifest);
+        if (parsed.success) summaries.push(this.summaryOf(parsed.data, rec.slideCount));
+      }
+      return this.ordered(summaries);
+    }
     let slugs: string[];
     try {
       slugs = await readdir(this.vnsDir);
@@ -436,7 +498,6 @@ export class WorldFiles implements SourceBackend {
         const raw = JSON.parse(text);
         const parsed = VnManifestSchema.safeParse(raw);
         if (parsed.success) {
-          const m = parsed.data;
           let slideCount: number | undefined;
           const slidesText = await readIfThere(join(this.vnsDir, slug, "slides.json"));
           if (slidesText) {
@@ -447,64 +508,59 @@ export class WorldFiles implements SourceBackend {
               }
             } catch {}
           }
-          summaries.push({
-            slug: m.slug,
-            title: m.title,
-            source: m.source,
-            mode: m.mode,
-            mc: m.mc,
-            tier: m.tier,
-            slideCount,
-            routes: m.routes,
-            updatedAt: m.updatedAt,
-            order: m.order,
-            nextSlug: m.nextSlug,
-          });
+          summaries.push(this.summaryOf(parsed.data, slideCount));
         }
       } catch {}
     }
-
-    // Sort by order ascending if specified, then natural alphanumeric slug order
-    summaries.sort((a, b) => {
-      if (a.order !== undefined && b.order !== undefined) {
-        return a.order - b.order;
-      }
-      if (a.order !== undefined) return -1;
-      if (b.order !== undefined) return 1;
-      return a.slug.localeCompare(b.slug, undefined, { numeric: true, sensitivity: "base" });
-    });
-
-    // Populate sequential nextSlug if not explicitly set
-    for (let i = 0; i < summaries.length; i++) {
-      const cur = summaries[i];
-      const nxt = summaries[i + 1];
-      if (cur && !cur.nextSlug && nxt) {
-        cur.nextSlug = nxt.slug;
-      }
-    }
-
-    return summaries;
+    return this.ordered(summaries);
   }
 
-  /** One visual novel's manifest as written, without working out its order or what comes next. */
-  private async vnManifest(safeSlug: string): Promise<VnManifest> {
-    const text = await readIfThere(join(inside(this.root, `vns/${safeSlug}`), "manifest.json"));
-    if (!text) {
-      throw new HostError("nothing_to_do", `There is no visual novel adaptation "${safeSlug}".`);
-    }
-    return VnManifestSchema.parse(JSON.parse(text));
-  }
-
-  async vn(
+  /** One visual novel from the database (undefined for a world that is not there) or the folder. */
+  private async readVn(
+    safeSlug: string,
     slug: string,
-  ): Promise<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck }> {
-    const safeSlug = sanitizeSlug(slug);
+  ): Promise<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck | undefined }> {
+    const world = await this.vnWorld();
+    if (world && this.vnContent) {
+      const rec = await this.vnContent.get(world, safeSlug);
+      if (rec) {
+        return {
+          manifest: VnManifestSchema.parse(rec.manifest),
+          adaptationMd: rec.adaptationMd,
+          slides: rec.slides as VnSlideDeck | undefined,
+        };
+      }
+      if ((await this.vnContent.list(world)) !== undefined) {
+        throw new HostError("nothing_to_do", `There is no visual novel adaptation "${slug}".`);
+      }
+    }
     const dir = inside(this.root, `vns/${safeSlug}`);
     const manifestText = await readIfThere(join(dir, "manifest.json"));
     if (!manifestText) {
       throw new HostError("nothing_to_do", `There is no visual novel adaptation "${slug}".`);
     }
     const manifest = VnManifestSchema.parse(JSON.parse(manifestText));
+    const adaptationMd = (await readIfThere(join(dir, "adaptation.md"))) || "";
+    let slides: VnSlideDeck | undefined;
+    const slidesText = await readIfThere(join(dir, "slides.json"));
+    if (slidesText) {
+      try {
+        slides = JSON.parse(slidesText);
+      } catch {}
+    }
+    return { manifest, adaptationMd, slides };
+  }
+
+  /** One visual novel's manifest as written, without working out its order or what comes next. */
+  private async vnManifest(safeSlug: string): Promise<VnManifest> {
+    return (await this.readVn(safeSlug, safeSlug)).manifest;
+  }
+
+  async vn(
+    slug: string,
+  ): Promise<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck }> {
+    const safeSlug = sanitizeSlug(slug);
+    const { manifest, adaptationMd, slides } = await this.readVn(safeSlug, slug);
     if (!manifest.nextSlug || manifest.order === undefined) {
       const all = await this.vns();
       const current = all.find((v) => v.slug === safeSlug);
@@ -517,15 +573,7 @@ export class WorldFiles implements SourceBackend {
         }
       }
     }
-    const adaptationMd = (await readIfThere(join(dir, "adaptation.md"))) || "";
-    let slides: VnSlideDeck | undefined;
-    const slidesText = await readIfThere(join(dir, "slides.json"));
-    if (slidesText) {
-      try {
-        slides = JSON.parse(slidesText);
-      } catch {}
-    }
-    return { manifest, adaptationMd, slides };
+    return { manifest, adaptationMd, ...(slides ? { slides } : {}) };
   }
 
   async saveVn(
@@ -533,6 +581,8 @@ export class WorldFiles implements SourceBackend {
     data: { manifest?: VnManifest; adaptationMd?: string; slides?: VnSlideDeck },
   ): Promise<void> {
     const safeSlug = sanitizeSlug(slug);
+    const world = await this.vnWorld();
+    if (world && (await this.vnContent?.save(world, safeSlug, toParts(data)))) return;
     const dir = inside(this.root, `vns/${safeSlug}`);
     await mkdir(dir, { recursive: true });
     if (data.manifest) {
@@ -558,13 +608,22 @@ export class WorldFiles implements SourceBackend {
   }): Promise<VnSummary> {
     const safeSlug = sanitizeSlug(options.slug);
     const dir = inside(this.root, `vns/${safeSlug}`);
-    if (await readIfThere(join(dir, "manifest.json"))) {
+    const world = await this.vnWorld();
+    const stored = world ? await this.vnContent?.list(world) : undefined;
+    const exists = stored
+      ? stored.some((v) => v.slug === safeSlug)
+      : Boolean(await readIfThere(join(dir, "manifest.json")));
+    if (exists) {
       throw new HostError("bad_state", `Visual novel adaptation "${safeSlug}" already exists.`);
     }
     const manifest = createStarterManifest({ ...options, slug: safeSlug });
     const adaptationMd = createStarterAdaptationMd({ ...options, slug: safeSlug });
     const { deck } = compileVn(adaptationMd, { manifest });
 
+    if (world && stored) {
+      await this.vnContent?.save(world, safeSlug, { manifest, adaptationMd, slides: deck });
+      return this.summaryOf(manifest, deck.slides.length);
+    }
     await mkdir(join(this.vnsDir, "_shared", "assets"), { recursive: true });
     await writeAtomic(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
     await writeAtomic(join(dir, "adaptation.md"), adaptationMd);
@@ -588,15 +647,14 @@ export class WorldFiles implements SourceBackend {
   async compileVn(slug: string): Promise<{ slides: VnSlideDeck; diagnostics: VnDiagnostic[] }> {
     const safeSlug = sanitizeSlug(slug);
     const dir = inside(this.root, `vns/${safeSlug}`);
-    const manifestText = await readIfThere(join(dir, "manifest.json"));
-    if (!manifestText) {
-      throw new HostError("nothing_to_do", `There is no visual novel adaptation "${slug}".`);
-    }
-    const manifest = VnManifestSchema.parse(JSON.parse(manifestText));
-    const adaptationMd = (await readIfThere(join(dir, "adaptation.md"))) || "";
+    const { manifest, adaptationMd } = await this.readVn(safeSlug, slug);
     const result = compileVn(adaptationMd, { manifest });
 
     manifest.updatedAt = new Date().toISOString();
+    const world = await this.vnWorld();
+    if (world && (await this.vnContent?.save(world, safeSlug, { manifest, slides: result.deck }))) {
+      return { slides: result.deck, diagnostics: result.diagnostics };
+    }
     await writeAtomic(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
     await writeAtomic(join(dir, "slides.json"), JSON.stringify(result.deck, null, 2));
 
@@ -1991,6 +2049,8 @@ export class Library {
       images?: DatasetImages | undefined;
       /** Workflows an imported world keeps in the database (ADR-0035). */
       workflows?: WorkflowSource | undefined;
+      /** Visual novels an imported world keeps in the database (ADR-0035). */
+      vnContent?: VnSource | undefined;
     } = {},
   ) {
     this.root = resolve(root);
@@ -1999,7 +2059,12 @@ export class Library {
   open(name: string): WorldFiles {
     if (!LIBRARY_NAME.test(name))
       throw new HostError("nothing_to_do", `There is no world "${name}".`);
-    return new WorldFiles(join(this.root, name), this.options.lore, this.options.workflows);
+    return new WorldFiles(
+      join(this.root, name),
+      this.options.lore,
+      this.options.workflows,
+      this.options.vnContent,
+    );
   }
 
   private readonly storyFiles = new Map<string, StoryFiles>();

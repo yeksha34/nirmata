@@ -227,7 +227,10 @@ For Mid and Large tiers, build in stages. Send the Story Core, Adaptation Notes,
 
 Deliver a document the user can keep and edit: a doc artifact by default, or the format they ask for (.md, .docx, .rpy). Close with one line on what was produced and one natural next step, such as "write the next route?", "add a true route?" or "export to Ren'Py?".
 
-### Scaffolding layout on disk
+### Saving to Nirmata (a world in the database)
+For a world Nirmata holds in its database, save the adaptation through the endpoints instead of writing the files below: `PUT /api/agent/worlds/<world>/vns/<slug>` with any of `{manifest, adaptationMd, slides}` (the manifest is the same `manifest.json`, and its `slug` must be `<slug>`; names are letters, digits and hyphens). The first save makes the visual novel, so the world must have been published once. `POST …/vns/<slug>/compile` turns the saved `adaptationMd` into slides and returns the compiler's diagnostics; fix them and save again. `GET …/vns` and `GET …/vns/<slug>` read them back. Do not write `vns/` files for such a world.
+
+### Scaffolding layout on disk (a world that is still a folder)
 When scaffolding or writing visual novel adaptations into a world, follow this structure with generic nondescript naming:
 
 ```text
