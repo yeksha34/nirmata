@@ -4,6 +4,8 @@ import { FLAVOR_STYLES } from "@nirmata/host";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
+import { AgentTokens } from "@nirmata/adaptation";
+import { registerAgentRoutes } from "./agent-routes";
 import { type DataDeps, registerAssetRoutes } from "./asset-routes";
 import { type AuthDeps, readProfile, registerAuthRoutes } from "./auth-routes";
 import { describeError, HttpError } from "./errors";
@@ -171,6 +173,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
 
   app.get("/api/health", (c) => c.json({ ok: true }));
   if (data) registerAssetRoutes(app, data, seatOf);
+  if (data) registerAgentRoutes(app, new AgentTokens(data.db), seatOf);
   const userOf = auth ? registerAuthRoutes(app, auth) : undefined;
   app.get("/api/comfyui/status", async (c) => c.json(await table.comfyStatus()));
   app.get("/api/table", async (c) => c.json(await table.info()));

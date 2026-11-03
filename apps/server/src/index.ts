@@ -1,3 +1,4 @@
+export * from "./agent-routes";
 export * from "./app";
 export * from "./asset-routes";
 export * from "./auth-routes";
