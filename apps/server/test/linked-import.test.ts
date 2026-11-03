@@ -45,6 +45,6 @@ describe("collectLinked", () => {
   it("falls back to the owner a name starts with", () => {
     const ring = collectLinked(world()).find((a) => a.name === "Ana_ring");
     expect(ring?.characters).toEqual(["Ana"]);
-    expect(ring?.positive).toContain("worn on left ear");
+    expect(ring?.positive).toContain("thick dull gold hoop");
   });
 });

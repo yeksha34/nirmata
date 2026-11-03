@@ -393,7 +393,7 @@ export function synthesizeBackgroundDanbooruPrompt(
  */
 export function getDefaultNegativePrompt(type: AssetKind): string {
   if (type === "clothes" || type === "adornment" || type === "object") {
-    return "person, body, face, hands, multiple items, text, watermark, signature, blurry, lowres, worst quality, low quality";
+    return "1girl, 1boy, solo, person, model, mannequin, wearing, worn, body, torso, legs, feet, skin, nude, breasts, face, hands, holding, multiple items, text, watermark, signature, blurry, lowres, worst quality, low quality";
   }
   if (type === "sprite") {
     return "2girls, multiple girls, 2bodies, bad anatomy, bad hands, missing fingers, extra digits, blurry, worst quality, low quality, normal quality, signature, watermark, cropped, censored, bar censor, mosaic censor";

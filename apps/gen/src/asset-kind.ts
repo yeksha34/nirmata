@@ -91,16 +91,16 @@ export function parseLinkedCard(text: string): LinkedDetails {
 }
 
 const LEAD: Record<LinkedKind, string> = {
-  clothes: "masterpiece, best quality, garment design sheet, single outfit laid flat, front view",
-  adornment: "masterpiece, best quality, ornament design sheet, single accessory, front view",
-  object: "masterpiece, best quality, prop design sheet, single object, three-quarter view",
+  clothes: "masterpiece, best quality, clothing product shot, garment laid flat, front view, nobody wearing it",
+  adornment: "masterpiece, best quality, accessory product shot, single piece on its own, front view, nobody wearing it",
+  object: "masterpiece, best quality, prop design sheet, single object on its own, three-quarter view",
 };
-const TAIL = "isolated item, no person, no body, plain white background";
+const TAIL = "isolated item, no person, no body, no skin, no mannequin, plain white background";
 
 /**
  * The prompt for a linked asset. It is only what the image model needs to draw the item: the card's own
- * prompt first (the author's words), then what it looks like, what it is made of, where it sits on the
- * body and how it is attached. No character names and no story (who owns it, how it is used): the model
+ * prompt first (the author's words), then what it looks like and what it is made of. Where it sits on the body,
+ * how it is attached and how much it covers are left out: they make the model draw a wearer. No character names and no story (who owns it, how it is used): the model
  * cannot use them, and they would only be drawn as text or confuse the image.
  */
 export function composeLinkedPrompt(kind: LinkedKind, name: string, d: LinkedDetails = {}): string {
@@ -109,9 +109,6 @@ export function composeLinkedPrompt(kind: LinkedKind, name: string, d: LinkedDet
     d.prompt,
     d.prompt ? undefined : d.appearance,
     d.material && `made of ${d.material}`,
-    d.frames && `worn on ${d.frames}`,
-    d.attachment && d.attachment !== "magic" ? `attached by ${d.attachment}` : undefined,
-    d.coverage && `coverage: ${d.coverage}`,
     d.prompt || d.appearance ? undefined : itemWords(kind, name),
   ];
   return `${bits.filter(Boolean).join(", ")}, ${TAIL}`;

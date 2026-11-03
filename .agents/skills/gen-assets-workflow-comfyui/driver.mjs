@@ -272,18 +272,16 @@ export function scaffoldWorldWorkflows(worldSlug, vnSlug) {
             };
           };
           const LEAD = {
-            clothes: "masterpiece, best quality, garment design sheet, single outfit laid flat, front view",
-            adornment: "masterpiece, best quality, ornament design sheet, single accessory, front view",
-            object: "masterpiece, best quality, prop design sheet, single object, three-quarter view",
+            clothes: "masterpiece, best quality, clothing product shot, garment laid flat, front view, nobody wearing it",
+            adornment: "masterpiece, best quality, accessory product shot, single piece on its own, front view, nobody wearing it",
+            object: "masterpiece, best quality, prop design sheet, single object on its own, three-quarter view",
           };
           const describe = (type, name, d) =>
             [
               LEAD[type],
               d.prompt || d.appearance || pretty(type === "object" || !name.includes("_") ? name : name.slice(name.indexOf("_") + 1)),
               d.prompt && d.material ? `made of ${d.material}` : "",
-              d.frames ? `worn on ${d.frames}` : "",
-              d.coverage ? `coverage: ${d.coverage}` : "",
-              "isolated item, no person, no body, plain white background",
+              "isolated item, no person, no body, no skin, no mannequin, plain white background",
             ]
               .filter(Boolean)
               .join(", ");
@@ -292,7 +290,7 @@ export function scaffoldWorldWorkflows(worldSlug, vnSlug) {
             type,
             ...extra,
             positivePrompt: describe(type, cardName, readCard({ clothes: "clothes", adornment: "adornments", object: "objects" }[type], cardName)),
-            negativePrompt: `person, body, face, hands, multiple items, text, watermark, blurry, lowres, worst quality`,
+            negativePrompt: `1girl, 1boy, solo, person, model, mannequin, wearing, worn, body, torso, legs, feet, skin, nude, breasts, face, hands, holding, multiple items, text, watermark, blurry, lowres, worst quality`,
             steps: 24,
             cfg: 7.0,
             sampler: "dpmpp_2m",

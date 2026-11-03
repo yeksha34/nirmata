@@ -41,7 +41,7 @@ describe("linked card prompts", () => {
   it("describes the item from the card instead of naming it", () => {
     const text = composeLinkedPrompt("adornment", "A_ring", parseLinkedCard(card));
     expect(text).toContain("thick dull gold hoop, heavy, hammered surface");
-    expect(text).toContain("worn on left ear");
+    expect(text).not.toContain("left ear");
     expect(text).toContain("no person");
   });
 
