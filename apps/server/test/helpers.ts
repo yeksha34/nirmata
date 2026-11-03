@@ -38,7 +38,7 @@ export async function tempLibrary(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "nirmata-server-"));
   const library = join(dir, "worlds");
   await mkdir(library);
-  await cp(join(REPO_ROOT, "worlds", "example-world"), join(library, "example-world"), {
+  await cp(join(REPO_ROOT, "test-fixtures", "worlds", "example-world"), join(library, "example-world"), {
     recursive: true,
     filter: (src) => !src.includes(`${sep}stories${sep}`),
   });

@@ -18,7 +18,7 @@ export function loadWorld(name: string): {
   cards: Card[];
   problems: string[];
 } {
-  const root = join(REPO_ROOT, "worlds", name);
+  const root = join(REPO_ROOT, "test-fixtures", "worlds", name);
   const manifest = parseWorldManifest(readFileSync(join(root, "world.json"), "utf8"));
   if (!manifest.ok) throw new Error(manifest.errors.join("; "));
 
