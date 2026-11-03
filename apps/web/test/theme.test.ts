@@ -53,16 +53,15 @@ describe("the style sheet's two palettes", () => {
   it("keeps the colours of the design in the light palette", () => {
     const light = css.slice(css.indexOf(":root {"), css.indexOf("\n}\n"));
     for (const [name, value] of Object.entries({
-      "--paper": "#fbf7ef",
-      "--surface": "#fffdf8",
+      "--paper": "#f7eddc",
       "--ink": "#2a2118",
-      "--muted": "#6f6253",
-      "--line": "#e4d9c6",
-      "--line-strong": "#cdbfa9",
+      "--muted": "#66584a",
       "--accent": "#9a4f04",
-      "--accent-soft": "#f6e5cf",
+      "--accent2": "#c2570a",
       "--accent-deep": "#6e3600",
-      "--sunk": "#f6efe1",
+      "--glass": "rgb(255 252 246 / 58%)",
+      "--glass-strong": "rgb(255 252 246 / 82%)",
+      "--hair": "rgb(90 60 25 / 16%)",
     })) {
       expect(light, name).toContain(`${name}: ${value};`);
     }
