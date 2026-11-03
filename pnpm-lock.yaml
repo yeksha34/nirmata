@@ -179,6 +179,18 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@22.20.5)(tsx@4.23.15)(yaml@2.9.1)
 
+  apps/adaptation:
+    dependencies:
+      '@nirmata/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@nirmata/db':
+        specifier: workspace:*
+        version: link:../db
+      '@nirmata/gen':
+        specifier: workspace:*
+        version: link:../gen
+
   apps/auth: {}
 
   apps/db:
@@ -196,11 +208,33 @@ importers:
         specifier: workspace:*
         version: link:../storage
 
+  apps/importer:
+    dependencies:
+      '@nirmata/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@nirmata/db':
+        specifier: workspace:*
+        version: link:../db
+      '@nirmata/gen':
+        specifier: workspace:*
+        version: link:../gen
+      '@nirmata/storage':
+        specifier: workspace:*
+        version: link:../storage
+    devDependencies:
+      tsx:
+        specifier: ^4.19.0
+        version: 4.23.15
+
   apps/server:
     dependencies:
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.17(hono@4.13.13)
+      '@nirmata/adaptation':
+        specifier: workspace:*
+        version: link:../adaptation
       '@nirmata/auth':
         specifier: workspace:*
         version: link:../auth
@@ -216,6 +250,9 @@ importers:
       '@nirmata/host':
         specifier: workspace:*
         version: link:../../packages/host
+      '@nirmata/importer':
+        specifier: workspace:*
+        version: link:../importer
       '@nirmata/llm':
         specifier: workspace:*
         version: link:../../packages/llm
