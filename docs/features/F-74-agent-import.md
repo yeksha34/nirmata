@@ -17,6 +17,7 @@ A story's source is not made of cards. An agent with a token can read a file, de
 - [x] World skills (`world_lore.world_skills`) and author rules (`world_lore.author_rules`), authors only, with `GET/PUT/DELETE …/skills` and `…/rules`.
 - [x] The story endpoints (`…/writing`) accept an import token too; a plot's scenes, drafts, chapters and translations are writings by path.
 - [x] A fixed OpenAPI reference of the agent API, [docs/api/agent.openapi.json](../api/agent.openapi.json), kept in step with the routes by a test.
+- [x] A new world is made in the database (world, default line, manifest, premise card), never as a folder, when the database is connected; the world list includes database worlds. Without a database it is still a folder.
 - [x] The `story-import` skill describes the procedure (copy, characters first with attire, ornament and objects split out, remnants, lore, places, plots, report).
 - [x] Tests no longer read the removed `worlds/` folder; the example and template worlds are fixtures in `test-fixtures/`.
 - [ ] The migrations `20261104000100_agent_import_scopes.sql`, `20261104000200_world_skills_and_rules.sql` and `db/tests/015_world_skills_and_rules.sql` run on a real database.

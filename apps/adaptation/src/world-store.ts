@@ -4,6 +4,8 @@ import type { Db } from "@nirmata/db";
 export interface WorldSource {
   /** The manifest as stored, or undefined when the world is not in the database or has none. */
   manifest(worldSlug: string): Promise<Record<string, unknown> | undefined>;
+  /** The names of the worlds in the database the signed-in person may see. */
+  names?(): Promise<string[]>;
 }
 
 /** How long a manifest read is reused. The host reads it many times a request. */
@@ -22,9 +24,25 @@ export class WorldStore {
     });
   }
 
+  /** The names of the worlds the author belongs to, that have been put away or not. */
+  async names(userId: string): Promise<string[]> {
+    return this.db.asUser(userId, async (q) => {
+      const rows = (
+        await q(
+          "select slug from world_lore.worlds where archived_at is null and manifest is not null order by slug",
+        )
+      ).rows;
+      return rows.map((r) => String(r.slug));
+    });
+  }
+
   source(userOf: () => string | undefined): WorldSource {
     const seen = new Map<string, { at: number; value: Record<string, unknown> | undefined }>();
     return {
+      names: async () => {
+        const user = userOf();
+        return user ? this.names(user) : [];
+      },
       manifest: async (world) => {
         const user = userOf();
         if (!user) return undefined;

@@ -12,6 +12,8 @@ export const HI_SERVER: Record<string, string> = {
   "Pick a nickname to join with.": "जुड़ने के लिए कोई उपनाम चुनें।",
   "There is nothing at that address.": "उस पते पर कुछ नहीं है।",
   "A world needs a title.": "संसार को एक शीर्षक चाहिए।",
+  "Sign in to make a world.": "संसार बनाने के लिए लॉग-इन करें।",
+  "Only an account that may found worlds can make one.": "संसार केवल वही खाता बना सकता है जिसे संसार स्थापित करने की अनुमति है।",
   "A card needs a name.": "पत्रक को एक नाम चाहिए।",
   "Say which card to remove.": "बताएँ कि कौन-सा पत्रक हटाना है।",
   "Say which chapter or draft to read.": "बताएँ कि कौन-सा अध्याय या मसौदा पढ़ना है।",

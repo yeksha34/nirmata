@@ -10,7 +10,7 @@ Fills a world in Nirmata from a story's source folder. The agent is the importer
 ## Rules
 
 - **Endpoints only.** Use `Authorization: Bearer nga_…` with the author's token for this world, at `/api/agent/worlds/<world>`. Never the database, never a script that bypasses the endpoints (`AGENTS.md`). Check the token first with `GET /api/agent/me`: it needs `import.read` and `import.write`.
-- **The world already exists.** The author made it. Importing does not make worlds.
+- **The world already exists.** The author made it in the app (New world); it is in the database from the start. Importing does not make worlds.
 - **Work on a copy.** Copy the whole source folder into a new temporary folder outside the repository and work there. Never edit the original. Never copy source text into the repository, a commit, an issue or a log.
 - **One file at a time.** Finish a file (its cards saved, its written text removed from the copy) before opening the next.
 - **The order is the author's.** The author tells you the order of folders for this world, and any kinds to use. If they did not, use: guide and rules, characters, lore, settings, plots (scenes, drafts, chapters, arcs, translations).

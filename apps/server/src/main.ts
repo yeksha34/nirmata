@@ -17,6 +17,7 @@ import { storesFromEnv } from "@nirmata/storage";
 import { createApp } from "./app";
 import type { AuthDeps } from "./auth-routes";
 import { ConfigError, loadConfig } from "./config";
+import { dbWorldCreator } from "./db-worlds";
 import { Library } from "./files";
 import { DbImages } from "./image-store";
 import { DbLore } from "./lore-store";
@@ -100,6 +101,7 @@ async function main(): Promise<void> {
           world: new WorldStore(db).source(() => hostUser()),
         }
       : undefined,
+    create: db ? dbWorldCreator(db, () => hostUser()) : undefined,
   });
 
   const ledger = db ? new DbGenerations(db, stores, () => hostUser(), log) : undefined;
