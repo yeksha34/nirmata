@@ -415,6 +415,21 @@ export const HI_TEXT: Record<string, string> = {
     "एजेंट की पहुँच के लिए डेटाबेस और लॉग-इन किया हुआ एक लेखक चाहिए।",
   "A token lets an agent import into this world and adapt it, at {root}, and nothing else. It is shown once. Revoke it to stop it.":
     "टोकन से एजेंट {root} पर इस संसार में आयात और इसका रूपांतरण कर सकता है, और कुछ नहीं। यह एक ही बार दिखता है। रोकने के लिए इसे रद्द करें।",
+  "Import a world": "संसार आयात करें",
+  "Name the world. It is made now, empty, with a token for each agent that will fill it from your files.":
+    "संसार का नाम रखें। वह अभी, खाली, बन जाता है, और आपकी फ़ाइलों से उसे भरने वाले हर एजेंट के लिए एक टोकन मिलता है।",
+  "Kinds of card the settings worker may write, separated by commas":
+    "परिवेश वाला कार्यकर्ता किन प्रकार के कार्ड लिख सकता है, अल्पविराम से अलग",
+  "The tokens last": "टोकन कितने दिन चलें",
+  "Make the world and its tokens": "संसार और उसके टोकन बनाएँ",
+  "Ready to import into {title}": "{title} में आयात के लिए तैयार",
+  "Copy the tokens and the prompt now: the tokens will not be shown again. Set the tokens as environment variables in the terminal where the agent runs.":
+    "टोकन और निर्देश अभी नकल कर लें: टोकन दोबारा नहीं दिखेंगे। टोकनों को उस टर्मिनल में पर्यावरण-चर के रूप में रखें जहाँ एजेंट चलता है।",
+  Tokens: "टोकन",
+  "What you expect of the import (edit it)": "आयात से आपकी अपेक्षा (इसे बदल सकते हैं)",
+  "Prompt for the agent": "एजेंट के लिए निर्देश",
+  "In the prompt, fill in the three places in angle brackets: the source folder, the folder the agent works in, and the Nirmata repository.":
+    "निर्देश में कोण-कोष्ठक वाली तीन जगहें भरें: स्रोत फ़ोल्डर, एजेंट का कार्य-फ़ोल्डर और निर्माता का रिपॉज़िटरी।",
   "Works on": "किस पर काम करे",
   Everything: "सब कुछ",
   "Characters only": "केवल पात्र",

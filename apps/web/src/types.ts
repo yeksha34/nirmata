@@ -243,6 +243,12 @@ export type VnMode = "mode_1" | "mode_2a" | "mode_2b" | "mode_2_open";
 export type VnTier = "micro" | "short" | "mid" | "large";
 export type VnSlot = "left" | "center" | "right";
 
+/** A world made by "Import a world", with the token for each worker. Shown once. */
+export interface ImportedWorld {
+  world: WorldSummary;
+  tokens: { full: string; characters: string; accessories: string; settings: string };
+}
+
 /** A token an author made for the adaptation agent; the token itself is never listed. */
 export interface AgentToken {
   id: string;

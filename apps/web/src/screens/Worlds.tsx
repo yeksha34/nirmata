@@ -6,6 +6,7 @@ import { useNav } from "../nav";
 import type { RecentStory, WorldSummary } from "../types";
 import { Empty, Panel } from "../ui";
 import { Workspace } from "./Workspace";
+import { ImportWorld } from "./import-world";
 import { CreateWorld, OpenStoryNotice, StoryRow } from "./world-parts";
 
 /**
@@ -31,6 +32,7 @@ function Home() {
   const [recent, setRecent] = useState<RecentStory[]>();
   const [worlds, setWorlds] = useState<WorldSummary[]>();
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     void act(api.recent).then((r) => setRecent(r ?? []));
@@ -87,9 +89,18 @@ function Home() {
           <h2 id="worlds-title">
             <T>Your worlds</T>
           </h2>
-          <button type="button" className="primary" onClick={() => setCreating(true)}>
-            <T>New world</T>
-          </button>
+          <menu className="shelf-actions">
+            <li>
+              <button type="button" onClick={() => setImporting(true)}>
+                <T>Import a world</T>
+              </button>
+            </li>
+            <li>
+              <button type="button" className="primary" onClick={() => setCreating(true)}>
+                <T>New world</T>
+              </button>
+            </li>
+          </menu>
         </header>
         {!worlds ? (
           <Empty>
@@ -148,6 +159,16 @@ function Home() {
           </ul>
         )}
       </section>
+
+      {importing && (
+        <ImportWorld
+          onClose={() => setImporting(false)}
+          onOpen={(name) => {
+            setImporting(false);
+            onOpen(name);
+          }}
+        />
+      )}
 
       {creating && (
         <CreateWorld
