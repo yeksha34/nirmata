@@ -408,4 +408,27 @@ export const HI_TEXT: Record<string, string> = {
   Dismiss: "हटाएँ",
   "Clear finished": "पूर्ण हटाएँ",
   "Drag to move. Alt + arrows moves it too.": "खिसकाने के लिए खींचें। Alt + तीर कुंजियाँ भी खिसकाती हैं।",
+
+  // agent access (a token for the adaptation agent)
+  "Agent access": "एजेंट की पहुँच",
+  "Agent access needs the database and an author who is signed in.":
+    "एजेंट की पहुँच के लिए डेटाबेस और लॉग-इन किया हुआ एक लेखक चाहिए।",
+  "A token lets the adaptation agent read and write this world's adaptation data at {root}, and nothing else. It is shown once. Revoke it to stop it.":
+    "टोकन से रूपांतरण-एजेंट {root} पर इस संसार का रूपांतरण-डेटा पढ़ और लिख सकता है, और कुछ नहीं। यह एक ही बार दिखता है। रोकने के लिए इसे रद्द करें।",
+  "Your new token. Copy it now: it will not be shown again.":
+    "आपका नया टोकन। अभी नकल कर लें: यह दोबारा नहीं दिखेगा।",
+  Copy: "नकल करें",
+  Copied: "नकल हो गया",
+  "What it is for": "यह किसलिए है",
+  Lasts: "कितने दिन चले",
+  "{n} days": "{n} दिन",
+  "Make a token": "टोकन बनाएँ",
+  "No tokens yet.": "अभी कोई टोकन नहीं।",
+  Active: "चालू",
+  Revoked: "रद्द",
+  Expired: "समाप्त",
+  "until {date}": "{date} तक",
+  "last used {date}": "अंतिम उपयोग {date}",
+  "never used": "कभी उपयोग नहीं हुआ",
+  Revoke: "रद्द करें",
 };

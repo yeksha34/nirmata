@@ -243,6 +243,17 @@ export type VnMode = "mode_1" | "mode_2a" | "mode_2b" | "mode_2_open";
 export type VnTier = "micro" | "short" | "mid" | "large";
 export type VnSlot = "left" | "center" | "right";
 
+/** A token an author made for the adaptation agent; the token itself is never listed. */
+export interface AgentToken {
+  id: string;
+  label: string;
+  scopes: string[];
+  expiresAt: string;
+  revokedAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
 export interface VnSummary {
   slug: string;
   title: string;
