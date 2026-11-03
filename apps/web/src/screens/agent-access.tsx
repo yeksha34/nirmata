@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import { T } from "../i18n";
+import { bilingual, T } from "../i18n";
 import type { AgentToken } from "../types";
 import { Panel } from "../ui";
 
@@ -177,7 +177,7 @@ export function AgentAccess({ world }: { world: string }) {
         >
           {DAYS.map((d) => (
             <option key={d} value={d}>
-              <T with={{ n: d }}>{"{n} days"}</T>
+              {bilingual("{n} days", { n: d })}
             </option>
           ))}
         </select>
@@ -187,7 +187,7 @@ export function AgentAccess({ world }: { world: string }) {
         <select id="agent-token-lane" value={lane} onChange={(e) => setLane(e.target.value)}>
           {LANES.map((l) => (
             <option key={l.id} value={l.id}>
-              <T>{l.label}</T>
+              {bilingual(l.label)}
             </option>
           ))}
         </select>
@@ -233,8 +233,8 @@ export function AgentAccess({ world }: { world: string }) {
           {tokens.map((t) => {
             const state = standing(t);
             return (
-              <li key={t.id}>
-                <strong>{t.label}</strong>{" "}
+              <li key={t.id} data-state={state}>
+                <strong>{t.label}</strong>
                 <small className="muted">
                   <T>
                     {state === "active" ? "Active" : state === "revoked" ? "Revoked" : "Expired"}
