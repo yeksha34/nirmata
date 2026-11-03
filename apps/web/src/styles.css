@@ -2029,6 +2029,14 @@ label.choice-opt:has(input:focus-visible) {
   gap: 0.25rem 1rem;
 }
 
+.vs-saved[data-state="failed"] {
+  color: #e74c3c;
+}
+.vs-saved {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
 /* ---- where a world's cards are kept ---- */
 .source-badge {
   display: inline-flex;

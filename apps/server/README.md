@@ -101,6 +101,8 @@ The dataset gallery can delete one run (`DELETE /api/worlds/:name/dataset/:slug/
 
 A generation can take reference sprites (ADR-0031): `references: ["<sprite name>"]` in the request, optionally `referenceStrength`. The server reads each from the visual novel's sprite files, uploads it to ComfyUI, and adds a reference slot to the workflow the world uses (or uses the world's own `sprite_ref` / `cg_ref`). The asset detail carries `references.suggested` and `references.available` for the Studio's checklist; the base sprite's expression is the world's `assets/workflow/references.json`.
 
+The Asset Studio remembers each asset's prompt and sampler settings: `PUT /api/worlds/:name/vns/:slug/asset-meta/:type/:asset/prompt` (host only) writes them into the world's prompts file (`vns/_shared/assets/prompts.json` if it exists, else `assets/workflow/prompts.json`), keeping the file's shape and every other field of the entry, the seed included. The Studio saves a moment after the last keystroke, and also saves a pending edit when another asset is picked; a finished generation saves the prompt that made it. The asset detail reads the same file, so the prompt is there when the asset is selected again. Selecting an asset reads its detail only (not the whole asset list), builds a default prompt for that asset alone, and an imported world's cards are reused for ten seconds.
+
 ## Importing dataset images
 
 A person runs this; it needs `DATABASE_URL_RW` and, for `--target=supabase`, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (or `NIRMATA_ASSET_DIR` for `--target=local`):

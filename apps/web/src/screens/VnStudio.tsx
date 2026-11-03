@@ -15,6 +15,15 @@ import type {
 } from "../types";
 
 type Choice = "better" | "keep" | "worse";
+interface SavedPrompt {
+  positivePrompt: string;
+  negativePrompt: string;
+  steps: number;
+  cfg: number;
+  sampler: string;
+  scheduler: string;
+}
+
 type AssetKind = "sprite" | "cg" | "bg";
 type Filter = "all" | "shared" | AssetKind;
 
@@ -127,6 +136,9 @@ export function VnStudio() {
   const { act } = useAct();
   const dispatch = useDispatch();
   const jobsState = useSelector((s: JobsState) => s);
+  // the latest nav, for effects that must not run again just because the selection moved
+  const navRef = useRef(nav);
+  navRef.current = nav;
 
   const [allVns, setAllVns] = useState<VnWithAssetsSummary[]>([]);
   const [assets, setAssets] = useState<{
@@ -160,6 +172,8 @@ export function VnStudio() {
   const [message, setMessage] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
   const [history, setHistory] = useState<VnAssetDatasetEntry[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"" | "saving" | "saved" | "failed">("");
 
   const job = jobForAsset(jobsState, activeWorld, activeType, activeName);
   // the latest few, to restore from here; the dataset gallery holds them all
@@ -177,11 +191,12 @@ export function VnStudio() {
   useEffect(() => {
     void act(api.allVns).then((v) => {
       setAllVns(v ?? []);
-      if (v && v.length > 0 && v[0] && !nav.vnWorld && !nav.vnSlug) {
-        nav.toVn(v[0].worldName, v[0].slug);
+      const here = navRef.current;
+      if (v && v.length > 0 && v[0] && !here.vnWorld && !here.vnSlug) {
+        here.toVn(v[0].worldName, v[0].slug);
       }
     });
-  }, [act, nav]);
+  }, [act]);
 
   const loadAssets = useCallback(async () => {
     if (!activeWorld || !activeSlug) return;
@@ -190,19 +205,48 @@ export function VnStudio() {
     return res;
   }, [act, activeWorld, activeSlug]);
 
+  // the list of assets belongs to the visual novel, so it is read when that changes, not for each asset picked
   useEffect(() => {
     void loadAssets().then((res) => {
-      if (res && !activeName && activeWorld && activeSlug) {
+      const here = navRef.current;
+      if (res && !here.vnAssetName && activeWorld && activeSlug) {
         const first = res.sprites[0] || res.cgs[0] || res.backgrounds[0];
-        if (first) nav.toVn(activeWorld, activeSlug, first.type, first.name);
+        if (first) here.toVn(activeWorld, activeSlug, first.type, first.name);
       }
     });
-  }, [loadAssets, activeName, activeWorld, activeSlug, nav]);
+  }, [loadAssets, activeWorld, activeSlug]);
+
+  const selection = `${activeWorld}|${activeSlug}|${activeType}|${activeName}`;
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+
+  /** Back to a blank form, so nothing of the asset that was open shows while the next one loads. */
+  const blankForm = useCallback(() => {
+    setDetail(null);
+    setPreviewUrl(undefined);
+    setHistory([]);
+    setPositivePrompt("");
+    setNegativePrompt("");
+    setSteps(22);
+    setCfg(7.5);
+    setSampler("dpmpp_2m");
+    setScheduler("karras");
+    setSeed(undefined);
+    setSelectedBadges([]);
+    setFeedback({});
+    setReferences([]);
+    setMessage("");
+    setSaveStatus("");
+  }, []);
 
   const loadDetail = useCallback(
     async (resetForm: boolean) => {
       if (!activeWorld || !activeSlug || !activeName) return;
+      const asked = `${activeWorld}|${activeSlug}|${activeType}|${activeName}`;
       const d = await act(() => api.vnAssetDetail(activeWorld, activeSlug, activeType, activeName));
+      // another asset was picked while this one loaded: its answer must not fill the form
+      if (selectionRef.current !== asked) return;
+      if (resetForm) setLoadingDetail(false);
       if (!d) return;
       setDetail(d);
       setPreviewUrl(d.url);
@@ -210,11 +254,11 @@ export function VnStudio() {
       if (resetForm) {
         setPositivePrompt(d.positivePrompt);
         setNegativePrompt(d.negativePrompt);
-        if (d.steps !== undefined) setSteps(d.steps);
-        if (d.cfg !== undefined) setCfg(d.cfg);
-        if (d.sampler !== undefined) setSampler(d.sampler);
-        if (d.scheduler !== undefined) setScheduler(d.scheduler);
-        if (d.seed !== undefined) setSeed(d.seed);
+        setSteps(d.steps ?? 22);
+        setCfg(d.cfg ?? 7.5);
+        setSampler(d.sampler ?? "dpmpp_2m");
+        setScheduler(d.scheduler ?? "karras");
+        setSeed(d.seed);
         setSelectedBadges([]);
         setFeedback({});
         setReferences(d.references?.suggested ?? []);
@@ -224,9 +268,65 @@ export function VnStudio() {
     [act, activeWorld, activeSlug, activeType, activeName],
   );
 
+  // ---- keeping what the author types ----
+  // Edits are saved a moment after the last keystroke, to the asset they were made on. Picking another
+  // asset saves any edit still waiting before the form is cleared.
+  const edited = useRef(false);
+  const waiting = useRef<{ target: [string, string, AssetKind, string]; body: SavedPrompt } | null>(
+    null,
+  );
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const saveNow = useCallback(async () => {
+    clearTimeout(timer.current);
+    const job = waiting.current;
+    waiting.current = null;
+    if (!job) return;
+    const [w, v, t, n] = job.target;
+    const key = `${w}|${v}|${t}|${n}`;
+    if (selectionRef.current === key) setSaveStatus("saving");
+    try {
+      await api.saveAssetPrompt(w, v, t, n, job.body);
+      if (selectionRef.current === key) setSaveStatus("saved");
+    } catch {
+      if (selectionRef.current === key) setSaveStatus("failed");
+    }
+  }, []);
+
+  /** Called by the controls the author changes, not when a form is filled in from the server. */
+  const markEdited = () => {
+    edited.current = true;
+  };
+
+  // The asset on show, read when an edit is made. It is not a dependency of the effect below: picking
+  // another asset must not count as an edit, or the old asset's text would be saved onto the new one.
+  const target = useRef<[string, string, AssetKind, string] | null>(null);
+  target.current =
+    activeWorld && activeSlug && activeName
+      ? [activeWorld, activeSlug, activeType, activeName]
+      : null;
+
   useEffect(() => {
+    if (!edited.current || !target.current) return;
+    waiting.current = {
+      target: target.current,
+      body: { positivePrompt, negativePrompt, steps, cfg, sampler, scheduler },
+    };
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => void saveNow(), 800);
+  }, [positivePrompt, negativePrompt, steps, cfg, sampler, scheduler, saveNow]);
+
+  // leaving the page saves what is waiting
+  useEffect(() => () => void saveNow(), [saveNow]);
+
+  useEffect(() => {
+    // a new asset was picked: save any edit still waiting, clear the form, then load the new one
+    void saveNow();
+    edited.current = false;
+    blankForm();
+    if (activeWorld && activeSlug && activeName) setLoadingDetail(true);
     void loadDetail(true);
-  }, [loadDetail]);
+  }, [loadDetail, blankForm, saveNow, activeWorld, activeSlug, activeName]);
 
   // When a render this page watched ends, show its result. A job that was already over when the
   // page opened only refreshes the picture and history; it does not overwrite what is being edited.
@@ -304,6 +404,7 @@ export function VnStudio() {
   const handleAddCustomTag = () => {
     const trimmed = newTagInput.trim();
     if (!trimmed) return;
+    markEdited();
     setPositivePrompt((prev) => (prev ? `${prev}, ${trimmed}` : trimmed));
     setSelectedBadges((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
     setFeedback((prev) => ({ ...prev, [trimmed]: "better" }));
@@ -311,6 +412,7 @@ export function VnStudio() {
   };
 
   const handleRestoreRun = (entry: VnAssetDatasetEntry) => {
+    markEdited();
     if (entry.prompt) setPositivePrompt(entry.prompt);
     if (entry.negativePrompt) setNegativePrompt(entry.negativePrompt);
     if (entry.imageUrl) setPreviewUrl(entry.imageUrl);
@@ -697,7 +799,10 @@ export function VnStudio() {
                   <textarea
                     rows={4}
                     value={positivePrompt}
-                    onChange={(e) => setPositivePrompt(e.target.value)}
+                    onChange={(e) => {
+                      markEdited();
+                      setPositivePrompt(e.target.value);
+                    }}
                   />
                 </label>
                 <label className="vs-field">
@@ -707,7 +812,10 @@ export function VnStudio() {
                   <textarea
                     rows={2}
                     value={negativePrompt}
-                    onChange={(e) => setNegativePrompt(e.target.value)}
+                    onChange={(e) => {
+                      markEdited();
+                      setNegativePrompt(e.target.value);
+                    }}
                   />
                 </label>
               </details>
@@ -782,7 +890,10 @@ export function VnStudio() {
                       min={1}
                       max={60}
                       value={steps}
-                      onChange={(e) => setSteps(Number(e.target.value))}
+                      onChange={(e) => {
+                        markEdited();
+                        setSteps(Number(e.target.value));
+                      }}
                     />
                   </label>
                   <label>
@@ -795,14 +906,23 @@ export function VnStudio() {
                       min={1}
                       max={20}
                       value={cfg}
-                      onChange={(e) => setCfg(Number(e.target.value))}
+                      onChange={(e) => {
+                        markEdited();
+                        setCfg(Number(e.target.value));
+                      }}
                     />
                   </label>
                   <label>
                     <small>
                       <T>Sampler</T>
                     </small>
-                    <select value={sampler} onChange={(e) => setSampler(e.target.value)}>
+                    <select
+                      value={sampler}
+                      onChange={(e) => {
+                        markEdited();
+                        setSampler(e.target.value);
+                      }}
+                    >
                       <option value="dpmpp_2m">dpmpp_2m</option>
                       <option value="euler">euler</option>
                       <option value="euler_ancestral">euler_ancestral</option>
@@ -813,7 +933,13 @@ export function VnStudio() {
                     <small>
                       <T>Scheduler</T>
                     </small>
-                    <select value={scheduler} onChange={(e) => setScheduler(e.target.value)}>
+                    <select
+                      value={scheduler}
+                      onChange={(e) => {
+                        markEdited();
+                        setScheduler(e.target.value);
+                      }}
+                    >
                       <option value="karras">karras</option>
                       <option value="normal">normal</option>
                       <option value="exponential">exponential</option>
@@ -886,14 +1012,29 @@ export function VnStudio() {
                 <button
                   type="button"
                   className="vs-btn vs-btn-primary"
-                  disabled={generating}
+                  disabled={generating || loadingDetail || !detail}
                   onClick={handleGenerate}
                 >
                   {generating ? <T>Generating…</T> : <T>Generate</T>}
                 </button>
                 <output className="vs-message">
-                  {jobsState.startError ? bilingual(jobsState.startError) : message}
+                  {jobsState.startError
+                    ? bilingual(jobsState.startError)
+                    : loadingDetail
+                      ? bilingual("Loading this asset…")
+                      : message}
                 </output>
+                {saveStatus !== "" && (
+                  <output className="vs-saved" data-state={saveStatus}>
+                    {saveStatus === "saving" ? (
+                      <T>Saving…</T>
+                    ) : saveStatus === "saved" ? (
+                      <T>Prompt saved</T>
+                    ) : (
+                      <T>Could not save the prompt</T>
+                    )}
+                  </output>
+                )}
               </footer>
             </>
           )}

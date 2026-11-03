@@ -256,6 +256,25 @@ export const api = {
     get<VnAssetDetail>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}`,
     ),
+  /** Remembers an asset prompt and sampler settings, so they are there when it is selected again. */
+  saveAssetPrompt: (
+    worldName: string,
+    slug: string,
+    type: "sprite" | "cg" | "bg",
+    name: string,
+    body: {
+      positivePrompt: string;
+      negativePrompt?: string;
+      steps?: number;
+      cfg?: number;
+      sampler?: string;
+      scheduler?: string;
+    },
+  ) =>
+    put(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}/prompt`,
+      body,
+    ),
   /** Starts a generation and returns at once; follow it with `vnJob`. */
   generateVnAsset: (worldName: string, slug: string, body: GenerateAssetInput) =>
     post<GenerationJob>(

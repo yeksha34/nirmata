@@ -86,6 +86,15 @@ const SaveVn = z.object({
   slides: z.any().optional(),
 });
 
+const PromptSpec = z.object({
+  positivePrompt: z.string().max(8000),
+  negativePrompt: z.string().max(8000).optional(),
+  steps: z.number().int().min(1).max(100).optional(),
+  cfg: z.number().min(1).max(30).optional(),
+  sampler: z.string().max(60).optional(),
+  scheduler: z.string().max(60).optional(),
+});
+
 const GenerateAsset = z.object({
   type: z.enum(["sprite", "cg", "bg"]),
   name: z.string().trim().min(1),
@@ -208,6 +217,20 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
   app.post("/api/worlds/:name/vns/:slug/assets/delete-all", async (c) =>
     c.json(await table.deleteAllWorldVnAssets(seatOf(c), c.req.param("name"), c.req.param("slug"))),
   );
+
+  // remember an asset's prompt and sampler settings (the Studio saves as the author types)
+  app.put("/api/worlds/:name/vns/:slug/asset-meta/:type/:assetName/prompt", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(c, PromptSpec);
+    await table.saveAssetPrompt(
+      seat,
+      c.req.param("name"),
+      c.req.param("type") as "sprite" | "cg" | "bg",
+      c.req.param("assetName"),
+      body,
+    );
+    return ok(c);
+  });
 
   // archive a single asset
   app.post("/api/worlds/:name/vns/:slug/asset-meta/:type/:assetName/archive", async (c) =>

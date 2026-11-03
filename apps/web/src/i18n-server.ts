@@ -78,6 +78,8 @@ export const HI_SERVER: Record<string, string> = {
   "That is the asset's current image, so its file is kept. Make a new image first, then delete this one.":
     "यही इस सामग्री का वर्तमान चित्र है, इसलिए इसकी फ़ाइल रखी गई है। पहले नया चित्र बनाएँ, फिर इसे हटाएँ।",
   "There is no such run.": "ऐसा कोई प्रयास नहीं है।",
+  "The prompts file cannot be read, so nothing was saved.":
+    "संकेत-फ़ाइल पढ़ी नहीं जा सकती, इसलिए कुछ सहेजा नहीं गया।",
   "A reference sprite does not exist yet. Generate it first, or remove it from the references.":
     "एक संदर्भ-आकृति अभी बनी नहीं है। पहले उसे बनाएँ, या संदर्भों से हटा दें।",
   "This workflow has no place for a reference image. Use a workflow with a Reference Image node.":
