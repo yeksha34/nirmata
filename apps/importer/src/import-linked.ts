@@ -9,7 +9,7 @@ import { collectLinked } from "./linked-import";
  * Copies a world's clothes, adornment and object cards into the database as assets: one asset per card,
  * a spec holding the prompt composed from the card, and its character / CG links. Run by a person:
  *
- *   pnpm --filter @nirmata/server import:linked <world folder> --world=<uuid> --user=<author uuid> [--dry]
+ *   pnpm --filter @nirmata/importer import:linked <world folder> --world=<uuid> --user=<author uuid> [--dry]
  *
  * Run it again after editing the cards: an asset whose prompt did not change is left alone, a changed
  * prompt becomes a new spec. Reference images are not uploaded. `--dry` writes nothing.

@@ -6,7 +6,7 @@ import {
   type GenerationJobs,
   type RunSettings,
 } from "@nirmata/gen";
-import { slugFor } from "./lore-rows";
+import { slugFor } from "@nirmata/importer";
 import { DbRecorder, type RenderRecorder } from "./render-recorder";
 
 /** What the ledger needs to know when a generation's prompt is final and it is about to be queued. */

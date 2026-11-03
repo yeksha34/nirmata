@@ -1,8 +1,10 @@
 packages:
   - packages/*
+  - apps/adaptation
   - apps/auth
   - apps/db
   - apps/gen
+  - apps/importer
   - apps/storage
   - apps/server
   - apps/web

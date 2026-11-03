@@ -12,7 +12,7 @@
 A story that was written before Nirmata (a folder of markdown files: a `## Name` heading over `- **Label:** text` bullets) becomes a world the app can host, without anyone retyping a card. The first one brought in is the owner's own story, `imported-story` (146 cards of characters, places, lore, rules and arcs).
 
 ## How it works
-`pnpm --filter @nirmata/server import <story folder> <new world folder> <recipe.json>` ([legacy.ts](../../apps/server/src/legacy.ts)). The recipe ([imported-story.json](../../apps/server/imports/imported-story.json)) names the world and settles the few things a file cannot say about itself.
+`pnpm --filter @nirmata/importer import <story folder> <new world folder> <recipe.json>` ([legacy.ts](../../apps/importer/src/legacy.ts)). The recipe ([imported-story.json](../../apps/server/imports/imported-story.json)) names the world and settles the few things a file cannot say about itself.
 
 | In the old story | In the world |
 |---|---|
@@ -30,16 +30,16 @@ Keywords come from the name: the full name, the name without its title, and the 
 The world made by the import is the version every story starts from; stories played in it keep their own copy of the cards and live in the world's `stories/` folder, which is never touched. So the world follows its source:
 
 ```
-pnpm --filter @nirmata/server import:watch <story folder> <world folder> <recipe.json>
+pnpm --filter @nirmata/importer import:watch <story folder> <world folder> <recipe.json>
 ```
 
 For this story (from the project folder):
 
 ```
-pnpm --filter @nirmata/server import:watch stories/imported-story worlds\imported-story apps\server\imports\imported-story.json
+pnpm --filter @nirmata/importer import:watch stories/imported-story worlds\imported-story apps\server\imports\imported-story.json
 ```
 
-([watch.ts](../../apps/server/src/watch.ts), [legacy-sync.ts](../../apps/server/src/legacy-sync.ts), [watch-core.ts](../../apps/server/src/watch-core.ts))
+([watch.ts](../../apps/importer/src/watch.ts), [legacy-sync.ts](../../apps/importer/src/legacy-sync.ts), [watch-core.ts](../../apps/importer/src/watch-core.ts))
 
 - It brings the world up to date once, then watches the story folder and, 2 seconds after the changes stop (`--quiet <ms>`), does it again. A burst of saves, a sync client dropping a batch or a `git checkout` is one run, never two at once, and no later than ten seconds after the first change however long the changes keep coming. Version control, caches and editors' scratch files (`.git`, `__pycache__`, `*~`, `*.swp`, `*.tmp`, `~$*`, `.DS_Store`) neither trigger a run nor are brought in.
 - A run builds the world again in a scratch folder and brings in every file that differs: new files are added, changed ones replaced, ones the importer no longer writes removed. Files are replaced whole, never half written, as the server may be reading them.

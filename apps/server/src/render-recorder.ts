@@ -3,7 +3,7 @@ import type { Db } from "@nirmata/db";
 import { type AssetKind, pngSize, type RunSettings, recordRender } from "@nirmata/gen";
 import type { Stores } from "@nirmata/storage";
 import { STORED_PART, sanitizeSlug } from "./files";
-import { slugFor } from "./lore-rows";
+import { slugFor } from "@nirmata/importer";
 
 export interface GeneratedImage {
   worldName: string;

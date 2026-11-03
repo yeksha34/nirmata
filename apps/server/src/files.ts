@@ -56,9 +56,9 @@ import {
   parseLinkedCard,
   templateName,
 } from "@nirmata/gen";
-import { AssetPlanError, addToPlan, type PlannedAsset, removeFromPlan } from "./asset-plan";
+import { AssetPlanError, addToPlan, type PlannedAsset, removeFromPlan } from "@nirmata/adaptation";
 import { HttpError } from "./errors";
-import { slugFor } from "./lore-rows";
+import { CARD_DIRS, type CardFile, markdownFiles, readCardFiles, slugFor } from "@nirmata/importer";
 import {
   parseReferenceSettings,
   type ReferenceSettings,
@@ -156,9 +156,6 @@ const promptWrites = new Map<string, Promise<void>>();
 const NO_REFERENCE_SLOT =
   "This workflow has no place for a reference image. Use a workflow with a Reference Image node.";
 
-/** Where a world keeps its cards. Same layout the editor and the linter use. */
-const CARD_DIRS = ["lore", "characters", "setting", "plot", ".agents/rules"] as const;
-
 /** Where a world keeps prose that is not a card: finished chapters, and work in progress. */
 const WRITING_DIRS = ["chapters", "drafts"] as const;
 
@@ -206,23 +203,6 @@ export function sanitizeSlug(raw: string): string {
   return s;
 }
 
-async function markdownFiles(dir: string): Promise<string[]> {
-  let names: string[];
-  try {
-    names = await readdir(dir);
-  } catch (e) {
-    if (isMissing(e)) return [];
-    throw e;
-  }
-  const out: string[] = [];
-  for (const name of names.sort()) {
-    const full = join(dir, name);
-    if ((await stat(full)).isDirectory()) out.push(...(await markdownFiles(full)));
-    else if (name.endsWith(".md") && !name.startsWith("_")) out.push(full);
-  }
-  return out;
-}
-
 /** A file's first heading, or its name made readable: "playground_coldbrook.md" is "Playground coldbrook". */
 function titleFrom(text: string, rel: string): string {
   const heading = /^#{1,2}[ \t]+(.+?)[ \t]*$/m.exec(text.slice(0, 2000));
@@ -244,12 +224,7 @@ async function titleOf(file: string): Promise<string> {
 }
 
 /** One card file: its text, and either the card it holds or what is wrong with it. */
-export interface CardFile {
-  path: string;
-  text: string;
-  card?: Card;
-  problems?: string[];
-}
+export type { CardFile };
 
 /** Dataset images of an imported world, from the database and its stores (see `DbImages`). */
 export interface DatasetImages {
@@ -337,21 +312,8 @@ export class WorldFiles implements SourceBackend {
     return { files: await this.cardFilesOnDisk(), source: "files" };
   }
 
-  private async cardFilesOnDisk(): Promise<CardFile[]> {
-    const out: CardFile[] = [];
-    for (const dir of CARD_DIRS) {
-      for (const file of await markdownFiles(join(this.root, dir))) {
-        const rel = file.slice(this.root.length + 1).replaceAll("\\", "/");
-        const text = await readFile(file, "utf8");
-        const parsed = parseCard(rel, text);
-        out.push(
-          parsed.ok
-            ? { path: rel, text, card: parsed.card }
-            : { path: rel, text, problems: parsed.errors },
-        );
-      }
-    }
-    return out;
+  private cardFilesOnDisk(): Promise<CardFile[]> {
+    return readCardFiles(this.root);
   }
 
   /**

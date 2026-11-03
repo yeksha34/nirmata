@@ -1,0 +1,26 @@
+{
+  "name": "@nirmata/importer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Imports a world into the database: its cards, its dataset images and its clothes, adornments and objects. After an import the database is the copy the server reads.",
+  "scripts": {
+    "import": "tsx src/import.ts",
+    "import:assets": "tsx src/import-assets.ts",
+    "import:linked": "tsx src/import-linked.ts",
+    "import:world": "tsx src/import-world.ts",
+    "import:watch": "tsx src/watch.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@nirmata/core": "workspace:*",
+    "@nirmata/db": "workspace:*",
+    "@nirmata/gen": "workspace:*",
+    "@nirmata/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

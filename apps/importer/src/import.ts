@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { importStory, type Recipe } from "./legacy";
 
 /**
- * Turns an older story folder into a world: `pnpm --filter @nirmata/server import <story> <world> <recipe.json>`.
+ * Turns an older story folder into a world: `pnpm --filter @nirmata/importer import <story> <world> <recipe.json>`.
  * The recipe names the world and says what to do with the few files that need a decision
  * (see apps/server/imports/imported-story.json).
  */

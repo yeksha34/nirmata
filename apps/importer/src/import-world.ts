@@ -8,7 +8,7 @@ import { importWorldLore } from "./lore-import";
  * Copies a world's lore (its cards, their parts and host-only Secrets) from a folder into the
  * database as the author's draft. Run by a person:
  *
- *   pnpm --filter @nirmata/server import:world <world folder> --user=<author uuid>
+ *   pnpm --filter @nirmata/importer import:world <world folder> --user=<author uuid>
  *        [--slug=<name>] [--publish] [--force] [--dry]
  *
  * `--user` is the author the import acts as (they must be allowed to found worlds). `--dry` checks
