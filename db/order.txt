@@ -28,3 +28,4 @@ identity/migrations/20261102002100_invitation_email.sql
 membership/migrations/20261102002200_author_role.sql
 assets/migrations/20261103000100_asset_links.sql
 assets/migrations/20261103000200_asset_links_is_author.sql
+identity/migrations/20261103000300_agent_tokens.sql

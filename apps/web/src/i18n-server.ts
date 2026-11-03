@@ -310,6 +310,15 @@ export const HI_SERVER: Record<string, string> = {
   "A hidden panel flips on {target}'s seat; the name on it now says {newName}.":
     "{target} के आसन पर एक छिपी पट्टी पलट जाती है; उस पर लिखा नाम अब {newName} कहता है।",
 
+  // agent access
+  "Only an author of this world can do that.": "यह केवल इस संसार का लेखक कर सकता है।",
+  "That agent token is not valid.": "वह एजेंट टोकन मान्य नहीं है।",
+  "That agent token may not do that.": "उस एजेंट टोकन को यह करने की अनुमति नहीं है।",
+  "Sign in as an author of this world to do that.": "यह करने के लिए इस संसार के लेखक के रूप में साइन इन करें।",
+  "That is not a world name.": "यह किसी संसार का नाम नहीं है।",
+  'There is no world "{slug}" in the database.': 'डेटाबेस में "{slug}" नाम का कोई संसार नहीं है।',
+  "The token could not be made.": "टोकन नहीं बन सका।",
+
   // visual novel adaptations
   "That is not a kind of asset.": "यह संसाधन का कोई प्रकार नहीं है।",
   "Pick one visual novel to plan the asset in.": "संसाधन जोड़ने के लिए एक दृश्य-उपन्यास चुनें।",
