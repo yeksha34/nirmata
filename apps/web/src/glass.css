@@ -990,3 +990,209 @@ button.dashed {
 .reader .reader-foot .turn {
   border-radius: 50%;
 }
+
+/* ---- roles: one colour names each, wherever it is shown ---- */
+
+.role {
+  --rc: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--rc) 38%, transparent);
+  background: color-mix(in srgb, var(--rc) 15%, transparent);
+  color: var(--rc);
+}
+.role-admin {
+  --rc: #8a3f6b;
+}
+.role-author {
+  --rc: #9a4f04;
+}
+.role-moderator {
+  --rc: #2b7a4b;
+}
+.role-player {
+  --rc: #2a6a8a;
+}
+:root[data-theme="dark"] .role-admin {
+  --rc: #e6a6cb;
+}
+:root[data-theme="dark"] .role-author {
+  --rc: #f0a04a;
+}
+:root[data-theme="dark"] .role-moderator {
+  --rc: #7bd09a;
+}
+:root[data-theme="dark"] .role-player {
+  --rc: #86c9e6;
+}
+
+/* ---- generation status: a job is a row of steps, each a circle that fills as it is reached ---- */
+
+.vs-job {
+  gap: 16px;
+}
+.vs-job-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-size: 0.85rem;
+}
+.vs-job-state.vs-done {
+  border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+  background: color-mix(in srgb, var(--ok) 15%, transparent);
+}
+.vs-job-state.vs-error {
+  border-color: color-mix(in srgb, var(--bad) 40%, transparent);
+  background: color-mix(in srgb, var(--bad) 13%, transparent);
+}
+.vs-job-state.vs-cancelled {
+  border-color: var(--hair);
+  background: var(--glass-strong);
+  color: var(--muted);
+}
+.vs-stages li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 0.3rem 0.9rem 0.3rem 0.35rem;
+  border: 1px solid var(--hair);
+  background: var(--glass-strong);
+  font-size: 0.82rem;
+}
+.vs-stages li::before,
+.vs-nodes li::before {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--hair);
+  border-radius: 50%;
+  color: var(--accent-ink);
+  font-size: 0.7rem;
+  font-weight: 700;
+  content: "";
+}
+.vs-stages li[data-state="active"]::before {
+  border-color: var(--accent-soft);
+  border-top-color: var(--accent);
+  animation: vs-spin 1s linear infinite;
+}
+.vs-stages li[data-state="done"]::before {
+  border-color: var(--ok);
+  background: var(--ok);
+  content: "✓";
+}
+.vs-stages li[data-state="error"]::before {
+  border-color: var(--bad);
+  background: var(--bad);
+  content: "!";
+}
+@keyframes vs-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vs-stages li[data-state="active"]::before {
+    animation: none;
+    border-color: var(--accent);
+  }
+}
+
+/* the bars are round and amber */
+progress {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: var(--hair);
+  overflow: hidden;
+}
+progress::-webkit-progress-bar {
+  background: var(--hair);
+}
+progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+}
+progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent2), var(--accent));
+}
+.vs-meter progress,
+.queue-list progress {
+  height: 10px;
+}
+
+/* the graph's nodes are small pills; the one running glows, a cached one is dashed */
+.vs-nodes ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vs-nodes li {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 14px 0 6px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: var(--glass-strong);
+}
+.vs-nodes li::before {
+  width: 18px;
+  height: 18px;
+  border-width: 1.5px;
+  font-size: 0.6rem;
+}
+.vs-nodes li[data-state="active"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.vs-nodes li[data-state="active"]::before {
+  border-color: var(--accent-soft);
+  border-top-color: var(--accent);
+  content: "";
+}
+.vs-nodes li[data-state="done"]::before {
+  border-color: var(--ok);
+  background: var(--ok);
+  color: var(--accent-ink);
+}
+.vs-nodes li[data-state="cached"] {
+  border-style: dashed;
+  color: var(--muted);
+}
+.vs-nodes li[data-state="cached"]::before {
+  border-style: dashed;
+  content: "";
+}
+.vs-error {
+  padding: 12px 18px;
+  border: 1px solid color-mix(in srgb, var(--bad) 40%, transparent);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--bad) 10%, var(--glass-strong));
+}
+.queue-list li[data-state="running"],
+.queue-list li[data-state="saving"] {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.queue-list li[data-state="cancelled"] {
+  border-style: dashed;
+  color: var(--muted);
+}
+.comfy-pill {
+  padding: 2px 12px;
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent);
+  color: var(--ok);
+}
+.comfy-pill.offline {
+  background: var(--glass-strong);
+  border-color: var(--hair);
+  color: var(--muted);
+}

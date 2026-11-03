@@ -46,6 +46,22 @@ export function SeatBadge({ seat, muted }: { seat: SeatKind; muted?: boolean }) 
   );
 }
 
+const ROLE_LABEL = {
+  admin: "Admin",
+  author: "Author",
+  moderator: "Moderator",
+  player: "Player",
+} as const;
+
+/** What a person may do on the platform or at a table, in the colour that names it everywhere. */
+export function RoleBadge({ role }: { role: keyof typeof ROLE_LABEL }) {
+  return (
+    <data value={role} className={`badge role role-${role}`}>
+      <T>{ROLE_LABEL[role]}</T>
+    </data>
+  );
+}
+
 /** Problems found in a card or a world, each shown in Hindi (with its English on hover). */
 export function Problems({ list }: { list: readonly string[] }) {
   return (
