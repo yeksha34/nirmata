@@ -250,13 +250,49 @@ export function scaffoldWorldWorkflows(worldSlug, vnSlug) {
             }
           }
 
-          // Clothes, adornments (locked to a character) and objects (linked to characters / CGs)
+          // Clothes, adornments (locked to a character) and objects (linked to characters / CGs).
+          // The model has never seen the world's item, so each prompt is described from the world's card
+          // (its <prompt> part first, then appearance, material, placement, use) rather than just named.
           const pretty = (s) => String(s).replace(/_/g, " ");
-          const ownedPrompt = (type, owner, name, extra) => ({
-            name: `${owner}_${name}`,
+          const readCard = (dir, name) => {
+            const file = join(worldRoot, dir, `${name}.md`);
+            if (!existsSync(file)) return {};
+            const text = readFileSync(file, "utf8");
+            const part = (tag) => {
+              const m = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(text);
+              return m ? m[1].replace(/\s+/g, " ").trim() : "";
+            };
+            return {
+              prompt: part("prompt"),
+              appearance: part("appearance"),
+              material: part("material"),
+              frames: part("frames"),
+              coverage: part("coverage"),
+              interaction: part("interaction"),
+            };
+          };
+          const LEAD = {
+            clothes: "masterpiece, best quality, garment design sheet, single outfit laid flat, front view",
+            adornment: "masterpiece, best quality, ornament design sheet, single accessory, front view",
+            object: "masterpiece, best quality, prop design sheet, single object, three-quarter view",
+          };
+          const describe = (type, name, d) =>
+            [
+              LEAD[type],
+              d.prompt || d.appearance || pretty(name),
+              d.prompt && d.material ? `made of ${d.material}` : "",
+              d.frames ? `worn on ${d.frames}` : "",
+              d.coverage ? `coverage: ${d.coverage}` : "",
+              d.interaction ? `shown as used: ${d.interaction}` : "",
+              "isolated item, no person, no body, plain white background",
+            ]
+              .filter(Boolean)
+              .join(", ");
+          const linkedEntry = (type, entryName, cardName, extra) => ({
+            name: entryName,
             type,
-            owner,
-            positivePrompt: `masterpiece, best quality, ${type === "clothes" ? "garment design sheet" : "ornament design sheet"}, ${pretty(name)}${extra}, isolated item, no person, white background`,
+            ...extra,
+            positivePrompt: describe(type, cardName, readCard({ clothes: "clothes", adornment: "adornments", object: "objects" }[type], cardName)),
             negativePrompt: `person, body, face, hands, multiple items, text, watermark, blurry, lowres, worst quality`,
             steps: 24,
             cfg: 7.0,
@@ -266,25 +302,17 @@ export function scaffoldWorldWorkflows(worldSlug, vnSlug) {
           for (const [field, type] of [["clothes", "clothes"], ["adornments", "adornment"]]) {
             for (const [owner, names] of Object.entries(assets[field] || {})) {
               for (const name of Array.isArray(names) ? names : []) {
-                const entry = ownedPrompt(type, owner, name, ` for ${pretty(owner)}`);
-                promptsCatalog[entry.name] = entry;
+                const cardName = `${owner}_${name}`;
+                promptsCatalog[cardName] = linkedEntry(type, cardName, cardName, { owner });
               }
             }
           }
           if (Array.isArray(assets.objects)) {
             for (const obj of assets.objects) {
-              promptsCatalog[obj.name] = {
-                name: obj.name,
-                type: "object",
+              promptsCatalog[obj.name] = linkedEntry("object", obj.name, obj.name, {
                 owners: obj.owners || [],
                 cgs: obj.cgs || [],
-                positivePrompt: `masterpiece, best quality, prop design, ${pretty(obj.name)}, isolated item, no person, white background`,
-                negativePrompt: `person, body, face, hands, multiple objects, text, watermark, blurry, lowres, worst quality`,
-                steps: 24,
-                cfg: 7.0,
-                sampler: "dpmpp_2m",
-                scheduler: "karras",
-              };
+              });
             }
           }
         } catch {}

@@ -538,7 +538,12 @@ export class Table {
     slug: string,
     body: GenerateAssetInput,
   ): Promise<Buffer[]> {
-    if (!body.references?.length || body.type === "bg" || isLinkedKind(body.type)) return [];
+    if (isLinkedKind(body.type)) {
+      // the author's own image of the asset, named by its card, guides the render
+      const own = await this.options.library.linkedReference(worldName, body.type, body.name);
+      return own ? [own] : [];
+    }
+    if (!body.references?.length || body.type === "bg") return [];
     const images: Buffer[] = [];
     for (const name of body.references.slice(0, 6)) {
       const found = await this.options.library.readVnAsset(worldName, slug, `sprites/${name}.png`);

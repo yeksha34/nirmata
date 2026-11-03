@@ -34,14 +34,84 @@ export function assetSize(kind: AssetKind): { width: number; height: number } {
   return { width: 1024, height: 576 };
 }
 
-/** A generic starting prompt for a linked kind; the world's card text and prompts.json refine it. */
-export function synthesizeLinkedPrompt(kind: LinkedKind, name: string, owner?: string): string {
+/** What a world's card says about a clothes, adornment or object asset (the card's parts, as written). */
+export interface LinkedDetails {
+  type?: string;
+  summary?: string;
+  appearance?: string;
+  material?: string;
+  frames?: string;
+  attachment?: string;
+  coverage?: string;
+  exposure?: string;
+  interaction?: string;
+  prompt?: string;
+  /** A world-relative path to an image the author made of this asset, used as a reference. */
+  reference?: string;
+}
+
+const PARTS = [
+  "summary",
+  "appearance",
+  "material",
+  "frames",
+  "attachment",
+  "coverage",
+  "exposure",
+  "interaction",
+  "prompt",
+  "reference",
+] as const;
+
+/** Reads the parts of a clothes, adornment or object card. Unknown parts are ignored. */
+export function parseLinkedCard(text: string): LinkedDetails {
+  const out: LinkedDetails = {};
+  const head = /<card\b[^>]*>/.exec(text)?.[0] ?? "";
+  const type = /\btype="([^"]*)"/.exec(head)?.[1];
+  if (type) out.type = type;
+  for (const part of PARTS) {
+    const m = new RegExp(`<${part}>([\\s\\S]*?)</${part}>`).exec(text);
+    const value = m?.[1]?.replace(/\s+/g, " ").trim();
+    if (value) out[part] = value;
+  }
+  return out;
+}
+
+const LEAD: Record<LinkedKind, string> = {
+  clothes: "masterpiece, best quality, garment design sheet, single outfit laid flat, front view",
+  adornment: "masterpiece, best quality, ornament design sheet, single accessory, front view",
+  object: "masterpiece, best quality, prop design sheet, single object, three-quarter view",
+};
+const TAIL = "isolated item, no person, no body, plain white background";
+
+/**
+ * The prompt for a linked asset. The model has never seen the world's item, so it is described from the
+ * card instead of named: the card's own prompt first (the author's words), then what it looks like, what
+ * it is made of, where it sits on the body and how it is held or used.
+ */
+export function composeLinkedPrompt(
+  kind: LinkedKind,
+  name: string,
+  d: LinkedDetails = {},
+  owner?: string,
+): string {
   const words = name.replace(/_/g, " ");
-  const base =
-    kind === "clothes"
-      ? `masterpiece, best quality, garment design sheet, ${words}`
-      : kind === "adornment"
-        ? `masterpiece, best quality, ornament design sheet, ${words}`
-        : `masterpiece, best quality, prop design, ${words}`;
-  return `${base}${owner ? `, for ${owner.replace(/_/g, " ")}` : ""}, isolated item, no person, white background`;
+  const bits: Array<string | undefined> = [
+    LEAD[kind],
+    d.prompt,
+    d.prompt ? undefined : d.appearance,
+    d.material && `made of ${d.material}`,
+    d.frames && `worn on ${d.frames}`,
+    d.attachment && d.attachment !== "magic" ? `attached by ${d.attachment}` : undefined,
+    d.coverage && `coverage: ${d.coverage}`,
+    d.interaction && `shown as used: ${d.interaction}`,
+  ];
+  const described = bits.filter(Boolean).join(", ");
+  const subject = d.prompt || d.appearance ? "" : `, ${words}${owner ? ` for ${owner.replace(/_/g, " ")}` : ""}`;
+  return `${described}${subject}, ${TAIL}`;
+}
+
+/** A starting prompt when the world has no card: the name only. Prefer composeLinkedPrompt with a card. */
+export function synthesizeLinkedPrompt(kind: LinkedKind, name: string, owner?: string): string {
+  return composeLinkedPrompt(kind, name, {}, owner);
 }

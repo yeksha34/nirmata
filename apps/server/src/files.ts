@@ -51,7 +51,9 @@ import {
   isLinkedKind,
   LINKED_KINDS,
   type LinkedKind,
-  synthesizeLinkedPrompt,
+  composeLinkedPrompt,
+  type LinkedDetails,
+  parseLinkedCard,
   templateName,
 } from "@nirmata/gen";
 import { HttpError } from "./errors";
@@ -810,6 +812,23 @@ export class WorldFiles implements SourceBackend {
     await done;
   }
 
+  /** What the world's card for a clothes, adornment or object asset says (empty when it has none). */
+  async linkedDetails(kind: LinkedKind, name: string): Promise<LinkedDetails> {
+    const text = await readIfThere(inside(this.root, `${assetDir(kind)}/${sanitizeSlug(name)}.md`));
+    return text ? parseLinkedCard(text) : {};
+  }
+
+  /** The author's own image of such an asset (the card's `reference` part), if the card names one that exists. */
+  async linkedReference(kind: LinkedKind, name: string): Promise<Buffer | undefined> {
+    const rel = (await this.linkedDetails(kind, name)).reference;
+    if (!rel) return undefined;
+    try {
+      return await readFile(inside(this.root, rel.replaceAll("\\", "/")));
+    } catch {
+      return undefined;
+    }
+  }
+
   async listVnAssets(slug: string, options: { prompts?: boolean } = {}): Promise<VnAssetLists> {
     const withPrompts = options.prompts !== false;
     const safeSlug = sanitizeSlug(slug);
@@ -935,8 +954,6 @@ export class WorldFiles implements SourceBackend {
 
     // clothes, adornments and objects: reference art kept beside the stage art, named <owner>_<name>
     const linked: Record<LinkedKind, VnAssetItem[]> = { clothes: [], adornment: [], object: [] };
-    const linkedPrompt = (kind: LinkedKind, name: string, owner?: string) =>
-      withPrompts ? synthesizeLinkedPrompt(kind, name, owner) : undefined;
     for (const kind of LINKED_KINDS) {
       const dirName = assetDir(kind);
       const seen = new Set<string>();
@@ -1000,7 +1017,6 @@ export class WorldFiles implements SourceBackend {
           url: check.exists
             ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
             : undefined,
-          defaultPrompt: linkedPrompt(kind, name, owner),
         });
       }
       for (const kind of LINKED_KINDS) {
@@ -1013,8 +1029,13 @@ export class WorldFiles implements SourceBackend {
         }
       }
     } catch {}
-    for (const kind of LINKED_KINDS) {
-      for (const item of linked[kind]) item.defaultPrompt ??= linkedPrompt(kind, item.name);
+    if (withPrompts) {
+      for (const kind of LINKED_KINDS) {
+        for (const item of linked[kind]) {
+          const details = await this.linkedDetails(kind, item.name);
+          item.defaultPrompt ??= composeLinkedPrompt(kind, item.name, details, item.lockedTo?.[0]);
+        }
+      }
     }
 
     try {
@@ -1163,9 +1184,10 @@ export class WorldFiles implements SourceBackend {
       object: list.objects,
     }[type];
     const cards = await this.cardFiles().catch(() => []);
+    const details = isLinkedKind(type) ? await this.linkedDetails(type, name) : {};
     const synth = (n: string) =>
       isLinkedKind(type)
-        ? synthesizeLinkedPrompt(type, n)
+        ? composeLinkedPrompt(type, n, details)
         : type === "sprite"
           ? synthesizeSpriteDanbooruPrompt(n, cards)
           : type === "cg"
@@ -1458,7 +1480,7 @@ export class WorldFiles implements SourceBackend {
     variant?: "ref",
   ): Promise<Record<string, unknown>> {
     if (variant) {
-      if (type === "bg" || isLinkedKind(type)) {
+      if (type === "bg") {
         throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
       }
       const own = await this.readTemplate([
@@ -1466,7 +1488,10 @@ export class WorldFiles implements SourceBackend {
         inside(this.root, `assets/workflow/${type}_ref.api.json`),
       ]);
       if (own) return own;
-      const derived = addReferenceSlot((await this.loadWorkflowTemplate(type)) as Workflow, type);
+      const derived = addReferenceSlot(
+        (await this.loadWorkflowTemplate(type)) as Workflow,
+        isLinkedKind(type) ? "cg" : type,
+      );
       if (!derived) throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
       return derived;
     }
@@ -2108,6 +2133,10 @@ export class Library {
     }
 
     return result;
+  }
+
+  async linkedReference(name: string, kind: LinkedKind, asset: string): Promise<Buffer | undefined> {
+    return this.open(name).linkedReference(kind, asset);
   }
 
   async listVnAssets(name: string, slug: string): Promise<VnAssetLists> {

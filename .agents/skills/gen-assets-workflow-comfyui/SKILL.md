@@ -85,6 +85,7 @@ node .agents/skills/gen-assets-workflow-comfyui/driver.mjs list
 * **Purpose:** Reference art for things a character wears or touches, which a generic sprite/CG prompt cannot draw once the world customises them. Output feeds the owner's sprite state (`<char>_<state>`) or the linked CG as a reference image (ADR-0031); there is no layer compositor.
 * **Locks:** Clothes and adornments are locked to one character (the unclad base `naked` is the only unlocked state). Objects link to characters and/or CGs, and exist only when a character interacts with them and the world makes them non-generic.
 * **Canvas:** $768 	imes 768$, isolated item on alpha (RMBG), no person in frame.
+* **Prompts:** the model has never seen the world's item, so describe it instead of naming it. Each prompt is built from the world card (`<prompt>` first, then appearance, material, placement, use). An optional card part `<reference>` names an image in the world that is fed to the render as a reference. A bare name gives a weak result.
 * **Manifest:** `assets.clothes` and `assets.adornments` are `{ character: [names] }`; `assets.objects` is `[{ name, owners?, cgs? }]`. `scaffold` writes one `prompts.json` entry per name.
 
 ---
