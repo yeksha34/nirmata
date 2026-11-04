@@ -20,7 +20,7 @@ The design canvas "Nirmata" (artboards: Home page, World workspace, Play on a ph
 - [x] Header: lantern mark and wordmark, "Worlds", a jump box, connection dot, seat menu; the jump box and Ctrl or Cmd K are the host's.
 - [x] Jump box: type to find a world, or a card in the world on show; arrow keys and Enter; Escape closes.
 - [x] Front page: a short statement of what Nirmata is, where you left off, and your worlds.
-- [x] World workspace: worlds down the side with their story counts and "New world"; the world's title with Play (Continue when a story exists) and Cards, Stories and World tabs; cards grouped by kind; the chosen card edits beside the list.
+- [x] World workspace: the world's title with Play (Continue when a story exists) and Cards, Stories and World tabs; cards grouped by kind; the chosen card edits beside the list.
 - [x] The editor shows "Saved", "Unsaved changes" or "Not saved yet", "View raw file", the template's parts, who links to the card, Save and Remove; it is the same form as before, inline instead of in a dialog.
 - [x] On a narrow screen the three panes become one at a time, with a way back.
 - [x] The story window and its controls use the same type and 44 px buttons; "Keep going" is the primary action; Saved has a tick.

@@ -112,18 +112,21 @@ export function Panel({
   title,
   plain,
   aside,
+  titleId,
   children,
 }: {
   title: string;
   /** The title is something a person wrote (a world's name), so it is not translated. */
   plain?: boolean;
   aside?: ReactNode;
+  /** An id for the title, so a dialog around the panel can be named by it. */
+  titleId?: string;
   children: ReactNode;
 }) {
   return (
     <section className="panel">
       <header className="panel-head">
-        <h2>{plain ? title : <T>{title}</T>}</h2>
+        <h2 id={titleId}>{plain ? title : <T>{title}</T>}</h2>
         {aside}
       </header>
       {children}

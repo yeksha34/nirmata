@@ -7,7 +7,7 @@
 - **Story** (either family of scopes): the world's manifest and counts, chapters, scenes and drafts.
 - **Adaptation** (`adaptation.read` / `adaptation.write`): character prep, the asset plan, workflows, visual novels.
 
-Every operation lists the scopes that admit it under `x-scopes-any-of`. The agent sends `Authorization: Bearer nga_…`; the token is made in the World tab (Agent access).
+Every operation lists the scopes that admit it under `x-scopes-any-of`. The agent sends `Authorization: Bearer nga_…`; tokens are made with the Agent access button at the top of a world, or by importing a world.
 
 ## Viewing it
 Open the file in any Swagger / OpenAPI viewer (for example paste it into the Swagger Editor, or load it in a local Swagger UI). It needs no server.
