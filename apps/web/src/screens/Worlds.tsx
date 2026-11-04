@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
 import { T } from "../i18n";
@@ -34,10 +34,15 @@ function Home() {
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
 
+  const loadWorlds = useCallback(
+    () => void act(api.worlds).then((w) => setWorlds(w ?? [])),
+    [act],
+  );
+
   useEffect(() => {
     void act(api.recent).then((r) => setRecent(r ?? []));
-    void act(api.worlds).then((w) => setWorlds(w ?? []));
-  }, [act]);
+    loadWorlds();
+  }, [act, loadWorlds]);
 
   return (
     <section className="worlds">
@@ -162,6 +167,7 @@ function Home() {
 
       {importing && (
         <ImportWorld
+          onMade={loadWorlds}
           onClose={() => setImporting(false)}
           onOpen={(name) => {
             setImporting(false);
