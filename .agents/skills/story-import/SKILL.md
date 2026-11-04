@@ -9,7 +9,7 @@ Fills a world in Nirmata from a story's source folder. The agents are the import
 
 ## Rules
 
-- **Endpoints only.** Use `Authorization: Bearer nga_…` with a token for this world, at `/api/agent/worlds/<world>`. Never the database, never a script that bypasses the endpoints (`AGENTS.md`). Check your token first with `GET /api/agent/me`.
+- **Endpoints only.** Use `Authorization: Bearer nga_…` with a token for this world, at `/api/agent/worlds/<world>`. Never the database, never a script that bypasses the endpoints (`AGENTS.md`). Check your token first with `GET /api/agent/me`. To call through the helper, keep each worker's token in its own agent env file: see [env.example](env.example).
 - **The world is made by the import.** The author uses "Import a world" in the app, which makes the world in the database, empty, and the tokens for the workers with it. You fill the world; you do not make it.
 - **Work on a copy.** The author's source is copied into a temporary folder outside the repository and you work there. Never edit the original, and never edit the copy: a ledger (below) says what you took. Never copy source text into the repository, a commit, an issue or a log.
 - **One file at a time.** Finish a file (its cards saved, its ledger lines written) before opening the next.
