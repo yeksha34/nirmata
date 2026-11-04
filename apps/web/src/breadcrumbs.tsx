@@ -14,7 +14,18 @@ export interface Sibling {
 }
 
 /** Previous and Next at the same depth (the design's "siblings"): a dimmed button when there is no neighbour. */
-export function Siblings({ prev, next, label }: { prev?: Sibling; next?: Sibling; label?: string }) {
+export function Siblings({
+  prev,
+  next,
+  label,
+  named,
+}: {
+  prev?: Sibling;
+  next?: Sibling;
+  label?: string;
+  /** Show the neighbour's own name (truncated) instead of the word Previous or Next. */
+  named?: boolean;
+}) {
   if (!prev && !next) return null;
   const chevron = (d: string) => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -23,12 +34,12 @@ export function Siblings({ prev, next, label }: { prev?: Sibling; next?: Sibling
   );
   return (
     <menu className="sibs" aria-label={label}>
-      <button type="button" className={prev ? undefined : "off"} disabled={!prev} onClick={prev?.onClick} title={prev?.label}>
+      <button type="button" className={prev ? undefined : "off"} disabled={!prev} onClick={prev?.onClick} title={prev?.label} aria-label="Previous">
         {chevron("M15 6l-6 6 6 6")}
-        <T>Previous</T>
+        {named && prev ? <small className="lb">{prev.label}</small> : <T>Previous</T>}
       </button>
-      <button type="button" className={next ? "n" : "n off"} disabled={!next} onClick={next?.onClick} title={next?.label}>
-        <T>Next</T>
+      <button type="button" className={next ? "n" : "n off"} disabled={!next} onClick={next?.onClick} title={next?.label} aria-label="Next">
+        {named && next ? <small className="lb">{next.label}</small> : <T>Next</T>}
         {chevron("M9 6l6 6-6 6")}
       </button>
     </menu>
@@ -158,7 +169,7 @@ export function Breadcrumbs({
           </li>
         ))}
       </ol>
-      <Siblings label="Neighbours" prev={prev} next={next} />
+      <Siblings named label="Neighbours" prev={prev} next={next} />
     </nav>
   );
 }
