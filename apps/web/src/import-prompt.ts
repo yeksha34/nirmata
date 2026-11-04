@@ -21,7 +21,7 @@ export const DEFAULT_EXPECTATIONS = `1. Copy into <WORKING-FOLDER>/source only t
 4. A character's id is "character." plus her file name in lowercase, underscores as hyphens, no extension.
 5. Move the author's words as they are. Do not soften, censor, summarise or "fix" anything. If you cannot move a passage, leave it unplaced and tell me the file and line numbers, not the text.
 6. After the known kinds are done, the rest goes into cards of kinds the world needs, including kinds you make up. Reuse an existing kind before you invent one (GET /cards).
-7. Plots: for each folder under chapters/, save its scene, draft and chapter files, its translations.md and its character_arcs.md as writings, one file per call, as chapters/<slug>/scene|draft|chapter/<file>.md, chapters/<slug>/translations.md and chapters/<slug>/character_arcs.md.
+7. Plots: for each folder under chapters/, save its scene, draft and chapter files, its translations.md and its character_arcs.md as writings, one file per call, as chapters/<slug>/scene|draft|chapter/<file>.md, chapters/<slug>/translations.md and chapters/<slug>/character_arcs.md. The folder name decides what a file is: draft/ files are listed as drafts, scene/ files as scenes (not as chapters), the rest as chapters.
 8. Do not publish. I will say when.
 9. Never write source text into your reports, a repository, a commit or a log. Report file names and ids only.`;
 

@@ -68,6 +68,7 @@ import {
   type WorkflowSource,
   type WorldSource,
   type WritingSource,
+  writingKind,
 } from "@nirmata/adaptation";
 import { HttpError } from "./errors";
 import { CARD_DIRS, type CardFile, markdownFiles, readCardFiles, slugFor } from "@nirmata/importer";
@@ -405,16 +406,15 @@ export class WorldFiles implements SourceBackend {
       const stem = (w: WritingSummary) => w.path.replace(/\.md$/, "");
       const byName = (a: WritingSummary, b: WritingSummary) =>
         stem(a).localeCompare(stem(b), undefined, { numeric: true });
+      // scenes are one-line beats, not chapters; they are not listed here
       const keep = stored.filter(
         (w) =>
-          !skip.has(w.path) &&
-          basename(w.path) !== "index.md" &&
-          !w.path.startsWith("chapters/scenes/"),
+          !skip.has(w.path) && basename(w.path) !== "index.md" && writingKind(w.path) !== "scene",
       );
       return {
-        chapters: keep.filter((w) => w.path.startsWith("chapters/")).sort(byName),
+        chapters: keep.filter((w) => writingKind(w.path) === "chapter").sort(byName),
         drafts: keep
-          .filter((w) => w.path.startsWith("drafts/"))
+          .filter((w) => writingKind(w.path) === "draft")
           .sort((a, b) =>
             a.updatedAt === b.updatedAt ? byName(a, b) : a.updatedAt < b.updatedAt ? 1 : -1,
           ),

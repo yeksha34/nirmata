@@ -44,6 +44,25 @@ export function parseWritingPath(input: unknown): string {
   return path;
 }
 
+/** What a writing is. */
+export type WritingKind = "chapter" | "draft" | "scene";
+
+/**
+ * Chapter, draft or scene, from where the writing sits. `drafts/…` is a draft and
+ * `chapters/scenes/…` a scene, as ever. A story's own folders count too: under `chapters/<plot>/`,
+ * a folder named draft or drafts holds drafts and one named scene or scenes holds one-line beats, so
+ * an import that keeps each plot's files together still sorts them. Anything else is a chapter.
+ */
+export function writingKind(path: string): WritingKind {
+  const parts = path.split("/");
+  if (parts[0] === "drafts") return "draft";
+  if (parts[0] === "chapters" && parts[1] === "scenes") return "scene";
+  const folders = parts.slice(1, -1);
+  if (folders.some((f) => f === "draft" || f === "drafts")) return "draft";
+  if (folders.some((f) => f === "scene" || f === "scenes")) return "scene";
+  return "chapter";
+}
+
 /** The first heading of a text, else its file's name. */
 export function writingTitle(text: string, path: string): string {
   const heading = /^#{1,2}[ \t]+(.+?)[ \t]*$/m.exec(text.slice(0, 2000));
