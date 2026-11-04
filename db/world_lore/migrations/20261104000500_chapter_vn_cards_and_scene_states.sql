@@ -13,6 +13,23 @@ alter table world_lore.cards
 -- Drop the old global unique constraint so that scoped overrides can share a slug
 alter table world_lore.cards drop constraint if exists cards_world_id_slug_key;
 
+-- Backfill chapter_slug and vn_slug from existing draft metadata if present
+update world_lore.cards c
+   set chapter_slug = d.meta->>'chapter'
+  from world_lore.card_drafts d
+ where d.card_id = c.id
+   and c.chapter_slug is null
+   and d.meta->>'chapter' is not null
+   and d.meta->>'chapter' ~ '^[a-z0-9][a-z0-9_-]{0,120}$';
+
+update world_lore.cards c
+   set vn_slug = d.meta->>'vn'
+  from world_lore.card_drafts d
+ where d.card_id = c.id
+   and c.vn_slug is null
+   and d.meta->>'vn' is not null
+   and d.meta->>'vn' ~ '^[a-z0-9][a-z0-9_-]{0,120}$';
+
 -- Create composite unique index covering global cards (null scopes) and scoped cards
 create unique index if not exists cards_world_scope_slug_idx on world_lore.cards (
   world_id,
