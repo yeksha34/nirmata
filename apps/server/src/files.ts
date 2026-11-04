@@ -2182,12 +2182,12 @@ export class Library {
 
   /** Every folder with a world.json, by title. Folders starting with "_" or "." are skipped. */
   async list(): Promise<WorldSummary[]> {
-    let names: string[];
+    let names: string[] = [];
     try {
       names = await readdir(this.root);
     } catch (e) {
-      if (isMissing(e)) return [];
-      throw e;
+      // no folder of worlds at all is a library with no folder worlds; the database may still hold some
+      if (!isMissing(e)) throw e;
     }
     const out: WorldSummary[] = [];
     for (const name of names.sort()) {
