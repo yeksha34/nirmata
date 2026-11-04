@@ -155,6 +155,17 @@ export function Workspace({ name }: { name: string }) {
   const activeWriting =
     currentWritings.find((i) => i.path === selectedWriting) ?? currentWritings[0];
 
+  const around = <X,>(list: X[], at: number, label: (x: X) => string, go: (x: X) => void) => {
+    const pick = (x: X | undefined) => (x === undefined ? undefined : { label: label(x), onClick: () => go(x) });
+    return at < 0 ? {} : { prev: pick(list[at - 1]), next: pick(list[at + 1]) };
+  };
+  const siblings =
+    tab === "cards" && selected
+      ? around(cards, cards.indexOf(selected), (c) => c.fm.name ?? c.path, (c) => nav.selectCard(c.path))
+      : tab === "chapters" && activeWriting
+        ? around(currentWritings, currentWritings.indexOf(activeWriting), (w) => w.title, (w) => setSelectedWriting(w.path))
+        : {};
+
   const playVn = async (
     slug: string,
     carriedVariables?: Record<string, number | boolean | string>,
@@ -274,6 +285,7 @@ export function Workspace({ name }: { name: string }) {
             }
             cardName={selected?.fm.name}
             subView={tab === "chapters" ? nav.chapterView : undefined}
+            {...siblings}
           />
           <header className="ws-title">
             <hgroup>

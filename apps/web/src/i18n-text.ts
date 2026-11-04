@@ -12,6 +12,8 @@ export const HI_TEXT: Record<string, string> = {
 
   // questions and choices
   OK: "ठीक है",
+  Previous: "पिछला",
+  Next: "अगला",
   Begin: "आरंभ",
   "No particular part": "कोई विशेष भूमिका नहीं",
   "Someone in the story": "कथा का कोई पात्र",

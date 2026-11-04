@@ -2928,6 +2928,47 @@ label.choice-opt:has(input:focus-visible) {
   margin: 0.5rem 0 1rem;
   font-size: 0.85rem;
 }
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.sibs {
+  margin: 0;
+  list-style: none;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--glass, transparent);
+  border: 1px solid var(--glass-line, var(--line));
+}
+.sibs > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 38px;
+  padding: 0 14px 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sibs > button.n {
+  padding: 0 8px 0 14px;
+}
+.sibs > button:hover {
+  background: var(--glass-strong, rgba(255, 255, 255, 0.1));
+}
+.sibs > button.off {
+  opacity: 0.35;
+  pointer-events: none;
+}
 .breadcrumbs ol {
   display: flex;
   flex-wrap: wrap;
