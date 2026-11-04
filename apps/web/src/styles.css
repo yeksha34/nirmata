@@ -3256,3 +3256,20 @@ label.choice-opt:has(input:focus-visible) {
 .ws {
   grid-template-columns: minmax(300px, 26rem) minmax(0, 1fr);
 }
+
+/* a level at a time: the list, or the one thing opened from it */
+.ws,
+.ws[data-editing="true"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ws[data-editing="false"] .ws-editor {
+  display: none;
+}
+
+.email-chip {
+  align-self: flex-start;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--glass-strong, transparent);
+  border: 1px solid var(--hair, var(--line));
+}

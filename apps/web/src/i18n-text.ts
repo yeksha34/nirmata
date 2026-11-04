@@ -13,6 +13,12 @@ export const HI_TEXT: Record<string, string> = {
   // questions and choices
   OK: "ठीक है",
   "World · Cards": "संसार · पत्रक",
+  "World · Chapters": "संसार · अध्याय",
+  "World · Drafts": "संसार · प्रारूप",
+  "This invitation is for the address below. Only a password is left to choose.": "यह आमंत्रण इस पते के लिए है। केवल गुप्त शब्द चुनना शेष है।",
+  "Choose a password": "गुप्त शब्द चुनें",
+  "Create account": "खाता बनाएँ",
+  "Come back with your address and password.": "अपने पते और गुप्त शब्द से लौटें।",
   Previous: "पिछला",
   Next: "अगला",
   Begin: "आरंभ",

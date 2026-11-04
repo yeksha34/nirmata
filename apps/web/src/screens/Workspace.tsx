@@ -153,8 +153,9 @@ export function Workspace({ name }: { name: string }) {
     });
 
   const currentWritings = tab === "chapters" ? chapters : drafts;
-  const activeWriting =
-    currentWritings.find((i) => i.path === selectedWriting) ?? currentWritings[0];
+  const activeWriting = currentWritings.find((i) => i.path === selectedWriting);
+  const writingOpen = (tab === "chapters" || tab === "drafts") && activeWriting !== undefined;
+  const atDepth = editingCard || writingOpen;
 
   const around = <X,>(list: X[], at: number, label: (x: X) => string, go: (x: X) => void) => {
     const pick = (x: X | undefined) => (x === undefined ? undefined : { label: label(x), onClick: () => go(x) });
@@ -233,7 +234,7 @@ export function Workspace({ name }: { name: string }) {
   return (
     <>
       <OpenStoryNotice />
-      {!editingCard && (
+      {!atDepth && (
         <header className="level-bar">
           <button type="button" className="back-pill" onClick={nav.home}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -241,20 +242,10 @@ export function Workspace({ name }: { name: string }) {
             </svg>
             <T>Worlds</T>
           </button>
-          <Breadcrumbs
-            worldTitle={world.title}
-            chapterTitle={tab === "chapters" && activeWriting ? activeWriting.title : undefined}
-            chapterSlug={
-              tab === "chapters" && activeWriting
-                ? activeWriting.path.replace(/\.md$/, "").split("/").pop()
-                : undefined
-            }
-            subView={tab === "chapters" ? nav.chapterView : undefined}
-            {...(tab === "chapters" && activeWriting ? siblings : worldSiblings)}
-          />
+          <Breadcrumbs worldTitle={world.title} {...worldSiblings} />
         </header>
       )}
-      <div className="ws" data-editing={editingCard ? "true" : "false"}>
+      <div className="ws" data-editing={atDepth ? "true" : "false"}>
 
         <section className="ws-list" aria-label={world.title}>
           <header className="ws-title">
@@ -342,7 +333,10 @@ export function Workspace({ name }: { name: string }) {
                     key={t.id}
                     type="button"
                     aria-current={tab === t.id ? "true" : undefined}
-                    onClick={() => setTab(t.id)}
+                    onClick={() => {
+                      setTab(t.id);
+                      setSelectedWriting(undefined);
+                    }}
                   >
                     <T>{t.label}</T>
                     {counts[t.id] !== undefined && (
@@ -485,6 +479,27 @@ export function Workspace({ name }: { name: string }) {
               onBack={() => setMaking(undefined)}
               onDialog={setDialog}
             />
+          )}
+          {writingOpen && (
+            <header className="level-bar">
+              <button type="button" className="back-pill" onClick={() => setSelectedWriting(undefined)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M15 6l-6 6 6 6" />
+                </svg>
+                <T>{tab === "chapters" ? "World · Chapters" : "World · Drafts"}</T>
+              </button>
+          <Breadcrumbs
+            worldTitle={world.title}
+            chapterTitle={tab === "chapters" && activeWriting ? activeWriting.title : undefined}
+            chapterSlug={
+              tab === "chapters" && activeWriting
+                ? activeWriting.path.replace(/\.md$/, "").split("/").pop()
+                : undefined
+            }
+            subView={tab === "chapters" ? nav.chapterView : undefined}
+            {...siblings}
+          />
+            </header>
           )}
           {(tab === "chapters" || tab === "drafts") && activeWriting && (
             <WritingDetail
