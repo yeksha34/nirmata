@@ -99,3 +99,21 @@ describe("a world's asset plan in the database (ADR-0035)", () => {
     expect(list.backgrounds.map((b) => b.name)).toContain("harbor");
   });
 });
+
+describe("the prompt of a clothes or adornment asset", () => {
+  it("comes from the character prep when no card is found, and a card's own prompt wins", async () => {
+    const m = memory();
+    m.rows.push({ type: "clothes", name: "tina_day-office-outfit", shared: false, owners: ["tina"], cgs: [] });
+    const prep = {
+      outfits: async () => [
+        { kind: "clothes", name: "day-office-outfit", tags: "navy pleated skirt, pale blue blouse" },
+      ],
+    };
+    const w = new WorldFiles(folder(), undefined, { plan: m.source, prep });
+    const list = await w.listVnAssets("_shared", { prompts: true });
+    const prompt = list.clothes.find((c) => c.name === "tina_day-office-outfit")?.defaultPrompt ?? "";
+    expect(prompt).toContain("navy pleated skirt, pale blue blouse");
+    expect(prompt).toContain("clothing product shot");
+    expect(prompt).not.toContain("tina");
+  });
+});
