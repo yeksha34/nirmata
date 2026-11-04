@@ -84,8 +84,8 @@ describe("CardStore parameter binding and scoping (BUG-011)", () => {
     });
 
     expect(res).toHaveLength(1);
-    expect(res[0].cardId).toBe("c1-uuid");
-    expect(res[0].slug).toBe("tina");
+    expect(res[0]!.cardId).toBe("c1-uuid");
+    expect(res[0]!.slug).toBe("tina");
 
     // Must supply 5 parameters
     expect(suppliedParams).toHaveLength(5);

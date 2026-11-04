@@ -127,9 +127,11 @@ describe("SceneStateStore card UUID resolution and matrix operations", () => {
     const store = mockDb();
     const matrix = await store.getMatrix(USER, "sample-world", { chapterSlug: "chapter_1" });
     expect(matrix).toHaveLength(1);
-    expect(matrix[0].sceneId).toBe("scene_1");
-    expect(matrix[0].cards).toHaveLength(1);
-    expect(matrix[0].cards[0].cardId).toBe(CARD_UUID);
-    expect(matrix[0].cards[0].characterState).toBe("transformed");
+    const row = matrix[0]!;
+    expect(row.sceneId).toBe("scene_1");
+    expect(row.cards).toHaveLength(1);
+    const card = row.cards[0]!;
+    expect(card.cardId).toBe(CARD_UUID);
+    expect(card.characterState).toBe("transformed");
   });
 });
