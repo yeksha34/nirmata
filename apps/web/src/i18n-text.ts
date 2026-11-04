@@ -411,6 +411,13 @@ export const HI_TEXT: Record<string, string> = {
 
   // agent access (a token for the adaptation agent)
   "Agent access": "एजेंट की पहुँच",
+  Publish: "प्रकाशित करें",
+  "Published.": "प्रकाशित हो गया।",
+  "Publish “{title}”?": "“{title}” प्रकाशित करें?",
+  "Publishing freezes the cards as they are now into the world's next version. Visual novels and readers use the latest published version, and a visual novel cannot be made until one exists. Publish again after you add or change cards.":
+    "प्रकाशित करने पर पत्रक जैसे अभी हैं वैसे ही संसार के अगले संस्करण में जम जाते हैं। दृश्य-कथाएँ और पाठक नवीनतम प्रकाशित संस्करण का उपयोग करते हैं, और जब तक एक संस्करण न हो, दृश्य-कथा नहीं बन सकती। पत्रक जोड़ने या बदलने के बाद फिर प्रकाशित करें।",
+  "Freeze the cards into a version that visual novels and readers use":
+    "पत्रकों को ऐसे संस्करण में जमाएँ जिसे दृश्य-कथाएँ और पाठक उपयोग करते हैं",
   "Tokens that let an agent import or adapt this world":
     "टोकन जिनसे कोई एजेंट इस संसार को आयात या रूपांतरित कर सकता है",
   "Agent access needs the database and an author who is signed in.":

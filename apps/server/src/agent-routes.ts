@@ -200,6 +200,26 @@ export function registerAgentRoutes(
   const worlds = new WorldStore(db);
   const cards = new CardStore(db);
   const guides = new GuideStore(db);
+
+  // The author publishes the draft cards as the world's next version, from the world's page. A
+  // visual novel is pinned to the latest published version, so one must exist before it is made.
+  app.post("/api/worlds/:name/publish", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const body = PublishBody.parse(await c.req.json().catch(() => ({})));
+    try {
+      const version = await asHttp(() =>
+        cards.publish(user, slug, body.note || "published by the author"),
+      );
+      return c.json({ versionId: version ?? null });
+    } catch (e) {
+      if ((e as { code?: string }).code === "23514") {
+        throw new HttpError(409, "nothing_to_publish", "There are no cards to publish yet.");
+      }
+      throw e;
+    }
+  });
+
   /** The story is read and written by an adaptation and by an import alike. */
   const READ = ["adaptation.read", "import.read"] as const;
   const WRITE = ["adaptation.write", "import.write"] as const;
