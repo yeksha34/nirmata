@@ -8,6 +8,33 @@ export interface Crumb {
   current?: boolean;
 }
 
+export interface Sibling {
+  label: string;
+  onClick: () => void;
+}
+
+/** Previous and Next at the same depth (the design's "siblings"): a dimmed button when there is no neighbour. */
+export function Siblings({ prev, next }: { prev?: Sibling; next?: Sibling }) {
+  if (!prev && !next) return null;
+  const chevron = (d: string) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+  return (
+    <menu className="sibs" aria-label="Neighbours">
+      <button type="button" className={prev ? undefined : "off"} disabled={!prev} onClick={prev?.onClick} title={prev?.label}>
+        {chevron("M15 6l-6 6 6 6")}
+        <T>Previous</T>
+      </button>
+      <button type="button" className={next ? "n" : "n off"} disabled={!next} onClick={next?.onClick} title={next?.label}>
+        <T>Next</T>
+        {chevron("M9 6l6 6-6 6")}
+      </button>
+    </menu>
+  );
+}
+
 export function Breadcrumbs({
   worldTitle,
   chapterTitle,
@@ -16,6 +43,8 @@ export function Breadcrumbs({
   vnTitle,
   sceneId,
   subView,
+  prev,
+  next,
 }: {
   worldTitle?: string;
   chapterTitle?: string;
@@ -24,6 +53,8 @@ export function Breadcrumbs({
   vnTitle?: string;
   sceneId?: string;
   subView?: ChapterView;
+  prev?: Sibling;
+  next?: Sibling;
 }) {
   const nav = useNav();
   const crumbs: Crumb[] = [];
@@ -127,6 +158,7 @@ export function Breadcrumbs({
           </li>
         ))}
       </ol>
+      <Siblings prev={prev} next={next} />
     </nav>
   );
 }
