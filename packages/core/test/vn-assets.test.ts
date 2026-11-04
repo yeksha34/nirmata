@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { checkAssetLinks, VnAssetsManifestSchema } from "../src/vn";
+import {
+  CHARACTER_STATES,
+  CLOTHES_STATES,
+  checkAssetLinks,
+  VnAssetsManifestSchema,
+} from "../src/vn";
 
 describe("asset links", () => {
   it("locks clothes and adornments to an owner, except the unclad base", () => {
@@ -18,6 +23,21 @@ describe("asset links", () => {
       ],
     });
     expect(issues).toHaveLength(3);
+  });
+
+  it("supports clothing states and character states", () => {
+    expect(CLOTHES_STATES).toContain("intact");
+    expect(CLOTHES_STATES).toContain("torn");
+    expect(CHARACTER_STATES).toContain("naked");
+    expect(CHARACTER_STATES).toContain("base");
+
+    const issues = checkAssetLinks({
+      clothes: [
+        { name: "blouse", owner: "Elena", state: "intact" },
+        { name: "blouse_torn", owner: "Elena", state: "torn" },
+      ],
+    });
+    expect(issues).toHaveLength(0);
   });
 
   it("keeps the new manifest fields optional", () => {

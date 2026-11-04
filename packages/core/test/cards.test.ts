@@ -60,6 +60,38 @@ describe("parseCard", () => {
     expect(r.ok && r.card.fm.mood).toBe("wary");
   });
 
+  it("parses chapter-scoped and state-bearing cards in XML and YAML formats", () => {
+    const xml = `<card id="char.elena" kind="character" name="Elena" chapter="chapter_1" state="clerk" stateOf="char.elena">
+      <keywords>elena, clerk</keywords>
+      # Elena (Clerk)
+      In office attire.
+    </card>`;
+    const rx = parseCard("chapters/chapter_1/cards/characters/elena.md", xml);
+    expect(rx.ok).toBe(true);
+    if (rx.ok) {
+      expect(rx.card.fm.chapter).toBe("chapter_1");
+      expect(rx.card.fm.state).toBe("clerk");
+      expect(rx.card.fm.stateOf).toBe("char.elena");
+    }
+
+    const yaml = `---
+id: clothes.office-suit
+kind: clothes
+name: Office Suit
+chapter: chapter_1
+state: torn
+---
+# Office Suit
+Torn at the seam.
+`;
+    const ry = parseCard("chapters/chapter_1/cards/clothes/office_suit.md", yaml);
+    expect(ry.ok).toBe(true);
+    if (ry.ok) {
+      expect(ry.card.fm.chapter).toBe("chapter_1");
+      expect(ry.card.fm.state).toBe("torn");
+    }
+  });
+
   it("says what a file needs when it is not a card", () => {
     const r = parseCard("x.md", "# Just prose");
     expect(r).toEqual({
