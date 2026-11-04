@@ -61,4 +61,27 @@ describe("a sprite prompt written from the character prep", () => {
     expect(bare).toContain("bone ring");
     expect(bare).not.toContain("cord choker");
   });
+
+  it("uses a default set with no state, and a state+expression set before the state's own", () => {
+    const m: PrepCharacter[] = [
+      {
+        name: "Howard-Thorpe",
+        notes: "asset-id: thorpe. outfit-set default: suit. outfit-set naked: naked, limp. outfit-set naked+aroused: naked, erect.",
+        basePositive: "1boy",
+        expressions: [{ expression: "neutral", tags: "stiff" }, { expression: "aroused", tags: "scarlet" }],
+        outfits: [
+          { kind: "clothes", name: "suit", tags: "dark suit" },
+          { kind: "clothes", name: "naked", tags: "nude" },
+          { kind: "clothes", name: "limp", tags: "limp cock" },
+          { kind: "clothes", name: "erect", tags: "erect cock" },
+        ],
+      },
+    ];
+    expect(spritePromptFromPrep("thorpe_neutral", m)).toContain("dark suit");
+    expect(spritePromptFromPrep("thorpe_naked_neutral", m)).toContain("nude, limp cock");
+    const hard = spritePromptFromPrep("thorpe_naked_aroused", m) ?? "";
+    expect(hard).toContain("nude, erect cock");
+    expect(hard).not.toContain("limp");
+    expect(hard).not.toContain("suit");
+  });
 });
