@@ -9,6 +9,8 @@ __pycache__/
 .env
 .env.*
 *.local.json
+.agents/automation/*.env
+.agents/automations/*.env
 
 # generated / personal
 apps/studio/state/**
