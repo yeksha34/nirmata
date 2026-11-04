@@ -290,10 +290,10 @@ export class CardStore {
              from world_lore.cards c
              left join world_lore.card_drafts d on d.card_id = c.id and d.line_id = $1
             where c.world_id = $2
-              and coalesce(c.chapter_slug, '') = coalesce($3, '')
-              and coalesce(c.vn_slug, '') = coalesce($4, '')
-              and c.slug = $5`,
-          [line, worldId, input.chapterSlug ?? null, input.vnSlug ?? null, row.slug],
+              and c.slug = $3
+              and coalesce(c.chapter_slug, '') = coalesce($4, '')
+              and coalesce(c.vn_slug, '') = coalesce($5, '')`,
+          [line, worldId, row.slug, input.chapterSlug ?? null, input.vnSlug ?? null],
         )
       ).rows[0];
       // "a.b-c" and "a-b.c" would share a database name; do not let one overwrite the other

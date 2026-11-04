@@ -1013,6 +1013,612 @@
         }
       }
     },
+    "/api/agent/worlds/{name}/chapters/{chapter}/cards": {
+      "get": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "List chapter-scoped cards with hierarchical resolution",
+        "x-scopes-any-of": [
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "chapter",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/chapters/{chapter}/cards/{id}": {
+      "get": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "Read one chapter-scoped card in full",
+        "x-scopes-any-of": [
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "chapter",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/cardId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "Save a chapter-scoped card",
+        "x-scopes-any-of": [
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "chapter",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/cardId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated."
+          },
+          "201": {
+            "description": "Created."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/vns/{vn}/cards": {
+      "get": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "List VN-scoped cards with hierarchical resolution",
+        "x-scopes-any-of": [
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "vn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/vns/{vn}/cards/{id}": {
+      "get": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "Read one VN-scoped card in full",
+        "x-scopes-any-of": [
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "vn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/cardId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Import: cards"
+        ],
+        "summary": "Save a VN-scoped card",
+        "x-scopes-any-of": [
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "vn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/cardId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated."
+          },
+          "201": {
+            "description": "Created."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/chapters/{chapter}/scenes/matrix": {
+      "get": {
+        "tags": [
+          "Adapt: visual novels"
+        ],
+        "summary": "Read the scene state matrix for a chapter",
+        "x-scopes-any-of": [
+          "adaptation.read",
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "chapter",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/chapters/{chapter}/scenes/{sceneId}/cards": {
+      "put": {
+        "tags": [
+          "Adapt: visual novels"
+        ],
+        "summary": "Set card state in a chapter scene",
+        "x-scopes-any-of": [
+          "adaptation.write",
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "chapter",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sceneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/chapters/{chapter}/scenes/{sceneId}/cards/{cardId}": {
+      "delete": {
+        "tags": [
+          "Adapt: visual novels"
+        ],
+        "summary": "Remove card state from a chapter scene",
+        "x-scopes-any-of": [
+          "adaptation.write",
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "chapter",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sceneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cardId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/vns/{vn}/scenes/matrix": {
+      "get": {
+        "tags": [
+          "Adapt: visual novels"
+        ],
+        "summary": "Read the scene state matrix for a visual novel",
+        "x-scopes-any-of": [
+          "adaptation.read",
+          "import.read"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "vn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/vns/{vn}/scenes/{sceneId}/cards": {
+      "put": {
+        "tags": [
+          "Adapt: visual novels"
+        ],
+        "summary": "Set card state in a VN scene",
+        "x-scopes-any-of": [
+          "adaptation.write",
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "vn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sceneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
+    "/api/agent/worlds/{name}/vns/{vn}/scenes/{sceneId}/cards/{cardId}": {
+      "delete": {
+        "tags": [
+          "Adapt: visual novels"
+        ],
+        "summary": "Remove card state from a VN scene",
+        "x-scopes-any-of": [
+          "adaptation.write",
+          "import.write"
+        ],
+        "security": [
+          {
+            "agentToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/world"
+          },
+          {
+            "name": "vn",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sceneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cardId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done."
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          }
+        }
+      }
+    },
     "/api/agent/worlds/{name}/publish": {
       "post": {
         "tags": [
