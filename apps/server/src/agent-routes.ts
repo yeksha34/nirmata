@@ -766,6 +766,18 @@ export function registerAgentRoutes(
     return c.json({ ok: true, id });
   });
 
+  app.delete("/api/worlds/:name/chapters/:chapter/scenes/:sceneId/cards/:cardId", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const chapterSlug = c.req.param("chapter");
+    const sceneId = c.req.param("sceneId");
+    const cardId = c.req.param("cardId");
+    await asHttp(() =>
+      scenes.removeCardState(user, slug, { chapterSlug, sceneId, cardId }),
+    );
+    return c.json({ ok: true });
+  });
+
   app.get("/api/worlds/:name/vns/:vn/cards", async (c) => {
     const user = author(c);
     const slug = world(c);
@@ -803,6 +815,18 @@ export function registerAgentRoutes(
       }),
     );
     return c.json({ ok: true, id });
+  });
+
+  app.delete("/api/worlds/:name/vns/:vn/scenes/:sceneId/cards/:cardId", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const vnSlug = c.req.param("vn");
+    const sceneId = c.req.param("sceneId");
+    const cardId = c.req.param("cardId");
+    await asHttp(() =>
+      scenes.removeCardState(user, slug, { vnSlug, sceneId, cardId }),
+    );
+    return c.json({ ok: true });
   });
 
   /** Publish the cards as the world's next version, so readers and visual novels can use them. */

@@ -27,6 +27,7 @@ import type {
   You,
   AssetKind,
   VnAssetLists,
+  SceneMatrixRow,
 } from "./types";
 
 /** A problem the server explained in plain words (or a lost connection). */
@@ -342,5 +343,61 @@ export const api = {
   removeVnAsset: (worldName: string, slug: string, type: AssetKind, name: string) =>
     del<{ ok: boolean; name: string }>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/${type}/${encodeURIComponent(name)}`,
+    ),
+
+  // Chapter and VN scoped cards & scene state matrix (ADR-0038)
+  chapterCards: (worldName: string, chapter: string, kind?: string) =>
+    get<{ cards: Array<{ id: string; kind: string; name: string; summary: string }> }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/chapters/${encodeURIComponent(chapter)}/cards${kind ? `?kind=${encodeURIComponent(kind)}` : ""}`,
+    ).then((r) => r.cards),
+  chapterSceneMatrix: (worldName: string, chapter: string) =>
+    get<{ matrix: SceneMatrixRow[] }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/chapters/${encodeURIComponent(chapter)}/scenes/matrix`,
+    ).then((r) => r.matrix),
+  saveChapterSceneCard: (
+    worldName: string,
+    chapter: string,
+    sceneId: string,
+    body: { cardId: string; characterState?: string; clothingState?: string; role?: string },
+  ) =>
+    put<{ ok: boolean; id: string }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/chapters/${encodeURIComponent(chapter)}/scenes/${encodeURIComponent(sceneId)}/cards`,
+      body,
+    ),
+  removeChapterSceneCard: (
+    worldName: string,
+    chapter: string,
+    sceneId: string,
+    cardId: string,
+  ) =>
+    del<{ ok: boolean }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/chapters/${encodeURIComponent(chapter)}/scenes/${encodeURIComponent(sceneId)}/cards/${encodeURIComponent(cardId)}`,
+    ),
+  vnCards: (worldName: string, slug: string, kind?: string) =>
+    get<{ cards: Array<{ id: string; kind: string; name: string; summary: string }> }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/cards${kind ? `?kind=${encodeURIComponent(kind)}` : ""}`,
+    ).then((r) => r.cards),
+  vnSceneMatrix: (worldName: string, slug: string) =>
+    get<{ matrix: SceneMatrixRow[] }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/scenes/matrix`,
+    ).then((r) => r.matrix),
+  saveVnSceneCard: (
+    worldName: string,
+    slug: string,
+    sceneId: string,
+    body: { cardId: string; characterState?: string; clothingState?: string; role?: string },
+  ) =>
+    put<{ ok: boolean; id: string }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/scenes/${encodeURIComponent(sceneId)}/cards`,
+      body,
+    ),
+  removeVnSceneCard: (
+    worldName: string,
+    slug: string,
+    sceneId: string,
+    cardId: string,
+  ) =>
+    del<{ ok: boolean }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/scenes/${encodeURIComponent(sceneId)}/cards/${encodeURIComponent(cardId)}`,
     ),
 };

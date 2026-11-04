@@ -530,3 +530,20 @@ export interface GenerationJob {
   startedAt: number;
   updatedAt: number;
 }
+
+export interface SceneCardAssignment {
+  cardId: string;
+  cardSlug: string;
+  cardKind: string;
+  cardName: string;
+  characterState?: string;
+  clothingState?: string;
+  role?: string;
+}
+
+export interface SceneMatrixRow {
+  sceneId: string;
+  chapterSlug?: string;
+  vnSlug?: string;
+  cards: SceneCardAssignment[];
+}
