@@ -5,7 +5,6 @@ import {
   type AgentTokens,
   AssetPlanError,
   baselineNeeds,
-  CHARACTER_NAME,
   cardHashOf,
   type Need,
   missingAssets,
@@ -16,6 +15,7 @@ import {
   parseKind,
   parsePrep,
   prepStates,
+  resolveCharacter,
   TemplateError,
   TemplateStore,
   VnError,
@@ -260,6 +260,27 @@ export function registerAgentRoutes(
     );
   };
 
+  /** The card an agent means by a name or part of one ("Evelyn" for "Evelyn Hart"). */
+  const cardNamed = async (grant: AgentGrant, slug: string, asked: string) => {
+    if (!/^[^/\\]{1,64}$/.test(asked.trim())) {
+      throw new HttpError(400, "bad_request", "That is not a character name.");
+    }
+    const cards = (await characters(grant, slug)).map((k) => ({
+      ...k,
+      id: /<card id="([^"]+)"/.exec(k.text)?.[1],
+    }));
+    const found = resolveCharacter(cards, asked.trim());
+    if (found.ok) return found.card;
+    if (found.reason === "ambiguous") {
+      throw new HttpError(
+        409,
+        "ambiguous",
+        `More than one character fits: ${found.candidates.join("; ")}. Give more of the name.`,
+      );
+    }
+    throw new HttpError(404, "not_found", "There is no such character card.");
+  };
+
   /** Who the agent is, and where it may work. Lets it check its token before it starts. */
   app.get("/api/agent/me", async (c) => {
     const grant = await grantOf(c, "adaptation.read");
@@ -279,12 +300,8 @@ export function registerAgentRoutes(
 
   app.put("/api/agent/worlds/:name/characters/:character/prep", async (c) => {
     const { grant, slug } = await forWorld(c, "adaptation.write");
-    const name = c.req.param("character");
-    if (!CHARACTER_NAME.test(name)) {
-      throw new HttpError(400, "bad_request", "That is not a character name.");
-    }
-    const card = (await characters(grant, slug)).find((k) => k.name === name);
-    if (!card) throw new HttpError(404, "not_found", "There is no such character card.");
+    const card = await cardNamed(grant, slug, c.req.param("character"));
+    const name = card.name;
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     // a prep is made from the card as it is now unless the agent says which version it read
     const parsed = await asHttp(async () =>
@@ -296,7 +313,8 @@ export function registerAgentRoutes(
 
   app.delete("/api/agent/worlds/:name/characters/:character/prep", async (c) => {
     const { grant, slug } = await forWorld(c, "adaptation.write");
-    await asHttp(() => prep.remove(grant.userId, slug, c.req.param("character")));
+    const card = await cardNamed(grant, slug, c.req.param("character"));
+    await asHttp(() => prep.remove(grant.userId, slug, card.name));
     return c.json({ ok: true });
   });
 

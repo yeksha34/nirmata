@@ -1,5 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { cardHashOf, type CharacterPrep, parsePrep, PrepError, prepStates } from "../src/character-prep";
+import { cardHashOf, type CharacterPrep, parsePrep, PrepError, prepStates, resolveCharacter } from "../src/character-prep";
+
+describe("finding a character by part of its name", () => {
+  const cards = [
+    { name: "Evelyn Hart", id: "character.human-evelyn-hart" },
+    { name: "Evelyn Hart (skin)", id: "character.skin-evelyn-hart" },
+    { name: "Tina Marsh (skin)", id: "character.skin-tina-marsh" },
+    { name: "Howard Thorpe", id: "character.human-howard-thorpe" },
+    { name: "Carol Thorpe", id: "character.human-carol-thorpe" },
+    { name: "Rani चूषिणी धारपंक", id: "character.deity-fellatia-gushmire" },
+    { name: "Rani रगड़ी योनिकूप", id: "character.deity-grissel-cuntswell" },
+  ];
+  const pick = (q: string) => {
+    const r = resolveCharacter(cards, q);
+    return r.ok ? r.card.name : r.reason;
+  };
+  it("takes one word of a name", () => {
+    expect(pick("Tina")).toBe("Tina Marsh (skin)");
+    expect(pick("marsh")).toBe("Tina Marsh (skin)");
+    expect(pick("Grissel")).toBe("Rani रगड़ी योनिकूप");
+  });
+  it("prefers the card with the shortest name, and an exact name", () => {
+    expect(pick("Evelyn")).toBe("Evelyn Hart");
+    expect(pick("Evelyn Hart (skin)")).toBe("Evelyn Hart (skin)");
+  });
+  it("says so when it cannot tell, or finds nothing", () => {
+    expect(pick("Thorpe")).toBe("ambiguous");
+    expect(pick("Rani")).toBe("ambiguous");
+    expect(pick("Nobody")).toBe("none");
+  });
+});
 
 describe("a character's prep", () => {
   it("keeps what is asked for and trims it", () => {

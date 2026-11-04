@@ -21,6 +21,38 @@ export class PrepError extends Error {}
 /** A character name as a card gives it: no spaces or slashes inside asset names. */
 export const CHARACTER_NAME = /^[^\s/\\]{1,64}$/;
 
+const words = (s: string): string[] => s.toLowerCase().split(/[^\p{L}\p{N}\p{M}]+/u).filter(Boolean);
+
+export type CharacterMatch<T> =
+  | { ok: true; card: T }
+  | { ok: false; reason: "none" | "ambiguous"; candidates: string[] };
+
+/**
+ * Finds the card an agent means by a name or part of one. An exact name wins. Otherwise every word
+ * given must be a whole word of the card's name or id ("Evelyn" finds "Evelyn Hart"). When several
+ * cards fit, the one with the shortest name wins if it is alone ("Evelyn Hart" over "Evelyn Hart
+ * (skin)"); otherwise the match is ambiguous and the candidates are returned.
+ */
+export function resolveCharacter<T extends { name: string; id?: string }>(
+  cards: T[],
+  query: string,
+): CharacterMatch<T> {
+  const exact = cards.find((c) => c.name === query);
+  if (exact) return { ok: true, card: exact };
+  const asked = words(query);
+  if (asked.length === 0) return { ok: false, reason: "none", candidates: [] };
+  const fits = cards.filter((c) => {
+    const have = new Set([...words(c.name), ...words(c.id ?? "")]);
+    return asked.every((w) => have.has(w));
+  });
+  if (fits.length === 0) return { ok: false, reason: "none", candidates: [] };
+  const shortest = Math.min(...fits.map((c) => words(c.name).length));
+  const best = fits.filter((c) => words(c.name).length === shortest);
+  const only = best[0];
+  if (best.length === 1 && only) return { ok: true, card: only };
+  return { ok: false, reason: "ambiguous", candidates: fits.map((c) => c.name) };
+}
+
 const text = (v: unknown, field: string, max: number): string => {
   if (v === undefined || v === null) return "";
   if (typeof v !== "string") throw new PrepError(`${field} must be text.`);
