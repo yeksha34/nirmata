@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
+import { Breadcrumbs } from "../breadcrumbs";
 import { Tip } from "../controls";
 import { T } from "../i18n";
 import { useNav } from "../nav";
@@ -263,6 +264,17 @@ export function Workspace({ name }: { name: string }) {
           <button type="button" className="plain home-link" onClick={nav.home}>
             <T>← All worlds</T>
           </button>
+          <Breadcrumbs
+            worldTitle={world.title}
+            chapterTitle={tab === "chapters" && activeWriting ? activeWriting.title : undefined}
+            chapterSlug={
+              tab === "chapters" && activeWriting
+                ? activeWriting.path.replace(/\.md$/, "").split("/").pop()
+                : undefined
+            }
+            cardName={selected?.fm.name}
+            subView={tab === "chapters" ? nav.chapterView : undefined}
+          />
           <header className="ws-title">
             <hgroup>
               <h1>
