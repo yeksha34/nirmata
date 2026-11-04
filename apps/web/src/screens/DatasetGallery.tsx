@@ -4,6 +4,8 @@ import { useAct } from "../app-context";
 import { useAsk } from "../controls";
 import { bilingual, T } from "../i18n";
 import { useNav } from "../nav";
+import { usePaged } from "../pager";
+import { useDebounced } from "../use-debounced";
 import type { AssetKind, VnAssetDatasetEntry, VnAssetItem, VnWithAssetsSummary } from "../types";
 
 type Kind = AssetKind;
@@ -83,7 +85,7 @@ export function DatasetGallery() {
     };
   }, [world, slug, type, name, items]);
 
-  const query = search.trim().toLowerCase();
+  const query = useDebounced(search).trim().toLowerCase();
   const shown = useMemo(
     () =>
       runs
@@ -99,6 +101,7 @@ export function DatasetGallery() {
         .filter((r) => r.entries.length > 0),
     [runs, query],
   );
+  const pagedRuns = usePaged(shown, 5, query);
   const total = shown.reduce((n, r) => n + r.entries.length, 0);
 
   const deleteRun = async (assetName: string, entry: VnAssetDatasetEntry) => {
@@ -196,7 +199,7 @@ export function DatasetGallery() {
         </p>
       )}
 
-      {shown.map((r) => (
+      {pagedRuns.items.map((r) => (
         <section key={r.asset.id} className="vs-card ds-group">
           <header className="ds-group-head">
             <h2 title={r.asset.name}>{r.asset.name}</h2>
@@ -248,6 +251,7 @@ export function DatasetGallery() {
           </ul>
         </section>
       ))}
+      {pagedRuns.pager}
     </section>
   );
 }

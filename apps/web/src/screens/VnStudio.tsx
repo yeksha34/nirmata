@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { api } from "../api";
 import { useAct } from "../app-context";
+import { usePaged } from "../pager";
+import { useDebounced } from "../use-debounced";
 import { Breadcrumbs } from "../breadcrumbs";
 import { bilingual, T } from "../i18n";
 import { isActive, type JobsState, jobForAsset, jobsActions } from "../jobs/store";
@@ -442,7 +444,7 @@ export function VnStudio() {
     }
   }, [job, loadDetail, loadAssets]);
 
-  const query = assetSearch.trim().toLowerCase();
+  const query = useDebounced(assetSearch).trim().toLowerCase();
   const matches = useCallback(
     (item: VnAssetItem) =>
       !query ||
@@ -469,6 +471,18 @@ export function VnStudio() {
   }, [assets, typeFilter, matches]);
 
   const totalVisible = groups.reduce((n, g) => n + g.items.length, 0);
+  const pagedAssets = usePaged(
+    groups.flatMap((g) => g.items.map((item) => ({ kind: g.kind, item }))),
+    24,
+    `${query}|${typeFilter}|${activeWorld}|${activeSlug}`,
+  );
+  const pageGroups = groups
+    .map((g) => ({
+      kind: g.kind,
+      total: g.items.length,
+      items: pagedAssets.items.filter((p) => p.kind === g.kind).map((p) => p.item),
+    }))
+    .filter((g) => g.items.length > 0);
 
   const parsedTags = useMemo(
     () => [
@@ -675,9 +689,15 @@ export function VnStudio() {
     if (world) nav.toVn(world, rest.join(":"));
   };
 
+  const vnAt = allVns.findIndex((v) => v.worldName === activeWorld && v.slug === activeSlug);
+  const vnNeighbour = (v: VnWithAssetsSummary | undefined) =>
+    v ? { label: v.title || v.slug, onClick: () => nav.toVn(v.worldName, v.slug) } : undefined;
+
   return (
     <section className="vs">
       <Breadcrumbs
+        prev={vnAt >= 0 ? vnNeighbour(allVns[vnAt - 1]) : undefined}
+        next={vnAt >= 0 ? vnNeighbour(allVns[vnAt + 1]) : undefined}
         vnTitle={
           allVns.find((v) => v.worldName === activeWorld && v.slug === activeSlug)?.title ||
           activeSlug
@@ -787,10 +807,10 @@ export function VnStudio() {
                 <T>Nothing matches.</T>
               </p>
             ) : (
-              groups.map((g) => (
+              pageGroups.map((g) => (
                 <section key={g.kind}>
                   <h3 className="vs-group">
-                    <T>{KIND_LABEL[g.kind]}</T> <small>{g.items.length}</small>
+                    <T>{KIND_LABEL[g.kind]}</T> <small>{g.total}</small>
                   </h3>
                   <ul>
                     {g.items.map((item) => {
@@ -839,6 +859,7 @@ export function VnStudio() {
                 </section>
               ))
             )}
+            {pagedAssets.pager}
           </nav>
 
           <details className="vs-menu">
