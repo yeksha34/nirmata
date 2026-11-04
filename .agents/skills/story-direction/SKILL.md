@@ -110,9 +110,24 @@ A lore change is only finished when every scene, draft and chapter that depends 
 
 ---
 
-## Working with chapters
+## Working with chapters and chapter-scoped cards
 
-A chapter file is the author's arrangement: which scenes, in what order, from whose perspective, with what withheld. When assembling or revising a chapter:
+A chapter file is the author's arrangement: which scenes, in what order, from whose perspective, with what withheld.
+
+### Chapter-Scoped Cards & Scene State Matrix
+Characters and items undergo radical transformations across a story: mortals assume disguises or suffer metamorphoses, clothing gets torn or discarded, accessories and relics pass between hands, and scenes move across specific settings. To avoid polluting repository-wide global cards with ephemeral or conflicting chapter notes:
+1. **Scope cards to the chapter** under `chapters/<chapter_slug>/cards/`:
+   - `characters/`: Chapter-specific physical form, psychological state, and mortal aliases.
+   - `attire/`: Outfits and uniforms worn in this chapter, tracking clothing states (`intact`, `torn`, `altered`, `soiled`, `discarded`).
+   - `accessories/`: Adornments, jewelry, or plugs worn by or attached to characters.
+   - `objects/`: Physical props, relics, tools, or harvested items.
+   - `setting/`: Distinct rooms, zones, or architecture specific to the chapter.
+2. **Track states scene by scene with the Scene State Matrix**:
+   - Each scene row references the active character state (`base`, `naked`, `disguised`, `transformed`, `custom`) and attire state (`intact`, `torn`, etc.) alongside equipped accessories and held objects.
+   - The matrix guarantees strict continuity when revising scenes or adapting prose into visual novel routes.
+   - Scoped cards take precedence over global baseline cards during chapter resolution.
+
+When assembling or revising a chapter:
 - Respect the chapter's reveal plan — it governs which lore can surface where.
 - Transitions between scenes are prose, so the same leak rules apply.
 - If a lore change makes the chapter's arrangement itself questionable (a reveal now happens too early), raise it rather than reordering on your own; arrangement is the author's call.
