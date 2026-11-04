@@ -101,11 +101,17 @@ async function main(): Promise<void> {
           writings: new WritingStore(db).source(() => hostUser()),
           world: new WorldStore(db).source(() => hostUser()),
           prep: {
-            outfits: async (world: string) => {
+            characters: async (world: string) => {
               const user = hostUser();
               if (!user) return undefined;
               const stored = await new PrepStore(db).list(user, world);
-              return [...stored.values()].flatMap((p) => p.outfits);
+              return [...stored].map(([name, p]) => ({
+                name,
+                notes: p.notes,
+                basePositive: p.basePositive,
+                expressions: p.expressions,
+                outfits: p.outfits,
+              }));
             },
           },
         }

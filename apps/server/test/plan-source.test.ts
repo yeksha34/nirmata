@@ -105,8 +105,14 @@ describe("the prompt of a clothes or adornment asset", () => {
     const m = memory();
     m.rows.push({ type: "clothes", name: "tina_day-office-outfit", shared: false, owners: ["tina"], cgs: [] });
     const prep = {
-      outfits: async () => [
-        { kind: "clothes", name: "day-office-outfit", tags: "navy pleated skirt, pale blue blouse" },
+      characters: async () => [
+        {
+          name: "Tina-Marsh-(skin)",
+          notes: "asset-id: tina",
+          basePositive: "1girl",
+          expressions: [],
+          outfits: [{ kind: "clothes", name: "day-office-outfit", tags: "navy pleated skirt, pale blue blouse" }],
+        },
       ],
     };
     const w = new WorldFiles(folder(), undefined, { plan: m.source, prep });

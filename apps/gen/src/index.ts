@@ -1,6 +1,7 @@
 export * from "./asset-kind";
 export * from "./comfyui";
 export * from "./danbooru-prompt";
+export * from "./prep-sprite-prompt";
 export * from "./errors";
 export * from "./generation-jobs";
 export * from "./import-dataset";

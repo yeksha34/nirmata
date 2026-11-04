@@ -45,6 +45,8 @@ import {
   getDefaultNegativePrompt,
   synthesizeBackgroundDanbooruPrompt,
   synthesizeCgDanbooruPrompt,
+  type PrepCharacter,
+  spritePromptFromPrep,
   synthesizeSpriteDanbooruPrompt,
   type Workflow,
   type AssetKind,
@@ -284,7 +286,7 @@ export interface DbSources {
 
 /** The outfits and adornments a world's character preps list, with the tags that describe them. */
 export interface PrepSource {
-  outfits(world: string): Promise<Array<{ kind: string; name: string; tags: string }> | undefined>;
+  characters(world: string): Promise<PrepCharacter[] | undefined>;
 }
 
 /** One planned asset, whether it came from a manifest or from the database. */
@@ -954,8 +956,13 @@ export class WorldFiles implements SourceBackend {
   }
 
   private async prepOutfits(): Promise<Array<{ kind: string; name: string; tags: string }>> {
+    return (await this.prepCharacters()).flatMap((c) => c.outfits);
+  }
+
+  /** The world's character preps, which say how a character, an outfit and an expression look. */
+  private async prepCharacters(): Promise<PrepCharacter[]> {
     const world = this.prepSource ? await this.loreSlug(true) : undefined;
-    return (world ? await this.prepSource?.outfits(world) : undefined) ?? [];
+    return (world ? await this.prepSource?.characters(world) : undefined) ?? [];
   }
 
   /** The author's own image of such an asset (the card's `reference` part), if the card names one that exists. */
@@ -1071,8 +1078,11 @@ export class WorldFiles implements SourceBackend {
     const backgrounds: VnAssetItem[] = [];
     const promptSpecs = withPrompts ? await this.loadPromptSpecs() : {};
     const cardFiles = withPrompts ? await this.cardFiles().catch(() => []) : [];
+    const preps = withPrompts ? await this.prepCharacters() : [];
     const sprite = (n: string) =>
-      withPrompts ? synthesizeSpriteDanbooruPrompt(n, cardFiles) : undefined;
+      withPrompts
+        ? (spritePromptFromPrep(n, preps) ?? synthesizeSpriteDanbooruPrompt(n, cardFiles))
+        : undefined;
     const cg = (n: string) => (withPrompts ? synthesizeCgDanbooruPrompt(n, cardFiles) : undefined);
     const bg = (n: string) =>
       withPrompts ? synthesizeBackgroundDanbooruPrompt(n, cardFiles) : undefined;
@@ -1328,11 +1338,12 @@ export class WorldFiles implements SourceBackend {
     }[type];
     const cards = await this.cardFiles().catch(() => []);
     const details = isLinkedKind(type) ? await this.linkedDetails(type, name) : {};
+    const preps = type === "sprite" ? await this.prepCharacters() : [];
     const synth = (n: string) =>
       isLinkedKind(type)
         ? composeLinkedPrompt(type, n, details)
         : type === "sprite"
-          ? synthesizeSpriteDanbooruPrompt(n, cards)
+          ? (spritePromptFromPrep(n, preps) ?? synthesizeSpriteDanbooruPrompt(n, cards))
           : type === "cg"
             ? synthesizeCgDanbooruPrompt(n, cards)
             : synthesizeBackgroundDanbooruPrompt(n, cards);
