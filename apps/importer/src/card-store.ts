@@ -12,10 +12,14 @@ export interface CardSave {
   /** Lowercase letters, digits and hyphens. The card's id is `kind.slug`. */
   slug: string;
   name: string;
+  chapterSlug?: string | undefined;
+  vnSlug?: string | undefined;
   summary?: string | undefined;
   keywords?: string[] | undefined;
   always?: boolean | undefined;
   role?: string | undefined;
+  state?: string | undefined;
+  stateOf?: string | undefined;
   scope?: "chapter" | "story" | "both" | undefined;
   severity?: "must" | "should" | undefined;
   /** The card's named parts (appearance, voice ...). `secrets` is host-only. */
@@ -30,6 +34,11 @@ export interface CardView {
   name: string;
   summary: string;
   keywords: string[];
+  chapterSlug?: string | undefined;
+  vnSlug?: string | undefined;
+  state?: string | undefined;
+  stateOf?: string | undefined;
+  isOverride?: boolean | undefined;
   /** The named parts, with the host-only `secrets` part included for the author the agent speaks for. */
   fields: Record<string, string>;
   body: string;
@@ -44,6 +53,17 @@ export interface CardListed {
   parts: string[];
   /** How much text the card holds, in characters. */
   size: number;
+  chapterSlug?: string | undefined;
+  vnSlug?: string | undefined;
+  state?: string | undefined;
+  isOverride?: boolean | undefined;
+}
+
+export interface CardListFilter {
+  kind?: string;
+  chapterSlug?: string;
+  vnSlug?: string;
+  hierarchical?: boolean;
 }
 
 interface Place {
@@ -80,12 +100,40 @@ export class CardStore {
     });
   }
 
-  /** Every card, without its text. Optionally only those of one kind. */
-  async list(userId: string, worldSlug: string, kind?: string): Promise<CardListed[]> {
+  /** Every card, without its text. Supports filtering by kind and chapter/VN scoping. */
+  async list(
+    userId: string,
+    worldSlug: string,
+    filter?: string | CardListFilter,
+  ): Promise<CardListed[]> {
+    const opts: CardListFilter = typeof filter === "string" ? { kind: filter } : (filter ?? {});
     return this.within(userId, worldSlug, async (q, { line, worldId }) => {
+      const chapter = opts.chapterSlug ?? null;
+      const vn = opts.vnSlug ?? null;
+      const hierarchical = opts.hierarchical ?? false;
+
+      let scopeWhere = "($4::text is null and $5::text is null and c.chapter_slug is null and c.vn_slug is null)";
+      if (hierarchical) {
+        if (chapter && vn) {
+          scopeWhere = "(c.chapter_slug = $4 or c.vn_slug = $5 or (c.chapter_slug is null and c.vn_slug is null))";
+        } else if (chapter) {
+          scopeWhere = "(c.chapter_slug = $4 or (c.chapter_slug is null and c.vn_slug is null))";
+        } else if (vn) {
+          scopeWhere = "(c.vn_slug = $5 or (c.chapter_slug is null and c.vn_slug is null))";
+        }
+      } else {
+        if (chapter && vn) {
+          scopeWhere = "(c.chapter_slug = $4 and c.vn_slug = $5)";
+        } else if (chapter) {
+          scopeWhere = "(c.chapter_slug = $4)";
+        } else if (vn) {
+          scopeWhere = "(c.vn_slug = $5)";
+        }
+      }
+
       const rows = (
         await q(
-          `select c.kind, c.slug, d.title, d.meta, length(d.body) as body_size,
+          `select c.kind, c.slug, c.chapter_slug, c.vn_slug, d.title, d.meta, length(d.body) as body_size,
                   coalesce((select array_agg(p.part_key order by p.position)
                               from world_lore.card_draft_parts p
                              where p.line_id = d.line_id and p.card_id = d.card_id), '{}') as parts,
@@ -95,35 +143,70 @@ export class CardStore {
                              where s.line_id = d.line_id and s.card_id = d.card_id), 0) as secret_size
              from world_lore.cards c
              join world_lore.card_drafts d on d.card_id = c.id and d.line_id = $1
-            where c.world_id = $2 and ($3::text is null or c.kind = $3)
-            order by c.kind, c.slug`,
-          [line, worldId, kind ?? null],
+            where c.world_id = $2
+              and ($3::text is null or c.kind = $3)
+              and ${scopeWhere}
+            order by (case when c.chapter_slug is not null or c.vn_slug is not null then 0 else 1 end), c.kind, c.slug`,
+          [line, worldId, opts.kind ?? null, chapter, vn],
         )
       ).rows;
-      return rows.map((r) => {
+
+      const seen = new Set<string>();
+      const result: CardListed[] = [];
+
+      for (const r of rows) {
         const meta = (r.meta as Record<string, unknown> | null) ?? {};
-        return {
-          id: typeof meta.id === "string" ? meta.id : `${String(r.kind)}.${String(r.slug)}`,
+        const key = `${String(r.kind)}.${String(r.slug)}`;
+        if (hierarchical && seen.has(key)) {
+          // A scoped override already took this slot
+          continue;
+        }
+        seen.add(key);
+
+        const isScoped = r.chapter_slug != null || r.vn_slug != null;
+        result.push({
+          id: typeof meta.id === "string" ? meta.id : key,
           kind: String(r.kind),
           name: String(r.title),
           summary: typeof meta.summary === "string" ? meta.summary : "",
           parts: (r.parts as string[]) ?? [],
           size: Number(r.body_size) + Number(r.part_size) + Number(r.secret_size),
-        };
-      });
+          chapterSlug: r.chapter_slug ? String(r.chapter_slug) : undefined,
+          vnSlug: r.vn_slug ? String(r.vn_slug) : undefined,
+          state: typeof meta.state === "string" ? meta.state : undefined,
+          isOverride: hierarchical && isScoped,
+        });
+      }
+
+      return result;
     });
   }
 
-  /** One card in full, found by its id (`kind.slug`). */
-  async get(userId: string, worldSlug: string, id: string): Promise<CardView | undefined> {
+  /** One card in full, found by its id (`kind.slug`), with optional chapter/VN scope fallback. */
+  async get(
+    userId: string,
+    worldSlug: string,
+    id: string,
+    scope?: { chapterSlug?: string; vnSlug?: string },
+  ): Promise<CardView | undefined> {
     return this.within(userId, worldSlug, async (q, { line, worldId }) => {
+      const chapter = scope?.chapterSlug ?? null;
+      const vn = scope?.vnSlug ?? null;
       const row = (
         await q(
-          `select c.id as card, c.kind, c.slug, d.title, d.body, d.meta
+          `select c.id as card, c.kind, c.slug, c.chapter_slug, c.vn_slug, d.title, d.body, d.meta
              from world_lore.cards c
              join world_lore.card_drafts d on d.card_id = c.id and d.line_id = $1
-            where c.world_id = $2 and c.slug = $3`,
-          [line, worldId, slugOf(id)],
+            where c.world_id = $2
+              and c.slug = $3
+              and (
+                (c.chapter_slug is null and c.vn_slug is null)
+                or ($4::text is not null and c.chapter_slug = $4)
+                or ($5::text is not null and c.vn_slug = $5)
+              )
+            order by (case when c.chapter_slug = $4 or c.vn_slug = $5 then 0 else 1 end)
+            limit 1`,
+          [line, worldId, slugOf(id), chapter, vn],
         )
       ).rows[0];
       if (!row) return undefined;
@@ -150,6 +233,11 @@ export class CardStore {
         name: String(row.title),
         summary: typeof meta.summary === "string" ? meta.summary : "",
         keywords: Array.isArray(meta.keywords) ? meta.keywords.map(String) : [],
+        chapterSlug: row.chapter_slug ? String(row.chapter_slug) : undefined,
+        vnSlug: row.vn_slug ? String(row.vn_slug) : undefined,
+        state: typeof meta.state === "string" ? meta.state : undefined,
+        stateOf: typeof meta.stateOf === "string" ? meta.stateOf : undefined,
+        isOverride: (row.chapter_slug != null || row.vn_slug != null),
         fields,
         body: String(row.body),
       };
@@ -180,9 +268,18 @@ export class CardStore {
       ...(input.role !== undefined ? { role: input.role } : {}),
       ...(input.scope !== undefined ? { scope: input.scope } : {}),
       ...(input.severity !== undefined ? { severity: input.severity } : {}),
+      ...(input.chapterSlug !== undefined ? { chapter: input.chapterSlug } : {}),
+      ...(input.vnSlug !== undefined ? { vn: input.vnSlug } : {}),
+      ...(input.state !== undefined ? { state: input.state } : {}),
+      ...(input.stateOf !== undefined ? { stateOf: input.stateOf } : {}),
     });
     if (!fm.success) throw new CardError(formatIssues(fm.error).join("; "));
-    const card: Card = { path: pathOf(kind, slug), fm: fm.data, body: input.body ?? "" };
+    const cardPath = input.chapterSlug
+      ? `chapters/${input.chapterSlug}/cards/${kind}/${slug}.md`
+      : input.vnSlug
+        ? `vns/${input.vnSlug}/cards/${kind}/${slug}.md`
+        : pathOf(kind, slug);
+    const card: Card = { path: cardPath, fm: fm.data, body: input.body ?? "" };
     const row = cardRow(card);
     if (!CARD_SLUG.test(row.slug)) throw new CardError("That card name is too long.");
 
@@ -192,15 +289,22 @@ export class CardStore {
           `select c.id, d.meta ->> 'id' as card_id
              from world_lore.cards c
              left join world_lore.card_drafts d on d.card_id = c.id and d.line_id = $1
-            where c.world_id = $2 and c.slug = $3`,
-          [line, worldId, row.slug],
+            where c.world_id = $2
+              and coalesce(c.chapter_slug, '') = coalesce($3, '')
+              and coalesce(c.vn_slug, '') = coalesce($4, '')
+              and c.slug = $5`,
+          [line, worldId, input.chapterSlug ?? null, input.vnSlug ?? null, row.slug],
         )
       ).rows[0];
       // "a.b-c" and "a-b.c" would share a database name; do not let one overwrite the other
       if (had?.card_id && had.card_id !== id) {
         throw new CardError(`The name is already used by the card ${String(had.card_id)}.`);
       }
-      const cardId = await upsertCard(q, worldId, row);
+      const cardId = await upsertCard(q, worldId, {
+        ...row,
+        chapterSlug: input.chapterSlug,
+        vnSlug: input.vnSlug,
+      });
       await writeDraft(q, { worldId, line, card: cardId, userId }, row);
       return { created: !had };
     });

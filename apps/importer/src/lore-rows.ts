@@ -61,16 +61,18 @@ export function slugFor(name: string): string {
     .slice(0, 63);
 }
 
-/** Makes (or finds) the card, returning its id. */
+/** Makes (or finds) the card, returning its id. Supports chapter- and VN-scoped cards. */
 export async function upsertCard(
   q: Query,
   worldId: string,
-  row: Pick<CardRow, "kind" | "slug">,
+  row: Pick<CardRow, "kind" | "slug"> & { chapterSlug?: string; vnSlug?: string },
 ): Promise<string> {
   const found = await q(
-    `insert into world_lore.cards (world_id, kind, slug) values ($1, $2, $3)
-     on conflict (world_id, slug) do update set kind = excluded.kind returning id`,
-    [worldId, row.kind, row.slug],
+    `insert into world_lore.cards (world_id, kind, slug, chapter_slug, vn_slug)
+     values ($1, $2, $3, $4, $5)
+     on conflict (world_id, coalesce(chapter_slug, ''), coalesce(vn_slug, ''), slug)
+     do update set kind = excluded.kind returning id`,
+    [worldId, row.kind, row.slug, row.chapterSlug ?? null, row.vnSlug ?? null],
   );
   return String(found.rows[0]?.id);
 }
