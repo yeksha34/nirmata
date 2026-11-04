@@ -27,7 +27,14 @@ import {
 } from "./Manager";
 import { AgentAccess } from "./agent-access";
 import { WritingDetail, WritingsList } from "./Writings";
-import { EditWorld, OpenStoryNotice, PutAway, StartStory, StoryRow } from "./world-parts";
+import {
+  EditWorld,
+  OpenStoryNotice,
+  PublishWorld,
+  PutAway,
+  StartStory,
+  StoryRow,
+} from "./world-parts";
 
 type Tab = "cards" | "chapters" | "drafts" | "stories" | "world";
 const TABS: Array<{ id: Tab; label: string }> = [
@@ -56,6 +63,7 @@ export function Workspace({ name }: { name: string }) {
   const [editing, setEditing] = useState(false);
   const [putting, setPutting] = useState(false);
   const [agentAccess, setAgentAccess] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [reading, setReading] = useState<Book>();
   const [selectedWriting, setSelectedWriting] = useState<string>();
   const [playingVn, setPlayingVn] = useState<{
@@ -215,6 +223,13 @@ export function Workspace({ name }: { name: string }) {
                   <Tip below text="Tokens that let an agent import or adapt this world">
                     <button type="button" onClick={() => setAgentAccess(true)}>
                       <T>Agent access</T>
+                    </button>
+                  </Tip>
+                </li>
+                <li>
+                  <Tip below text="Freeze the cards into a version that visual novels and readers use">
+                    <button type="button" disabled={busy} onClick={() => setPublishing(true)}>
+                      <T>Publish</T>
                     </button>
                   </Tip>
                 </li>
@@ -523,6 +538,7 @@ export function Workspace({ name }: { name: string }) {
           }}
         />
       )}
+      {publishing && <PublishWorld world={world} onClose={() => setPublishing(false)} />}
       {agentAccess && (
         <Modal titleId="agent-access-title" wide onClose={() => setAgentAccess(false)}>
           <AgentAccess world={name} titleId="agent-access-title" />

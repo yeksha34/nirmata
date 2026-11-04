@@ -166,6 +166,8 @@ export const api = {
     ),
   revokeAgentToken: (worldName: string, id: string) =>
     del(`/api/worlds/${encodeURIComponent(worldName)}/agent-tokens/${encodeURIComponent(id)}`),
+  publishWorld: (worldName: string) =>
+    post<{ versionId: string | null }>(`/api/worlds/${encodeURIComponent(worldName)}/publish`, {}),
   recent: () => get<{ stories: RecentStory[] }>("/api/recent").then((r) => r.stories),
   worldDetail: (name: string) => get<WorldDetail>(`/api/worlds/${encodeURIComponent(name)}`),
   writing: (name: string, path: string) =>

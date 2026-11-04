@@ -374,3 +374,50 @@ export function PutAway({
     </Modal>
   );
 }
+
+/**
+ * Publish the world's cards as its next version. A visual novel is pinned to the latest published
+ * version, so the first publish is what lets one be made. Publishing again picks up later changes.
+ */
+export function PublishWorld({ world, onClose }: { world: WorldSummary; onClose: () => void }) {
+  const { act, busy } = useAct();
+  const [done, setDone] = useState(false);
+  return (
+    <Modal titleId="publish-title" onClose={onClose}>
+      <h2 id="publish-title">
+        <T with={{ title: world.title }}>{"Publish “{title}”?"}</T>
+      </h2>
+      {done ? (
+        <p role="status">
+          <T>Published.</T>
+        </p>
+      ) : (
+        <p>
+          <T>
+            Publishing freezes the cards as they are now into the world's next version. Visual
+            novels and readers use the latest published version, and a visual novel cannot be made
+            until one exists. Publish again after you add or change cards.
+          </T>
+        </p>
+      )}
+      <footer className="dialog-actions">
+        <button type="button" onClick={onClose}>
+          <T>{done ? "Done" : "Cancel"}</T>
+        </button>
+        {!done && (
+          <button
+            type="button"
+            className="primary"
+            disabled={busy}
+            onClick={async () => {
+              const out = await act(() => api.publishWorld(world.name));
+              if (out) setDone(true);
+            }}
+          >
+            <T>Publish</T>
+          </button>
+        )}
+      </footer>
+    </Modal>
+  );
+}

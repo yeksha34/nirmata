@@ -314,6 +314,7 @@ export const HI_SERVER: Record<string, string> = {
 
   // agent access
   "Only an author of this world can do that.": "यह केवल इस संसार का लेखक कर सकता है।",
+  "There are no cards to publish yet.": "प्रकाशित करने के लिए अभी कोई पत्रक नहीं है।",
   "That agent token is not valid.": "वह एजेंट टोकन मान्य नहीं है।",
   "That agent token may not do that.": "उस एजेंट टोकन को यह करने की अनुमति नहीं है।",
   "Sign in as an author of this world to do that.": "यह करने के लिए इस संसार के लेखक के रूप में साइन इन करें।",
