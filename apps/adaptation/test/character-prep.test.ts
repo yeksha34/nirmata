@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardHashOf, type CharacterPrep, parsePrep, PrepError, prepStates, resolveCharacter } from "../src/character-prep";
+import { cardHashOf, type CharacterPrep, parsePrep, PrepError, prepKey, prepStates, resolveCharacter } from "../src/character-prep";
 
 describe("finding a character by part of its name", () => {
   const cards = [
@@ -69,5 +69,16 @@ describe("a character's prep", () => {
     expect(prepStates([card], stored)[0]?.state).toBe("current");
     expect(prepStates([{ ...card, text: "Mara is short." }], stored)[0]?.state).toBe("stale");
     expect(prepStates([{ name: "Ada", text: "x" }], stored)[0]?.state).toBe("none");
+  });
+});
+
+describe("the key a prep is stored under", () => {
+  it("has no whitespace, and prepStates finds it by the card's name", () => {
+    expect(prepKey("Evelyn Hart")).toBe("Evelyn-Hart");
+    expect(prepKey("Tina Marsh (skin)")).toBe("Tina-Marsh-(skin)");
+    const prep = { basePositive: "", baseNegative: "", notes: "", cardHash: null, expressions: [], outfits: [] };
+    const cards = [{ name: "Evelyn Hart", text: "x" }];
+    const [s] = prepStates(cards, new Map([["Evelyn-Hart", { ...prep, cardHash: cardHashOf("x") }]]));
+    expect(s?.state).toBe("current");
   });
 });

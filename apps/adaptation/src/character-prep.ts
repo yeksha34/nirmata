@@ -21,6 +21,9 @@ export class PrepError extends Error {}
 /** A character name as a card gives it: no spaces or slashes inside asset names. */
 export const CHARACTER_NAME = /^[^\s/\\]{1,64}$/;
 
+/** The key a prep is stored under: the card's name with each run of whitespace made a hyphen. */
+export const prepKey = (cardName: string): string => cardName.trim().replace(/\s+/g, "-");
+
 const words = (s: string): string[] => s.toLowerCase().split(/[^\p{L}\p{N}\p{M}]+/u).filter(Boolean);
 
 export type CharacterMatch<T> =
@@ -130,7 +133,7 @@ export function prepStates(
 ): PrepState[] {
   return cards.map((c) => {
     const cardHash = cardHashOf(c.text);
-    const prep = stored.get(c.name);
+    const prep = stored.get(prepKey(c.name));
     const state = !prep ? "none" : prep.cardHash === cardHash ? "current" : "stale";
     return { name: c.name, cardHash, prep, state };
   });
