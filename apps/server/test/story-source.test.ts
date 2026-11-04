@@ -78,6 +78,28 @@ function writings(inDatabase = true): WritingSource {
       updatedAt: "2026-02-01T00:00:00.000Z",
       text: "new",
     },
+    // an import that keeps each plot's files together: the folder says what each one is
+    {
+      path: "chapters/salt/chapter/c1.md",
+      title: "C1",
+      size: 5,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      text: "c",
+    },
+    {
+      path: "chapters/salt/draft/d1.md",
+      title: "D1",
+      size: 5,
+      updatedAt: "2026-03-01T00:00:00.000Z",
+      text: "d",
+    },
+    {
+      path: "chapters/salt/scenes/s1.md",
+      title: "S1",
+      size: 5,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      text: "s",
+    },
   ];
   return {
     list: async () => (inDatabase ? rows.map(({ text: _t, ...info }) => info) : undefined),
@@ -118,8 +140,14 @@ describe("an imported world's chapters and drafts (ADR-0035)", () => {
     expect(list.chapters.map((c) => c.path)).toEqual([
       "chapters/chapter_2.md",
       "chapters/chapter_10.md",
+      "chapters/salt/chapter/c1.md",
     ]);
-    expect(list.drafts.map((d) => d.path)).toEqual(["drafts/new.md", "drafts/old.md"]);
+    // a draft kept in its plot's folder is still a draft; a scene there is not a chapter
+    expect(list.drafts.map((d) => d.path)).toEqual([
+      "chapters/salt/draft/d1.md",
+      "drafts/new.md",
+      "drafts/old.md",
+    ]);
   });
 
   it("reads one from the database, not the folder", async () => {

@@ -24,6 +24,7 @@ import {
   WritingError,
   WritingStore,
   parseWritingPath,
+  writingKind,
 } from "@nirmata/adaptation";
 import { compileVn, VnManifestSchema, VnSlideDeckSchema } from "@nirmata/core";
 import type { Db } from "@nirmata/db";
@@ -454,11 +455,9 @@ export function registerAgentRoutes(
     return c.json({
       name: slug,
       manifest: manifest ?? null,
-      chapters: list.filter(
-        (w) => w.path.startsWith("chapters/") && !w.path.startsWith("chapters/scenes/"),
-      ).length,
-      scenes: list.filter((w) => w.path.startsWith("chapters/scenes/")).length,
-      drafts: list.filter((w) => w.path.startsWith("drafts/")).length,
+      chapters: list.filter((w) => writingKind(w.path) === "chapter").length,
+      scenes: list.filter((w) => writingKind(w.path) === "scene").length,
+      drafts: list.filter((w) => writingKind(w.path) === "draft").length,
     });
   });
 

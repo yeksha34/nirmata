@@ -49,7 +49,7 @@ When the known kinds are done, one more worker (or one per folder, each with its
 1. Work out what is left: `node <repo>/.agents/skills/story-import/remnants.mjs <temp>/source <temp>/ledger <temp>/left`. It writes each file's untaken lines under `<temp>/left` and lists any ledger line it could not use.
 2. **Remnants of the character and setting files first.** Sort each into cards: relations to groups into the group's card, customs into lore, plot consequences into `event` cards. Make a kind of your own where none fits.
 3. **Then the lore files, whole,** one card per subject. A file with several subjects becomes several cards.
-4. **Then the plots.** Save each plot's scenes, drafts, chapters and translations as writings, one file per call: `chapters/<plot>/scene/<file>.md`, `…/draft/…`, `…/chapter/…`, `chapters/<plot>/translations.md`, `chapters/<plot>/character_arcs.md`. Writings need an unrestricted token.
+4. **Then the plots.** Save each plot's scenes, drafts, chapters and translations as writings, one file per call: `chapters/<plot>/scene/<file>.md`, `…/draft/…`, `…/chapter/…`, `chapters/<plot>/translations.md`, `chapters/<plot>/character_arcs.md`. Writings need an unrestricted token. The folder names matter: a folder called `draft` or `drafts` under the plot makes its files drafts (listed under Drafts, and counted as drafts by `GET /api/agent/worlds/<world>`), one called `scene` or `scenes` makes them scenes (one-line beats, kept out of the Chapters list), and anything else is a chapter. `drafts/<plot>/<file>.md` also makes a draft.
 5. Write ledger lines as before. Run `remnants.mjs` again: what it still lists is unplaced.
 
 ### Guide, rules and publishing
