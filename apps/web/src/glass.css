@@ -274,9 +274,13 @@ label.choice-opt.is-on,
   box-shadow: 0 4px 14px rgb(154 79 4 / 40%);
 }
 .topnav {
+  flex: none;
+  flex-wrap: nowrap;
   margin-left: 8px;
 }
 .jump {
+  flex: 0 1 auto;
+  min-width: 44px;
   min-height: 44px;
   border: 1px solid var(--hair);
   border-radius: 999px;
@@ -317,9 +321,22 @@ kbd {
 }
 @media (max-width: 720px) {
   .topbar {
+    flex-wrap: wrap;
     width: calc(100% - 16px);
     margin-top: 8px;
     padding: 6px 8px;
+    border-radius: 30px;
+  }
+  /* the sections drop to a row of their own, and scroll sideways rather than push the page wide */
+  .topnav {
+    flex: 1 1 100%;
+    order: 9;
+    min-width: 0;
+    margin: 0;
+    overflow-x: auto;
+  }
+  .topnav .navlink {
+    flex: none;
   }
   main {
     padding: 24px 12px 110px;
@@ -503,7 +520,7 @@ code {
 /* ---- the world workspace: two floating islands, the cards on the left and the editor beside them ---- */
 
 .ws {
-  grid-template-columns: minmax(300px, 24rem) minmax(0, 1fr);
+  grid-template-columns: minmax(300px, 26rem) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
   min-height: 0;
@@ -584,22 +601,23 @@ code {
 /* the four sections are one pill that fills the island's width */
 .tabs-line {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 2px;
   width: 100%;
   margin-bottom: 0;
+  border-radius: 28px;
 }
 .tabs-line button {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 0 8px;
-  font-size: 0.9rem;
+  padding: 0 6px;
+  font-size: 0.85rem;
   white-space: nowrap;
 }
 .tab-count {
   display: inline-block;
-  min-width: 1.6em;
-  padding: 0 0.4em;
+  min-width: 1.5em;
+  padding: 0 0.35em;
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent-deep);
