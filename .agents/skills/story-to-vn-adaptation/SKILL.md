@@ -139,6 +139,14 @@ Adapting is an incremental decision; you cannot anticipate upfront whether an as
 
 5. **Clothes, adornments, objects:** stored under `assets/clothes/`, `assets/adornments/`, `assets/objects/` as `<character>_<name>.<ext>` (objects: `<name>.<ext>`); promotion to `_shared/assets/` follows the same rule as other assets. Run `node .agents/skills/world-lint/driver.mjs assets` to check owners and links.
 
+6. **VN-Scoped Cards & Scene State Matrix (ADR-0038):**
+   - Narrative assets specific to a visual novel adaptation can be scoped to the adaptation itself under `worlds/<world>/vns/<slug>/cards/` (or via `/api/agent/worlds/<world>/vns/<vn>/cards`).
+   - Track scene-by-scene card and clothing states using the Scene State Matrix (`PUT /api/agent/worlds/<world>/vns/<vn>/scenes/<sceneId>/cards`):
+     - Character state: `base`, `naked`, `disguised`, `transformed`, `custom`.
+     - Clothing state: `intact`, `torn`, `altered`, `soiled`, `discarded`.
+     - Accessories and objects: equipped status and wearer/owner linkage.
+   - Run `node .agents/skills/world-lint/driver.mjs matrix` to validate scene assignments against adaptation cards.
+
 ## Step 7 — Scene list
 
 Before writing the script, list every scene: ID, route, location (background), characters present, purpose (the beat it delivers), choices or variable changes, CG if any, and approximate word count. The word counts should add up to the tier's budget. Every scene must do a job; a scene that delivers no beat, character development or choice gets merged or cut.

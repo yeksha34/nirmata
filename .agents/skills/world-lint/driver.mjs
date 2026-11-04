@@ -4,7 +4,7 @@
 // cards. This is the harness that reaches into it.
 //
 // Usage:  node .agents/skills/world-lint/driver.mjs <command> [args]
-// Commands: check | links | orphans | stats | tree [dir] | show <path> | grep <term> | context <arc.md> | stories
+// Commands: check | links | orphans | stats | tree [dir] | show <path> | grep <term> | context <arc.md> | stories | matrix [target]
 //
 // Multiple stories can live side by side under stories/<name>/; exactly one
 // is active (stories/.active_story.json) and every path/command above is
@@ -366,7 +366,7 @@ const cmds = {
     const part = (t, a) => (new RegExp(`<${a}>([\\s\\S]*?)</${a}>`).exec(t) || [])[1]?.trim() || '';
     for (const f of FILES) {
       const r = rel(f);
-      if (r.includes('_template') || !/(^|\/)(clothes|adornments|objects)\/[^/]+\.md$/.test(r) || r.endsWith('_card.template.md')) continue;
+      if (r.includes('_template') || !/(^|\/)(clothes|adornments|objects|attire|accessories)\/[^/]+\.md$/.test(r) || r.endsWith('_card.template.md')) continue;
       const text = readFileSync(f, 'utf8');
       const head = /<card[^>]*>/.exec(text)?.[0] || '';
       const kind = attr(head, 'kind'), name = attr(head, 'name');
@@ -388,7 +388,79 @@ const cmds = {
     console.log('\n== links ==');  code |= cmds.links();
     console.log('\n== orphans =='); code |= cmds.orphans();
     console.log('\n== asset cards =='); code |= cmds.assets();
+    console.log('\n== scene matrix =='); code |= cmds.matrix();
     return code;
+  },
+
+  // Validates chapter and VN scene state matrices, confirming card links and state designations.
+  matrix(target) {
+    const chaptersDir = join(ROOT, 'chapters');
+    if (!existsSync(chaptersDir)) {
+      console.log('  ok (no chapters directory)');
+      return 0;
+    }
+
+    const VALID_CHAR_STATES = new Set(['base', 'naked', 'disguised', 'transformed', 'custom']);
+    const VALID_CLOTH_STATES = new Set(['intact', 'torn', 'altered', 'soiled', 'discarded']);
+
+    let checked = 0;
+    let issues = 0;
+
+    let entries = [];
+    try {
+      entries = readdirSync(chaptersDir, { withFileTypes: true });
+    } catch {
+      return 0;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() && !entry.name.endsWith('.md')) continue;
+      const chapterName = entry.name.replace(/\.md$/, '');
+      if (target && chapterName !== target) continue;
+
+      const chapterCardsDir = join(chaptersDir, chapterName, 'cards');
+      if (!existsSync(chapterCardsDir)) continue;
+
+      checked++;
+      console.log(`Checking scene matrix for chapter: ${chapterName}`);
+      const scopedFiles = walk(chapterCardsDir);
+      console.log(`  Found ${scopedFiles.length} chapter-scoped card(s)`);
+
+      const indexFile = join(chapterCardsDir, 'index.md');
+      if (existsSync(indexFile)) {
+        for (const l of linksIn(indexFile)) {
+          const t = resolveTarget(indexFile, l.target);
+          if (t && !FILESET.has(t) && !isExternalFile(t)) {
+            console.log(`  BROKEN LINK in index.md: ${l.target}`);
+            issues++;
+          }
+        }
+      }
+
+      for (const f of scopedFiles) {
+        const text = readFileSync(f, 'utf8');
+        const stateMatch = text.match(/^\s*(?:-\s*)?(?:state|State):\s*["']?([a-zA-Z_-]+)["']?/m);
+        if (stateMatch) {
+          const st = stateMatch[1].toLowerCase();
+          const isCloth = /(?:attire|clothes)/i.test(f);
+          const isChar = /(?:character)/i.test(f);
+          if (isCloth && !VALID_CLOTH_STATES.has(st)) {
+            console.log(`  INVALID CLOTHING STATE in ${rel(f)}: '${st}' (expected intact, torn, altered, soiled, or discarded)`);
+            issues++;
+          } else if (isChar && !VALID_CHAR_STATES.has(st)) {
+            console.log(`  INVALID CHARACTER STATE in ${rel(f)}: '${st}' (expected base, naked, disguised, transformed, or custom)`);
+            issues++;
+          }
+        }
+      }
+    }
+
+    if (checked === 0) {
+      console.log('  ok (no chapter cards to check)');
+    } else {
+      console.log(`  ${checked} chapter(s) verified, ${issues} issue(s)`);
+    }
+    return issues ? 1 : 0;
   },
 
   // context <arc.md> [--depth N] [--max-words N] [-o out.txt]

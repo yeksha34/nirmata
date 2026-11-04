@@ -25,14 +25,21 @@ export interface CardRef {
 
 export type TopRoute = "worlds" | "vn" | "dataset";
 
+export type ChapterView = "overview" | "cards" | "scenes" | "matrix";
+export type VnView = "overview" | "slides" | "assets" | "matrix";
+
 export interface NavState {
   route: TopRoute;
   world?: string;
   card?: string;
+  chapter?: string;
+  chapterView?: ChapterView;
+  sceneId?: string;
   vnWorld?: string;
   vnSlug?: string;
   vnAssetType?: AssetKind;
   vnAssetName?: string;
+  vnView?: VnView;
 }
 
 function parseLocation(): NavState {
@@ -42,6 +49,14 @@ function parseLocation(): NavState {
     const parts = pathname.slice(1).split("/").filter(Boolean);
     const vnWorld = parts[1] ? decodeURIComponent(parts[1]) : undefined;
     const vnSlug = parts[2] ? decodeURIComponent(parts[2]) : undefined;
+    if (parts[3] === "matrix") {
+      return {
+        route: "vn",
+        vnWorld,
+        vnSlug,
+        vnView: "matrix",
+      };
+    }
     const rawType = parts[3]?.toLowerCase();
     const vnAssetType =
       rawType === "sprite" || rawType === "cg" || rawType === "bg" ? rawType : undefined;
@@ -58,6 +73,22 @@ function parseLocation(): NavState {
 
   const parts = pathname.slice(1).split("/").filter(Boolean);
   const world = parts[0] === "worlds" && parts[1] ? decodeURIComponent(parts[1]) : undefined;
+
+  if (world && parts[2] === "chapters" && parts[3]) {
+    const chapter = decodeURIComponent(parts[3]);
+    const sub = parts[4]?.toLowerCase();
+    const chapterView: ChapterView =
+      sub === "matrix" || sub === "cards" || sub === "scenes" ? sub : "overview";
+    const sceneId = sub === "scenes" && parts[5] ? decodeURIComponent(parts[5]) : undefined;
+    return {
+      route: "worlds",
+      world,
+      chapter,
+      chapterView,
+      sceneId,
+    };
+  }
+
   return {
     route: "worlds",
     world,
@@ -70,6 +101,9 @@ export interface Nav {
   world: string | undefined;
   /** The card chosen on that page. */
   card: string | undefined;
+  chapter?: string;
+  chapterView?: ChapterView;
+  sceneId?: string;
   open: (world: string, card?: string) => void;
   home: () => void;
   selectCard: (path: string | undefined) => void;
@@ -82,7 +116,16 @@ export interface Nav {
   vnSlug?: string;
   vnAssetType?: AssetKind;
   vnAssetName?: string;
-  toVn: (world?: string, slug?: string, type?: AssetKind, name?: string) => void;
+  vnView?: VnView;
+  toVn: (
+    world?: string,
+    slug?: string,
+    type?: AssetKind,
+    name?: string,
+    view?: VnView,
+  ) => void;
+  toVnMatrix: (world: string, slug: string) => void;
+  toChapter: (world: string, chapter: string, view?: ChapterView, sceneId?: string) => void;
   /** The dataset gallery: every archived render of a visual novel, or of one asset in it. */
   toDataset: (world?: string, slug?: string, type?: AssetKind, name?: string) => void;
   toWorlds: (world?: string, card?: string) => void;
@@ -101,11 +144,19 @@ export function NavProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toVn = useCallback(
-    (world?: string, slug?: string, type?: AssetKind, name?: string) => {
+    (
+      world?: string,
+      slug?: string,
+      type?: AssetKind,
+      name?: string,
+      view?: VnView,
+    ) => {
       let path = "/vn";
       if (world && slug) {
         path += `/${encodeURIComponent(world)}/${encodeURIComponent(slug)}`;
-        if (type && name) {
+        if (view === "matrix") {
+          path += "/matrix";
+        } else if (type && name) {
           path += `/${type}/${encodeURIComponent(name)}`;
         }
       }
@@ -116,6 +167,39 @@ export function NavProvider({ children }: { children: ReactNode }) {
         vnSlug: slug,
         vnAssetType: type,
         vnAssetName: name,
+        vnView: view,
+      });
+    },
+    [],
+  );
+
+  const toVnMatrix = useCallback((world: string, slug: string) => {
+    const path = `/vn/${encodeURIComponent(world)}/${encodeURIComponent(slug)}/matrix`;
+    history.pushState(null, "", path);
+    setPlace({
+      route: "vn",
+      vnWorld: world,
+      vnSlug: slug,
+      vnView: "matrix",
+    });
+  }, []);
+
+  const toChapter = useCallback(
+    (world: string, chapter: string, view?: ChapterView, sceneId?: string) => {
+      let path = `/worlds/${encodeURIComponent(world)}/chapters/${encodeURIComponent(chapter)}`;
+      if (view && view !== "overview") {
+        path += `/${view}`;
+        if (view === "scenes" && sceneId) {
+          path += `/${encodeURIComponent(sceneId)}`;
+        }
+      }
+      history.pushState(null, "", path);
+      setPlace({
+        route: "worlds",
+        world,
+        chapter,
+        chapterView: view || "overview",
+        sceneId,
       });
     },
     [],
@@ -155,6 +239,9 @@ export function NavProvider({ children }: { children: ReactNode }) {
       route: place.route,
       world: place.world,
       card: place.card,
+      chapter: place.chapter,
+      chapterView: place.chapterView,
+      sceneId: place.sceneId,
       open: (world, card) => {
         toWorlds(world, card);
       },
@@ -175,11 +262,14 @@ export function NavProvider({ children }: { children: ReactNode }) {
       vnSlug: place.vnSlug,
       vnAssetType: place.vnAssetType,
       vnAssetName: place.vnAssetName,
+      vnView: place.vnView,
       toVn,
+      toVnMatrix,
+      toChapter,
       toDataset,
       toWorlds,
     }),
-    [place, cards, toVn, toDataset, toWorlds],
+    [place, cards, toVn, toVnMatrix, toChapter, toDataset, toWorlds],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

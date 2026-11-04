@@ -18,12 +18,19 @@ export type AdornmentType = (typeof ADORNMENT_TYPES)[number];
 export const OBJECT_TYPES = ["held", "furniture", "tool", "mount", "fixture"] as const;
 export type ObjectType = (typeof OBJECT_TYPES)[number];
 
+export const CLOTHES_STATES = ["intact", "torn", "altered", "soiled", "discarded"] as const;
+export type ClothesState = (typeof CLOTHES_STATES)[number];
+
+export const CHARACTER_STATES = ["base", "naked", "disguised", "transformed", "custom"] as const;
+export type CharacterState = (typeof CHARACTER_STATES)[number];
+
 export interface ClothesSpec {
   name: string;
   owner?: string;
   slot?: string;
   coverage?: string;
   material?: string;
+  state?: ClothesState | string;
   prompt?: string;
 }
 
@@ -37,6 +44,7 @@ export interface AdornmentSpec {
   attachment?: string;
   exposure?: "covering" | "non-covering";
   scope?: "character" | "species" | "family" | "shared";
+  state?: string;
   prompt?: string;
 }
 
@@ -48,6 +56,14 @@ export interface ObjectSpec {
   interaction: string;
   whyCustom: string;
   prompt?: string;
+}
+
+export interface SceneCardState {
+  sceneId: string;
+  cardId: string;
+  characterState?: CharacterState | string;
+  clothingState?: ClothesState | string;
+  role?: string;
 }
 
 export interface VnAssetLinkIssue {

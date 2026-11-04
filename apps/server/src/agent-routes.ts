@@ -26,6 +26,8 @@ import {
   WritingStore,
   parseWritingPath,
   writingKind,
+  SceneStateError,
+  SceneStateStore,
 } from "@nirmata/adaptation";
 import { compileVn, VnManifestSchema, VnSlideDeckSchema } from "@nirmata/core";
 import type { Db } from "@nirmata/db";
@@ -82,10 +84,18 @@ const CardBody = z.object({
   keywords: z.array(z.string().trim().min(1).max(80)).max(60).optional(),
   always: z.boolean().optional(),
   role: z.string().max(80).optional(),
+  state: z.string().max(80).optional(),
+  stateOf: z.string().max(100).optional(),
   scope: z.enum(["chapter", "story", "both"]).optional(),
   severity: z.enum(["must", "should"]).optional(),
   fields: z.record(z.string().max(200_000)).optional(),
   body: z.string().max(400_000).optional(),
+});
+const SceneCardStateBody = z.object({
+  cardId: z.string().uuid(),
+  characterState: z.string().max(80).optional(),
+  clothingState: z.string().max(80).optional(),
+  role: z.string().max(400).optional(),
 });
 const SkillBody = z.object({
   title: z.string().trim().min(1).max(300),
@@ -116,7 +126,8 @@ async function asHttp<T>(work: () => Promise<T>): Promise<T> {
       e instanceof VnError ||
       e instanceof WritingError ||
       e instanceof CardError ||
-      e instanceof GuideError
+      e instanceof GuideError ||
+      e instanceof SceneStateError
     ) {
       throw new HttpError(400, "bad_request", e.message);
     }
@@ -202,6 +213,7 @@ export function registerAgentRoutes(
   const worlds = new WorldStore(db);
   const cards = new CardStore(db);
   const guides = new GuideStore(db);
+  const scenes = new SceneStateStore(db);
 
   // The author publishes the draft cards as the world's next version, from the world's page. A
   // visual novel is pinned to the latest published version, so one must exist before it is made.
@@ -562,6 +574,258 @@ export function registerAgentRoutes(
     mayWrite(grant, kind);
     const removed = await asHttp(() => cards.remove(grant.userId, slug, `${kind}.${part}`));
     if (!removed) throw new HttpError(404, "not_found", "There is no such card.");
+    return c.json({ ok: true });
+  });
+
+  // ---- chapter- and VN-scoped cards & scene state matrix (ADR-0038) -------------------------------
+
+  /** Chapter-scoped cards with hierarchical fallback to global cards. */
+  app.get("/api/agent/worlds/:name/chapters/:chapter/cards", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.read");
+    const chapterSlug = c.req.param("chapter");
+    const kind = c.req.query("kind");
+    const hierarchical = c.req.query("hierarchical") !== "false";
+    return c.json({
+      cards: await asHttp(() => cards.list(grant.userId, slug, { kind, chapterSlug, hierarchical })),
+    });
+  });
+
+  app.get("/api/agent/worlds/:name/chapters/:chapter/cards/:id", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.read");
+    const chapterSlug = c.req.param("chapter");
+    const { kind, slug: part } = cardId(c);
+    const found = await asHttp(() => cards.get(grant.userId, slug, `${kind}.${part}`, { chapterSlug }));
+    if (!found) throw new HttpError(404, "not_found", "There is no such card.");
+    return c.json(found);
+  });
+
+  app.put("/api/agent/worlds/:name/chapters/:chapter/cards/:id", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.write");
+    const chapterSlug = c.req.param("chapter");
+    const { kind, slug: part } = cardId(c);
+    mayWrite(grant, kind);
+    const body = CardBody.parse(await c.req.json().catch(() => ({})));
+    const done = await asHttp(() =>
+      cards.save(grant.userId, slug, { ...body, kind, slug: part, chapterSlug }),
+    );
+    return c.json(
+      { ok: true, id: `${kind}.${part}`, chapter: chapterSlug, created: done.created },
+      done.created ? 201 : 200,
+    );
+  });
+
+  /** VN-scoped cards with hierarchical fallback to global cards. */
+  app.get("/api/agent/worlds/:name/vns/:vn/cards", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.read");
+    const vnSlug = c.req.param("vn");
+    const kind = c.req.query("kind");
+    const hierarchical = c.req.query("hierarchical") !== "false";
+    return c.json({
+      cards: await asHttp(() => cards.list(grant.userId, slug, { kind, vnSlug, hierarchical })),
+    });
+  });
+
+  app.get("/api/agent/worlds/:name/vns/:vn/cards/:id", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.read");
+    const vnSlug = c.req.param("vn");
+    const { kind, slug: part } = cardId(c);
+    const found = await asHttp(() => cards.get(grant.userId, slug, `${kind}.${part}`, { vnSlug }));
+    if (!found) throw new HttpError(404, "not_found", "There is no such card.");
+    return c.json(found);
+  });
+
+  app.put("/api/agent/worlds/:name/vns/:vn/cards/:id", async (c) => {
+    const { grant, slug } = await forWorld(c, "import.write");
+    const vnSlug = c.req.param("vn");
+    const { kind, slug: part } = cardId(c);
+    mayWrite(grant, kind);
+    const body = CardBody.parse(await c.req.json().catch(() => ({})));
+    const done = await asHttp(() =>
+      cards.save(grant.userId, slug, { ...body, kind, slug: part, vnSlug }),
+    );
+    return c.json(
+      { ok: true, id: `${kind}.${part}`, vn: vnSlug, created: done.created },
+      done.created ? 201 : 200,
+    );
+  });
+
+  /** Scene State Matrix for Chapters. */
+  app.get("/api/agent/worlds/:name/chapters/:chapter/scenes/matrix", async (c) => {
+    const { grant, slug } = await forWorld(c, READ);
+    const chapterSlug = c.req.param("chapter");
+    return c.json({
+      matrix: await asHttp(() => scenes.getMatrix(grant.userId, slug, { chapterSlug })),
+    });
+  });
+
+  app.put("/api/agent/worlds/:name/chapters/:chapter/scenes/:sceneId/cards", async (c) => {
+    const { grant, slug } = await forWorld(c, WRITE);
+    const chapterSlug = c.req.param("chapter");
+    const sceneId = c.req.param("sceneId");
+    const body = SceneCardStateBody.parse(await c.req.json().catch(() => ({})));
+    const id = await asHttp(() =>
+      scenes.setCardState(grant.userId, slug, {
+        chapterSlug,
+        sceneId,
+        cardId: body.cardId,
+        characterState: body.characterState,
+        clothingState: body.clothingState,
+        role: body.role,
+      }),
+    );
+    return c.json({ ok: true, id });
+  });
+
+  app.delete("/api/agent/worlds/:name/chapters/:chapter/scenes/:sceneId/cards/:cardId", async (c) => {
+    const { grant, slug } = await forWorld(c, WRITE);
+    const chapterSlug = c.req.param("chapter");
+    const sceneId = c.req.param("sceneId");
+    const cardId = c.req.param("cardId");
+    await asHttp(() =>
+      scenes.removeCardState(grant.userId, slug, { chapterSlug, sceneId, cardId }),
+    );
+    return c.json({ ok: true });
+  });
+
+  /** Scene State Matrix for Visual Novels. */
+  app.get("/api/agent/worlds/:name/vns/:vn/scenes/matrix", async (c) => {
+    const { grant, slug } = await forWorld(c, READ);
+    const vnSlug = c.req.param("vn");
+    return c.json({
+      matrix: await asHttp(() => scenes.getMatrix(grant.userId, slug, { vnSlug })),
+    });
+  });
+
+  app.put("/api/agent/worlds/:name/vns/:vn/scenes/:sceneId/cards", async (c) => {
+    const { grant, slug } = await forWorld(c, WRITE);
+    const vnSlug = c.req.param("vn");
+    const sceneId = c.req.param("sceneId");
+    const body = SceneCardStateBody.parse(await c.req.json().catch(() => ({})));
+    const id = await asHttp(() =>
+      scenes.setCardState(grant.userId, slug, {
+        vnSlug,
+        sceneId,
+        cardId: body.cardId,
+        characterState: body.characterState,
+        clothingState: body.clothingState,
+        role: body.role,
+      }),
+    );
+    return c.json({ ok: true, id });
+  });
+
+  app.delete("/api/agent/worlds/:name/vns/:vn/scenes/:sceneId/cards/:cardId", async (c) => {
+    const { grant, slug } = await forWorld(c, WRITE);
+    const vnSlug = c.req.param("vn");
+    const sceneId = c.req.param("sceneId");
+    const cardId = c.req.param("cardId");
+    await asHttp(() =>
+      scenes.removeCardState(grant.userId, slug, { vnSlug, sceneId, cardId }),
+    );
+    return c.json({ ok: true });
+  });
+
+  // ---- Author session endpoints for UI (ADR-0038) ------------------------------------------------
+
+  app.get("/api/worlds/:name/chapters/:chapter/cards", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const chapterSlug = c.req.param("chapter");
+    const kind = c.req.query("kind");
+    const hierarchical = c.req.query("hierarchical") !== "false";
+    return c.json({
+      cards: await asHttp(() => cards.list(user, slug, { kind, chapterSlug, hierarchical })),
+    });
+  });
+
+  app.get("/api/worlds/:name/chapters/:chapter/scenes/matrix", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const chapterSlug = c.req.param("chapter");
+    return c.json({
+      matrix: await asHttp(() => scenes.getMatrix(user, slug, { chapterSlug })),
+    });
+  });
+
+  app.put("/api/worlds/:name/chapters/:chapter/scenes/:sceneId/cards", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const chapterSlug = c.req.param("chapter");
+    const sceneId = c.req.param("sceneId");
+    const body = SceneCardStateBody.parse(await c.req.json().catch(() => ({})));
+    const id = await asHttp(() =>
+      scenes.setCardState(user, slug, {
+        chapterSlug,
+        sceneId,
+        cardId: body.cardId,
+        characterState: body.characterState,
+        clothingState: body.clothingState,
+        role: body.role,
+      }),
+    );
+    return c.json({ ok: true, id });
+  });
+
+  app.delete("/api/worlds/:name/chapters/:chapter/scenes/:sceneId/cards/:cardId", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const chapterSlug = c.req.param("chapter");
+    const sceneId = c.req.param("sceneId");
+    const cardId = c.req.param("cardId");
+    await asHttp(() =>
+      scenes.removeCardState(user, slug, { chapterSlug, sceneId, cardId }),
+    );
+    return c.json({ ok: true });
+  });
+
+  app.get("/api/worlds/:name/vns/:vn/cards", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const vnSlug = c.req.param("vn");
+    const kind = c.req.query("kind");
+    const hierarchical = c.req.query("hierarchical") !== "false";
+    return c.json({
+      cards: await asHttp(() => cards.list(user, slug, { kind, vnSlug, hierarchical })),
+    });
+  });
+
+  app.get("/api/worlds/:name/vns/:vn/scenes/matrix", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const vnSlug = c.req.param("vn");
+    return c.json({
+      matrix: await asHttp(() => scenes.getMatrix(user, slug, { vnSlug })),
+    });
+  });
+
+  app.put("/api/worlds/:name/vns/:vn/scenes/:sceneId/cards", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const vnSlug = c.req.param("vn");
+    const sceneId = c.req.param("sceneId");
+    const body = SceneCardStateBody.parse(await c.req.json().catch(() => ({})));
+    const id = await asHttp(() =>
+      scenes.setCardState(user, slug, {
+        vnSlug,
+        sceneId,
+        cardId: body.cardId,
+        characterState: body.characterState,
+        clothingState: body.clothingState,
+        role: body.role,
+      }),
+    );
+    return c.json({ ok: true, id });
+  });
+
+  app.delete("/api/worlds/:name/vns/:vn/scenes/:sceneId/cards/:cardId", async (c) => {
+    const user = author(c);
+    const slug = world(c);
+    const vnSlug = c.req.param("vn");
+    const sceneId = c.req.param("sceneId");
+    const cardId = c.req.param("cardId");
+    await asHttp(() =>
+      scenes.removeCardState(user, slug, { vnSlug, sceneId, cardId }),
+    );
     return c.json({ ok: true });
   });
 

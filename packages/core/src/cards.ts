@@ -69,7 +69,19 @@ export function parseCard(path: string, text: string): ParseCardResult {
 // markdown, left exactly as written (it is not XML, so `<` and `&` in it need no escaping).
 
 /** Fields that are always text, whatever they look like (a name may be "1984"). */
-const TEXT_FIELDS = new Set(["id", "kind", "name", "role", "scope", "severity"]);
+const TEXT_FIELDS = new Set([
+  "id",
+  "kind",
+  "name",
+  "role",
+  "scope",
+  "severity",
+  "chapter",
+  "vn",
+  "state",
+  "stateOf",
+  "state-of",
+]);
 
 const ATTRIBUTE = /([A-Za-z_][\w.:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/y;
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };

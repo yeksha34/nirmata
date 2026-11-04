@@ -64,6 +64,12 @@ export const CardFrontmatter = z
     /** Rules only: `must` is never dropped from context. */
     severity: z.enum(["must", "should"]).default("should"),
     role: z.string().optional(),
+    /** Scoped cards: chapter or visual novel this card belongs to. */
+    chapter: z.string().optional(),
+    vn: z.string().optional(),
+    /** State tracking: e.g. intact, torn, naked, disguised. */
+    state: z.string().optional(),
+    stateOf: z.string().optional(),
     /** The card's named parts (appearance, voice, wants ...), in the order written; text is markdown. */
     fields: z
       .record(

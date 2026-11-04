@@ -2922,3 +2922,209 @@ label.choice-opt:has(input:focus-visible) {
 .import-made button[type="button"]:not(.primary) {
   justify-self: start;
 }
+
+/* Breadcrumbs */
+.breadcrumbs {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.85rem;
+}
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.breadcrumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.breadcrumbs li.current {
+  font-weight: 600;
+  color: var(--ink);
+}
+.crumb-sep {
+  opacity: 0.4;
+  user-select: none;
+}
+.crumb-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.crumb-link:hover {
+  color: var(--accent-hover, #6366f1);
+}
+
+/* Scene Matrix & Scoped Cards */
+.scene-matrix-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+  background: var(--surface-raised, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+}
+.matrix-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.matrix-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.matrix-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.add-scene-form {
+  display: flex;
+  gap: 0.4rem;
+}
+.matrix-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+.matrix-table th,
+.matrix-table td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.matrix-table thead th {
+  background: var(--surface-header, rgba(255, 255, 255, 0.05));
+  font-weight: 600;
+  white-space: nowrap;
+}
+.matrix-table tbody tr:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.02));
+}
+.scene-id-cell {
+  font-family: ui-monospace, "Cascadia Mono", monospace;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cell-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.state-badge-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: var(--surface, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--line);
+  font-size: 0.8rem;
+}
+.state-badge-item select {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  background: var(--surface-raised, #222);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.state-badge-item .remove-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 0.2rem;
+  font-weight: bold;
+}
+.state-badge-item .remove-btn:hover {
+  color: var(--danger, #ef4444);
+}
+.char-badge {
+  border-left: 3px solid #3b82f6;
+}
+.attire-badge {
+  border-left: 3px solid #ec4899;
+}
+.acc-badge {
+  border-left: 3px solid #f59e0b;
+}
+.obj-badge {
+  border-left: 3px solid #10b981;
+}
+.state-of {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* Chapter Cards Grid */
+.chapter-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.8rem;
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+}
+.chapter-card-item {
+  background: var(--surface, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.8rem;
+}
+.chapter-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.chapter-card-summary {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Modal for Assignment */
+.matrix-assign-modal {
+  background: var(--surface-modal, #1e1e24);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 450px;
+  margin: auto;
+}
+.matrix-assign-modal .form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin: 1rem 0;
+}
+.matrix-assign-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { api } from "../api";
 import { useAct } from "../app-context";
+import { Breadcrumbs } from "../breadcrumbs";
 import { bilingual, T } from "../i18n";
 import { isActive, type JobsState, jobForAsset, jobsActions } from "../jobs/store";
 import { useNav } from "../nav";
@@ -14,6 +15,7 @@ import type {
   VnAssetItem,
   VnWithAssetsSummary,
 } from "../types";
+import { SceneMatrixView } from "./SceneMatrix";
 
 type Choice = "better" | "keep" | "worse";
 interface SavedPrompt {
@@ -675,10 +677,36 @@ export function VnStudio() {
 
   return (
     <section className="vs">
+      <Breadcrumbs
+        vnTitle={
+          allVns.find((v) => v.worldName === activeWorld && v.slug === activeSlug)?.title ||
+          activeSlug
+        }
+      />
       <header className="vs-top">
-        <h1>
-          <T>Asset Studio</T>
-        </h1>
+        <hgroup className="vs-title-group">
+          <h1>
+            <T>Asset Studio</T>
+          </h1>
+          {activeWorld && activeSlug && (
+            <nav className="tabs-line vs-tabs" aria-label="Visual novel views">
+              <button
+                type="button"
+                aria-current={nav.vnView !== "matrix" ? "true" : undefined}
+                onClick={() => nav.toVn(activeWorld, activeSlug)}
+              >
+                <T>Assets</T>
+              </button>
+              <button
+                type="button"
+                aria-current={nav.vnView === "matrix" ? "true" : undefined}
+                onClick={() => nav.toVnMatrix(activeWorld, activeSlug)}
+              >
+                <T>Scene Matrix</T>
+              </button>
+            </nav>
+          )}
+        </hgroup>
         <label className="vs-pick">
           <small>
             <T>Visual novel</T>
@@ -705,7 +733,16 @@ export function VnStudio() {
         </p>
       )}
 
-      <section className="vs-layout">
+      {nav.vnView === "matrix" && activeWorld && activeSlug ? (
+        <SceneMatrixView
+          scope={{ type: "vn", world: activeWorld, scopeSlug: activeSlug }}
+          title={
+            allVns.find((v) => v.worldName === activeWorld && v.slug === activeSlug)?.title ||
+            activeSlug
+          }
+        />
+      ) : (
+        <section className="vs-layout">
         {/* ---- asset list ---- */}
         <aside className="vs-list vs-card">
           <form
@@ -1230,6 +1267,7 @@ export function VnStudio() {
           )}
         </main>
       </section>
+      )}
     </section>
   );
 }
