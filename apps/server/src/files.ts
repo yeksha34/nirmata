@@ -279,6 +279,12 @@ export interface DbSources {
   plan?: PlanSource | undefined;
   writings?: WritingSource | undefined;
   world?: WorldSource | undefined;
+  prep?: PrepSource | undefined;
+}
+
+/** The outfits and adornments a world's character preps list, with the tags that describe them. */
+export interface PrepSource {
+  outfits(world: string): Promise<Array<{ kind: string; name: string; tags: string }> | undefined>;
 }
 
 /** One planned asset, whether it came from a manifest or from the database. */
@@ -330,6 +336,7 @@ export class WorldFiles implements SourceBackend {
     this.plan = sources.plan;
     this.writingSource = sources.writings;
     this.worldSource = sources.world;
+    this.prepSource = sources.prep;
   }
 
   private readonly workflows: WorkflowSource | undefined;
@@ -337,6 +344,7 @@ export class WorldFiles implements SourceBackend {
   private readonly plan: PlanSource | undefined;
   private readonly writingSource: WritingSource | undefined;
   private readonly worldSource: WorldSource | undefined;
+  private readonly prepSource: PrepSource | undefined;
 
   /** The world's name in the database, when cards may live there. */
   private async loreSlug(anyStore = false): Promise<string | undefined> {
@@ -925,7 +933,29 @@ export class WorldFiles implements SourceBackend {
   /** What the world's card for a clothes, adornment or object asset says (empty when it has none). */
   async linkedDetails(kind: LinkedKind, name: string): Promise<LinkedDetails> {
     const text = await readIfThere(inside(this.root, `${assetDir(kind)}/${sanitizeSlug(name)}.md`));
-    return text ? parseLinkedCard(text) : {};
+    const details: LinkedDetails = text ? parseLinkedCard(text) : await this.linkedCardInDb(kind, name);
+    if (details.prompt) return details;
+    // an owned asset is `<owner>_<item>`: the prep that lists the item says how it looks
+    const item = kind !== "object" && name.includes("_") ? name.slice(name.indexOf("_") + 1) : name;
+    const outfit = (await this.prepOutfits()).find((o) => o.kind === kind && o.name === item);
+    return outfit?.tags ? { ...details, prompt: outfit.tags } : details;
+  }
+
+  /** The card of a clothes or adornment asset: its id ends with the item (`adornment.fellatia-black-pearl-collar`). */
+  private async linkedCardInDb(kind: LinkedKind, name: string): Promise<LinkedDetails> {
+    const item = kind !== "object" && name.includes("_") ? name.slice(name.indexOf("_") + 1) : name;
+    const dash = item.replace(/_/g, "-");
+    const cards = await this.cardFiles().catch(() => []);
+    const hits = cards.filter((c) => {
+      const id = /<card id="([^"]+)"/.exec(c.text)?.[1] ?? "";
+      return id.startsWith(`${kind}.`) && (id.endsWith(`-${dash}`) || id === `${kind}.${dash}`);
+    });
+    return hits.length === 1 && hits[0] ? parseLinkedCard(hits[0].text) : {};
+  }
+
+  private async prepOutfits(): Promise<Array<{ kind: string; name: string; tags: string }>> {
+    const world = this.prepSource ? await this.loreSlug(true) : undefined;
+    return (world ? await this.prepSource?.outfits(world) : undefined) ?? [];
   }
 
   /** The author's own image of such an asset (the card's `reference` part), if the card names one that exists. */

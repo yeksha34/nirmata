@@ -6,6 +6,7 @@ import { serve } from "@hono/node-server";
 import { GoTrue, SessionStore } from "@nirmata/auth";
 import {
   PlanStore,
+  PrepStore,
   PlanViews,
   TemplateStore,
   VnStore,
@@ -99,6 +100,14 @@ async function main(): Promise<void> {
           plan: new PlanViews(db, new PlanStore(db)).source(() => hostUser()),
           writings: new WritingStore(db).source(() => hostUser()),
           world: new WorldStore(db).source(() => hostUser()),
+          prep: {
+            outfits: async (world: string) => {
+              const user = hostUser();
+              if (!user) return undefined;
+              const stored = await new PrepStore(db).list(user, world);
+              return [...stored.values()].flatMap((p) => p.outfits);
+            },
+          },
         }
       : undefined,
     create: db ? dbWorldCreator(db, () => hostUser()) : undefined,
