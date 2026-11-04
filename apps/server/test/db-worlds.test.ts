@@ -43,6 +43,13 @@ describe("worlds that live in the database", () => {
     expect(await library.open("coast").exists()).toBe(true);
   });
 
+  it("are listed when the folder of worlds does not exist at all", async () => {
+    const gone = join(empty(), "worlds-deleted");
+    const all = await new Library(gone, { db: { world } }).list();
+    expect(all.map((w) => w.name)).toEqual(["coast"]);
+    expect(await new Library(gone).list()).toEqual([]);
+  });
+
   it("are made in the database, and no folder is made", async () => {
     const root = empty();
     const library = new Library(root, {
