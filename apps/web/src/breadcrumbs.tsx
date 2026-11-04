@@ -14,7 +14,7 @@ export interface Sibling {
 }
 
 /** Previous and Next at the same depth (the design's "siblings"): a dimmed button when there is no neighbour. */
-export function Siblings({ prev, next }: { prev?: Sibling; next?: Sibling }) {
+export function Siblings({ prev, next, label }: { prev?: Sibling; next?: Sibling; label?: string }) {
   if (!prev && !next) return null;
   const chevron = (d: string) => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -22,7 +22,7 @@ export function Siblings({ prev, next }: { prev?: Sibling; next?: Sibling }) {
     </svg>
   );
   return (
-    <menu className="sibs" aria-label="Neighbours">
+    <menu className="sibs" aria-label={label}>
       <button type="button" className={prev ? undefined : "off"} disabled={!prev} onClick={prev?.onClick} title={prev?.label}>
         {chevron("M15 6l-6 6 6 6")}
         <T>Previous</T>
@@ -158,7 +158,7 @@ export function Breadcrumbs({
           </li>
         ))}
       </ol>
-      <Siblings prev={prev} next={next} />
+      <Siblings label="Neighbours" prev={prev} next={next} />
     </nav>
   );
 }

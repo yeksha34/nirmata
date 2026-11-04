@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useAct } from "../app-context";
 import { bilingual, T } from "../i18n";
+import { usePaged } from "../pager";
+import { useDebounced } from "../use-debounced";
 import type { SceneCardAssignment, SceneMatrixRow } from "../types";
 
 export interface ScopeProps {
@@ -81,9 +83,10 @@ export function SceneMatrixView({
     );
   }, [matrix, suggestedScenes]);
 
+  const settledQuery = useDebounced(filterQuery);
   const filteredSceneIds = useMemo(() => {
-    if (!filterQuery.trim()) return allSceneIds;
-    const q = filterQuery.toLowerCase();
+    if (!settledQuery.trim()) return allSceneIds;
+    const q = settledQuery.toLowerCase();
     return allSceneIds.filter((sid) => {
       if (sid.toLowerCase().includes(q)) return true;
       const row = matrix.find((r) => r.sceneId === sid);
@@ -96,7 +99,8 @@ export function SceneMatrixView({
           a.role?.toLowerCase().includes(q),
       );
     });
-  }, [allSceneIds, filterQuery, matrix]);
+  }, [allSceneIds, settledQuery, matrix]);
+  const pagedScenes = usePaged(filteredSceneIds, 10, settledQuery);
 
   const handleSaveState = async (
     sceneId: string,
@@ -235,7 +239,7 @@ export function SceneMatrixView({
               </tr>
             </thead>
             <tbody>
-              {filteredSceneIds.map((sid) => {
+              {pagedScenes.items.map((sid) => {
                 const row = matrix.find((r) => r.sceneId === sid);
                 const assignedCards: SceneCardAssignment[] = row?.cards ?? [];
 
@@ -402,6 +406,7 @@ export function SceneMatrixView({
               })}
             </tbody>
           </table>
+          {pagedScenes.pager}
         </figure>
       )}
 
