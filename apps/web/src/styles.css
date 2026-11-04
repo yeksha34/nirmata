@@ -2965,6 +2965,14 @@ label.choice-opt:has(input:focus-visible) {
 .sibs > button:hover {
   background: var(--glass-strong, rgba(255, 255, 255, 0.1));
 }
+.sibs .lb {
+  display: inline-block;
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
 .sibs > button.off {
   opacity: 0.35;
   pointer-events: none;
@@ -2982,6 +2990,20 @@ label.choice-opt:has(input:focus-visible) {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+}
+.breadcrumbs ol {
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: var(--glass, transparent);
+  border: 1px solid var(--glass-line, var(--line));
+}
+.breadcrumbs li {
+  padding: 0 8px;
+}
+.breadcrumbs li + li::before {
+  content: "›";
+  margin-right: 0.4rem;
+  opacity: 0.45;
 }
 .breadcrumbs li.current {
   font-weight: 600;
