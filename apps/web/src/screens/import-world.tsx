@@ -72,9 +72,12 @@ function Copyable({
 export function ImportWorld({
   onClose,
   onOpen,
+  onMade,
 }: {
   onClose: () => void;
   onOpen: (name: string) => void;
+  /** The world now exists: the list of worlds behind this dialog should be read again. */
+  onMade?: () => void;
 }) {
   const { act, busy } = useAct();
   const [title, setTitle] = useState("");
@@ -91,7 +94,10 @@ export function ImportWorld({
     const out = await act(() =>
       api.importWorld({ title: title.trim(), tagline: tagline.trim(), settingsKinds: kinds, days }),
     );
-    if (out) setMade(out);
+    if (out) {
+      setMade(out);
+      onMade?.();
+    }
   };
 
   if (made) {
