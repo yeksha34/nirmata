@@ -11,6 +11,8 @@ export interface CardRow {
   meta: Record<string, unknown>;
   parts: Array<{ key: string; body: string }>;
   secrets: string[];
+  chapterSlug?: string | undefined;
+  vnSlug?: string | undefined;
 }
 
 export const SLUG = /^[a-z0-9][a-z0-9-]{1,62}$/;
@@ -28,6 +30,14 @@ export function cardRow(card: Card): CardRow {
     .filter(([key, text]) => key !== SECRETS && text.trim())
     .map(([key, text]) => ({ key, body: text.trim() }));
   const secret = (fields?.[SECRETS] ?? "").trim();
+  const chapterSlug =
+    typeof rest.chapter === "string" && rest.chapter.trim()
+      ? rest.chapter.trim()
+      : card.path.match(/^chapters\/([^/]+)\/cards\//)?.[1];
+  const vnSlug =
+    typeof rest.vn === "string" && rest.vn.trim()
+      ? rest.vn.trim()
+      : card.path.match(/^vns\/([^/]+)\/cards\//)?.[1];
   return {
     kind,
     slug: card.fm.id.replace(".", "-"),
@@ -36,6 +46,8 @@ export function cardRow(card: Card): CardRow {
     meta: { ...rest, path: card.path },
     parts,
     secrets: secret ? [secret] : [],
+    chapterSlug,
+    vnSlug,
   };
 }
 

@@ -92,7 +92,7 @@ const CardBody = z.object({
   body: z.string().max(400_000).optional(),
 });
 const SceneCardStateBody = z.object({
-  cardId: z.string().uuid(),
+  cardId: z.string().trim().min(1),
   characterState: z.string().max(80).optional(),
   clothingState: z.string().max(80).optional(),
   role: z.string().max(400).optional(),

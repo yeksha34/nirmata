@@ -30,6 +30,8 @@ export interface CardSave {
 /** A card as the agent reads it. */
 export interface CardView {
   id: string;
+  cardId?: string | undefined;
+  slug?: string | undefined;
   kind: string;
   name: string;
   summary: string;
@@ -46,6 +48,8 @@ export interface CardView {
 
 export interface CardListed {
   id: string;
+  cardId?: string | undefined;
+  slug?: string | undefined;
   kind: string;
   name: string;
   summary: string;
@@ -112,28 +116,23 @@ export class CardStore {
       const vn = opts.vnSlug ?? null;
       const hierarchical = opts.hierarchical ?? false;
 
-      let scopeWhere = "($4::text is null and $5::text is null and c.chapter_slug is null and c.vn_slug is null)";
+      let scopeWhere: string;
       if (hierarchical) {
-        if (chapter && vn) {
-          scopeWhere = "(c.chapter_slug = $4 or c.vn_slug = $5 or (c.chapter_slug is null and c.vn_slug is null))";
-        } else if (chapter) {
-          scopeWhere = "(c.chapter_slug = $4 or (c.chapter_slug is null and c.vn_slug is null))";
-        } else if (vn) {
-          scopeWhere = "(c.vn_slug = $5 or (c.chapter_slug is null and c.vn_slug is null))";
-        }
+        scopeWhere = `(
+          ($4::text is not null and c.chapter_slug = $4)
+          or ($5::text is not null and c.vn_slug = $5)
+          or (c.chapter_slug is null and c.vn_slug is null)
+        )`;
       } else {
-        if (chapter && vn) {
-          scopeWhere = "(c.chapter_slug = $4 and c.vn_slug = $5)";
-        } else if (chapter) {
-          scopeWhere = "(c.chapter_slug = $4)";
-        } else if (vn) {
-          scopeWhere = "(c.vn_slug = $5)";
-        }
+        scopeWhere = `(
+          coalesce(c.chapter_slug, '') = coalesce($4::text, '')
+          and coalesce(c.vn_slug, '') = coalesce($5::text, '')
+        )`;
       }
 
       const rows = (
         await q(
-          `select c.kind, c.slug, c.chapter_slug, c.vn_slug, d.title, d.meta, length(d.body) as body_size,
+          `select c.id as card_id, c.kind, c.slug, c.chapter_slug, c.vn_slug, d.title, d.meta, length(d.body) as body_size,
                   coalesce((select array_agg(p.part_key order by p.position)
                               from world_lore.card_draft_parts p
                              where p.line_id = d.line_id and p.card_id = d.card_id), '{}') as parts,
@@ -166,6 +165,8 @@ export class CardStore {
         const isScoped = r.chapter_slug != null || r.vn_slug != null;
         result.push({
           id: typeof meta.id === "string" ? meta.id : key,
+          cardId: String(r.card_id),
+          slug: String(r.slug),
           kind: String(r.kind),
           name: String(r.title),
           summary: typeof meta.summary === "string" ? meta.summary : "",
@@ -204,7 +205,7 @@ export class CardStore {
                 or ($4::text is not null and c.chapter_slug = $4)
                 or ($5::text is not null and c.vn_slug = $5)
               )
-            order by (case when c.chapter_slug = $4 or c.vn_slug = $5 then 0 else 1 end)
+            order by (case when ($4::text is not null and c.chapter_slug = $4) or ($5::text is not null and c.vn_slug = $5) then 0 else 1 end)
             limit 1`,
           [line, worldId, slugOf(id), chapter, vn],
         )
@@ -229,6 +230,8 @@ export class CardStore {
       if (secrets.length) fields[SECRETS] = secrets.map((s) => String(s.body)).join("\n\n");
       return {
         id: typeof meta.id === "string" ? meta.id : `${String(row.kind)}.${String(row.slug)}`,
+        cardId: String(row.card),
+        slug: String(row.slug),
         kind: String(row.kind),
         name: String(row.title),
         summary: typeof meta.summary === "string" ? meta.summary : "",
@@ -311,13 +314,24 @@ export class CardStore {
   }
 
   /** Removes a card. A card that was published keeps its history and only leaves the draft. */
-  async remove(userId: string, worldSlug: string, id: string): Promise<boolean> {
+  async remove(
+    userId: string,
+    worldSlug: string,
+    id: string,
+    scope?: { chapterSlug?: string; vnSlug?: string },
+  ): Promise<boolean> {
     return this.within(userId, worldSlug, async (q, { worldId, line }) => {
+      const chapter = scope?.chapterSlug ?? null;
+      const vn = scope?.vnSlug ?? null;
       const found = (
-        await q("select id from world_lore.cards where world_id = $1 and slug = $2", [
-          worldId,
-          slugOf(id),
-        ])
+        await q(
+          `select id from world_lore.cards
+            where world_id = $1
+              and slug = $2
+              and coalesce(chapter_slug, '') = coalesce($3, '')
+              and coalesce(vn_slug, '') = coalesce($4, '')`,
+          [worldId, slugOf(id), chapter, vn],
+        )
       ).rows[0]?.id;
       if (!found) return false;
       await q("delete from world_lore.card_drafts where line_id = $1 and card_id = $2", [

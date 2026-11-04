@@ -76,6 +76,7 @@ export async function importWorldStory(options: StoryImportOptions): Promise<Sto
   for (const dir of DIRS) {
     for (const full of await markdownFiles(join(options.folder, dir))) {
       const path = full.slice(options.folder.length + 1).replaceAll("\\", "/");
+      if (path.includes("/cards/")) continue;
       report.writings.found++;
       const text = await readFile(full, "utf8");
       if (path.length > 300 || BAD_PATH.test(path)) {
