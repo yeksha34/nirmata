@@ -6,9 +6,13 @@ import { Siblings } from "./breadcrumbs";
  * "Paging": two buttons, no page numbers). The page returns to the first when `resetKey` changes.
  */
 export function usePaged<I>(items: I[], size: number, resetKey?: unknown) {
-  const [page, setPage] = useState(0);
+  const [page, setPageRaw] = useState(0);
+  const setPage = (n: number) => {
+    setPageRaw(n);
+    window.scrollTo({ top: 0 });
+  };
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new filter starts again at the first page
-  useEffect(() => setPage(0), [resetKey]);
+  useEffect(() => setPageRaw(0), [resetKey]);
   const last = Math.max(0, Math.ceil(items.length / size) - 1);
   const at = Math.min(page, last);
   return {

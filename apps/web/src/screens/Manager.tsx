@@ -1,5 +1,6 @@
 import { type FormEvent, Fragment, useEffect, useState } from "react";
 import { api } from "../api";
+import { usePaged } from "../pager";
 import { useSave } from "../app-context";
 import { Choice, Field, Tip } from "../controls";
 import { humanize, words } from "../format";
@@ -83,6 +84,10 @@ export type Dialog =
 
 // ---- the list --------------------------------------------------------------------------------
 
+/** The cards in the order the list shows them: by kind, then as read. */
+export const inListOrder = (cards: Card[]): Card[] =>
+  KINDS.flatMap((k) => cards.filter((c) => c.fm.kind === k.id));
+
 export function CardList({
   cards,
   broken,
@@ -98,6 +103,7 @@ export function CardList({
   onNew: (kind: CardKind) => void;
   onDialog: (d: Dialog) => void;
 }) {
+  const paged = usePaged(inListOrder(cards), 6);
   return (
     <section className="card-index" aria-label="Cards">
       {broken.length > 0 && (
@@ -146,11 +152,12 @@ export function CardList({
         </p>
       )}
       {KINDS.map((k) => {
-        const mine = cards.filter((c) => c.fm.kind === k.id);
+        const total = cards.filter((c) => c.fm.kind === k.id).length;
+        const mine = paged.items.filter((c) => c.fm.kind === k.id);
         return (
           <section key={k.id} className="card-group" aria-label={k.group}>
             <h3 className="eyebrow quiet">
-              <T>{k.group}</T> <small>{mine.length}</small>
+              <T>{k.group}</T> <small>{total}</small>
             </h3>
             <ul className="card-rows">
               {mine.map((c) => (
@@ -181,6 +188,7 @@ export function CardList({
           </section>
         );
       })}
+      {paged.pager}
     </section>
   );
 }

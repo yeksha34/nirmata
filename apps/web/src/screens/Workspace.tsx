@@ -21,6 +21,7 @@ import { VnPlayer } from "../vn/VnPlayer";
 import {
   CardEditor,
   CardList,
+  inListOrder,
   CardTextDialog,
   type Dialog,
   RemoveCard,
@@ -159,9 +160,10 @@ export function Workspace({ name }: { name: string }) {
     const pick = (x: X | undefined) => (x === undefined ? undefined : { label: label(x), onClick: () => go(x) });
     return at < 0 ? {} : { prev: pick(list[at - 1]), next: pick(list[at + 1]) };
   };
+  const ordered = inListOrder(cards);
   const siblings =
     tab === "cards" && selected
-      ? around(cards, cards.indexOf(selected), (c) => c.fm.name ?? c.path, (c) => nav.selectCard(c.path))
+      ? around(ordered, ordered.indexOf(selected), (c) => c.fm.name ?? c.path, (c) => nav.selectCard(c.path))
       : tab === "chapters" && activeWriting
         ? around(currentWritings, currentWritings.indexOf(activeWriting), (w) => w.title, (w) => setSelectedWriting(w.path))
         : {};
@@ -476,6 +478,17 @@ export function Workspace({ name }: { name: string }) {
         </section>
 
         <section className="ws-editor" aria-label="Card">
+          {tab === "cards" && selected && (
+            <header className="level-bar">
+              <button type="button" className="back-pill" onClick={() => nav.selectCard(undefined)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M15 6l-6 6 6 6" />
+                </svg>
+                <T>World · Cards</T>
+              </button>
+              <Breadcrumbs worldTitle={world.title} cardName={selected.fm.name} {...siblings} />
+            </header>
+          )}
           {tab === "cards" && selected && (
             <CardEditor
               key={selected.path}
