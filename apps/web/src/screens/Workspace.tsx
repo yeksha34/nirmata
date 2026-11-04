@@ -12,6 +12,7 @@ import type {
   VnManifest,
   VnSlideDeck,
   WorldDetail,
+  WorldSummary,
   WritingSummary,
 } from "../types";
 import { Empty, Modal, Panel } from "../ui";
@@ -28,6 +29,7 @@ import {
 import { AgentAccess } from "./agent-access";
 import { WritingDetail, WritingsList } from "./Writings";
 import {
+  CreateWorld,
   EditWorld,
   OpenStoryNotice,
   PublishWorld,
@@ -46,8 +48,9 @@ const TABS: Array<{ id: Tab; label: string }> = [
 ];
 
 /**
- * One world, as a workspace: this world's cards and stories on the left, and the chosen card open
- * for editing beside them. On a narrow screen the two become one at a time. Nothing here opens the world; stories begun afterwards use the cards as saved.
+ * One world, as a workspace: a slim rail of your worlds (a circle each), this world's cards and
+ * stories, and the chosen card open for editing beside them. On a narrow screen the rail becomes a row
+ * above, and the cards and the editor become one at a time. Nothing here opens the world; stories begun afterwards use the cards as saved.
  */
 export function Workspace({ name }: { name: string }) {
   const nav = useNav();
@@ -57,6 +60,8 @@ export function Workspace({ name }: { name: string }) {
   const templates = useTemplates();
   /** undefined while loading; null when it could not be loaded. */
   const [detail, setDetail] = useState<WorldDetail | null>();
+  const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState<Tab>("cards");
   const [making, setMaking] = useState<CardKind>();
   const [dialog, setDialog] = useState<Dialog>();
@@ -79,6 +84,13 @@ export function Workspace({ name }: { name: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+  const loadWorlds = useCallback(
+    () => void act(api.worlds).then((w) => setWorlds(w ?? [])),
+    [act],
+  );
+  useEffect(() => {
+    loadWorlds();
+  }, [loadWorlds]);
 
   const { setCards } = nav;
   useEffect(() => {
@@ -205,6 +217,48 @@ export function Workspace({ name }: { name: string }) {
     <>
       <OpenStoryNotice />
       <div className="ws" data-editing={editingCard ? "true" : "false"}>
+        <nav className="ws-rail" aria-label="Your worlds">
+          <ul>
+            {worlds.map((w) => (
+              <li key={w.name}>
+                <button
+                  type="button"
+                  className="rail-world"
+                  title={w.title}
+                  aria-label={w.title}
+                  aria-current={w.name === name ? "true" : undefined}
+                  onClick={() => nav.open(w.name)}
+                >
+                  {[...w.title.trim()][0]?.toUpperCase() ?? "?"}
+                </button>
+              </li>
+            ))}
+            <li>
+              <Tip text="New world">
+                <button
+                  type="button"
+                  className="rail-world rail-new"
+                  aria-label="New world"
+                  onClick={() => setCreating(true)}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              </Tip>
+            </li>
+          </ul>
+        </nav>
+
         <section className="ws-list" aria-label={world.title}>
           <button type="button" className="plain home-link" onClick={nav.home}>
             <T>← All worlds</T>
@@ -535,6 +589,7 @@ export function Workspace({ name }: { name: string }) {
           onSaved={() => {
             setEditing(false);
             void load();
+            loadWorlds();
           }}
         />
       )}
@@ -548,6 +603,15 @@ export function Workspace({ name }: { name: string }) {
             </button>
           </footer>
         </Modal>
+      )}
+      {creating && (
+        <CreateWorld
+          onClose={() => setCreating(false)}
+          onCreated={(w) => {
+            setCreating(false);
+            nav.open(w.name);
+          }}
+        />
       )}
       {putting && (
         <PutAway

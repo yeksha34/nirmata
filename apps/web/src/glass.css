@@ -520,7 +520,7 @@ code {
 /* ---- the world workspace: two floating islands, the cards on the left and the editor beside them ---- */
 
 .ws {
-  grid-template-columns: minmax(300px, 26rem) minmax(0, 1fr);
+  grid-template-columns: 76px minmax(300px, 26rem) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
   min-height: 0;
@@ -533,7 +533,8 @@ code {
   backdrop-filter: none;
 }
 .ws-list,
-.ws-editor {
+.ws-editor,
+.ws-rail {
   border: 1px solid var(--glass-line);
   border-radius: 40px;
   background: var(--glass);
@@ -549,9 +550,32 @@ code {
   min-height: 70vh;
   padding: 28px 36px;
 }
+/* a slim capsule of circles, one for each world; the open one glows, the dashed one makes a new world */
+.ws-rail {
+  align-self: start;
+  border-radius: 999px;
+  padding: 14px 0;
+}
+.rail-world {
+  border: 1px solid var(--hair);
+  background: var(--glass-strong);
+  box-shadow: none;
+  color: var(--muted);
+}
+.rail-world[aria-current="true"] {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 5px var(--accent-soft);
+}
+.rail-new {
+  border: 2px dashed var(--hair);
+  background: transparent;
+}
 @media (prefers-reduced-transparency: reduce) {
   .ws-list,
-  .ws-editor {
+  .ws-editor,
+  .ws-rail {
     background: var(--glass-strong);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
@@ -751,6 +775,10 @@ button.dashed:hover:not(:disabled) {
 @media (max-width: 1000px) {
   .ws {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .ws-rail {
+    align-self: stretch;
+    padding: 8px 0;
   }
   .ws-editor {
     min-height: 0;
