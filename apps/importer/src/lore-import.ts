@@ -72,11 +72,12 @@ export async function importWorldLore(options: LoreImportOptions): Promise<LoreI
       continue;
     }
     const row = cardRow(file.card);
-    if (!CARD_SLUG.test(row.slug) || seen.has(row.slug)) {
-      skipped.push(`${file.path}: the id "${file.card.fm.id}" cannot be used twice or as a name`);
+    const scopeKey = `${row.chapterSlug ?? ""}:${row.vnSlug ?? ""}:${row.slug}`;
+    if (!CARD_SLUG.test(row.slug) || seen.has(scopeKey)) {
+      skipped.push(`${file.path}: the id "${file.card.fm.id}" cannot be used twice in the same scope`);
       continue;
     }
-    seen.add(row.slug);
+    seen.add(scopeKey);
     rows.push(row);
   }
 

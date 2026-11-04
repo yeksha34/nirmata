@@ -1,4 +1,4 @@
-import type { Db } from "@nirmata/db";
+import type { Db, Query } from "@nirmata/db";
 
 export class SceneStateError extends Error {}
 
@@ -97,6 +97,41 @@ export class SceneStateStore {
     });
   }
 
+  private async resolveCardUuid(
+    q: Query,
+    worldId: string,
+    cardIdOrSlug: string,
+    scope?: { chapterSlug?: string; vnSlug?: string },
+  ): Promise<string> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cardIdOrSlug);
+    if (isUuid) return cardIdOrSlug;
+
+    const slug = cardIdOrSlug.replace(".", "-");
+    const chapter = scope?.chapterSlug ?? null;
+    const vn = scope?.vnSlug ?? null;
+
+    const row = (
+      await q(
+        `select c.id from world_lore.cards c
+          where c.world_id = $1
+            and (c.slug = $2 or c.slug = $3)
+            and (
+              (c.chapter_slug is null and c.vn_slug is null)
+              or ($4::text is not null and c.chapter_slug = $4)
+              or ($5::text is not null and c.vn_slug = $5)
+            )
+          order by (case when ($4::text is not null and c.chapter_slug = $4) or ($5::text is not null and c.vn_slug = $5) then 0 else 1 end)
+          limit 1`,
+        [worldId, cardIdOrSlug, slug, chapter, vn],
+      )
+    ).rows[0];
+
+    if (!row) {
+      throw new SceneStateError(`Card "${cardIdOrSlug}" not found in world.`);
+    }
+    return String(row.id);
+  }
+
   async setCardState(
     userId: string,
     worldSlug: string,
@@ -106,6 +141,11 @@ export class SceneStateStore {
       const world = (await q("select id from world_lore.worlds where slug = $1", [worldSlug])).rows[0]?.id;
       if (!world) throw new SceneStateError(`World "${worldSlug}" not found.`);
 
+      const cardId = await this.resolveCardUuid(q, String(world), input.cardId, {
+        chapterSlug: input.chapterSlug,
+        vnSlug: input.vnSlug,
+      });
+
       const res = await q(
         `select world_lore.set_scene_card_state($1, $2, $3, $4, $5, $6, $7, $8) as id`,
         [
@@ -113,7 +153,7 @@ export class SceneStateStore {
           input.chapterSlug ?? null,
           input.vnSlug ?? null,
           input.sceneId,
-          input.cardId,
+          cardId,
           input.characterState ?? null,
           input.clothingState ?? null,
           input.role ?? null,
@@ -131,12 +171,18 @@ export class SceneStateStore {
     return this.db.asUser(userId, async (q) => {
       const world = (await q("select id from world_lore.worlds where slug = $1", [worldSlug])).rows[0]?.id;
       if (!world) return;
+
+      const cardId = await this.resolveCardUuid(q, String(world), input.cardId, {
+        chapterSlug: input.chapterSlug,
+        vnSlug: input.vnSlug,
+      });
+
       await q(`select world_lore.remove_scene_card_state($1, $2, $3, $4, $5)`, [
         world,
         input.chapterSlug ?? null,
         input.vnSlug ?? null,
         input.sceneId,
-        input.cardId,
+        cardId,
       ]);
     });
   }

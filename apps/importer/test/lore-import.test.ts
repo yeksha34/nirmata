@@ -223,4 +223,47 @@ The gate is open.
     expect(row.secrets).toEqual(["hush"]);
     expect(row.meta).toMatchObject({ id: "lore.x", path: "lore/x.md" });
   });
+
+  it("extracts chapter and vn scope from path or frontmatter in cardRow", () => {
+    const chapterCard = cardRow({
+      path: "chapters/chapter_1/cards/characters/tina.md",
+      fm: {
+        id: "character.tina",
+        kind: "character",
+        name: "Tina Marsh",
+        fields: {},
+      },
+      body: "A clerk.",
+    });
+    expect(chapterCard.chapterSlug).toBe("chapter_1");
+    expect(chapterCard.vnSlug).toBeUndefined();
+
+    const vnCard = cardRow({
+      path: "vns/prologue/cards/attire/suit.md",
+      fm: {
+        id: "attire.suit",
+        kind: "attire",
+        name: "Executive Suit",
+        fields: {},
+      },
+      body: "Crisp suit.",
+    });
+    expect(vnCard.vnSlug).toBe("prologue");
+    expect(vnCard.chapterSlug).toBeUndefined();
+
+    const explicitFmCard = cardRow({
+      path: "characters/tina.md",
+      fm: {
+        id: "character.tina",
+        kind: "character",
+        name: "Tina",
+        chapter: "chapter_2",
+        vn: "vn_beta",
+        fields: {},
+      },
+      body: "",
+    });
+    expect(explicitFmCard.chapterSlug).toBe("chapter_2");
+    expect(explicitFmCard.vnSlug).toBe("vn_beta");
+  });
 });

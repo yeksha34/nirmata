@@ -33,13 +33,33 @@ export async function markdownFiles(dir: string): Promise<string[]> {
   return out;
 }
 
-/** Every card file of a world folder as it is on disk, readable or not. */
+/** Every card file of a world folder as it is on disk, readable or not.
+ * Discovers global cards as well as chapter-scoped (chapters/<chapter>/cards) and VN-scoped (vns/<vn>/cards) cards.
+ */
 export async function readCardFiles(root: string): Promise<CardFile[]> {
   const out: CardFile[] = [];
-  for (const dir of CARD_DIRS) {
+  const dirs: string[] = [...CARD_DIRS];
+  try {
+    const chapters = await readdir(join(root, "chapters"));
+    for (const c of chapters) {
+      dirs.push(join("chapters", c, "cards"));
+    }
+  } catch {}
+  try {
+    const vns = await readdir(join(root, "vns"));
+    for (const v of vns) {
+      dirs.push(join("vns", v, "cards"));
+    }
+  } catch {}
+
+  for (const dir of dirs) {
     for (const file of await markdownFiles(join(root, dir))) {
       const rel = file.slice(root.length + 1).replaceAll("\\", "/");
       const text = await readFile(file, "utf8");
+      // Skip markdown indexes in card directories if they are directory manifests rather than cards
+      if ((rel.endsWith("/index.md") || rel === "index.md") && !text.trim().startsWith("<card")) {
+        continue;
+      }
       const parsed = parseCard(rel, text);
       out.push(
         parsed.ok
