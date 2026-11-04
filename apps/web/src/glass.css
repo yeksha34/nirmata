@@ -500,29 +500,13 @@ code {
   color: var(--accent-deep);
 }
 
-/* ---- the workspace: one island with a rail, a list and an editor ---- */
+/* ---- the workspace: one island with a list and an editor ---- */
 
 .ws {
   border-radius: 44px;
 }
-.ws-rail,
 .ws-list {
   border-right: 1px solid var(--hair);
-}
-.rail-item {
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  box-shadow: none;
-}
-.rail-item[aria-current="true"] {
-  background: var(--glass-strong);
-  box-shadow: 0 2px 10px rgb(110 65 15 / 18%);
-}
-button.dashed {
-  border: 2px dashed var(--line-strong);
-  background: transparent;
-  box-shadow: none;
 }
 .card-row {
   border: 1px solid var(--hair);
@@ -539,11 +523,6 @@ button.dashed {
 .saved-flag.is-saved,
 .saved {
   color: var(--ok);
-}
-@media (max-width: 1000px) {
-  .ws-rail {
-    border-bottom: 1px solid var(--hair);
-  }
 }
 
 /* ---- the story: the storyteller speaks in a drop that points at them, you answer in one that points back ---- */
