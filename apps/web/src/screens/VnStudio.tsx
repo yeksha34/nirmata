@@ -473,7 +473,7 @@ export function VnStudio() {
   const totalVisible = groups.reduce((n, g) => n + g.items.length, 0);
   const pagedAssets = usePaged(
     groups.flatMap((g) => g.items.map((item) => ({ kind: g.kind, item }))),
-    24,
+    5,
     `${query}|${typeFilter}|${activeWorld}|${activeSlug}`,
   );
   const pageGroups = groups

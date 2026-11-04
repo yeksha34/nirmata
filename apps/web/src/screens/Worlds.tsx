@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useAct, useApp } from "../app-context";
 import { T } from "../i18n";
 import { useNav } from "../nav";
+import { usePaged } from "../pager";
 import type { RecentStory, WorldSummary } from "../types";
 import { Empty, Panel } from "../ui";
 import { Workspace } from "./Workspace";
@@ -31,6 +32,7 @@ function Home() {
   const locked = state.story !== null;
   const [recent, setRecent] = useState<RecentStory[]>();
   const [worlds, setWorlds] = useState<WorldSummary[]>();
+  const pagedWorlds = usePaged(worlds ?? [], 6);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -120,8 +122,9 @@ function Home() {
             </T>
           </Empty>
         ) : (
+          <>
           <ul className="cards">
-            {worlds.map((w) => (
+            {pagedWorlds.items.map((w) => (
               <li key={w.name}>
                 <button type="button" className="world-card" onClick={() => onOpen(w.name)}>
                   <strong>{w.title}</strong>
@@ -162,6 +165,8 @@ function Home() {
               </button>
             </li>
           </ul>
+          {pagedWorlds.pager}
+          </>
         )}
       </section>
 

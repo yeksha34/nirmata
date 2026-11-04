@@ -12,6 +12,7 @@ export const HI_TEXT: Record<string, string> = {
 
   // questions and choices
   OK: "ठीक है",
+  "World · Cards": "संसार · पत्रक",
   Previous: "पिछला",
   Next: "अगला",
   Begin: "आरंभ",

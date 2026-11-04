@@ -101,7 +101,7 @@ export function DatasetGallery() {
         .filter((r) => r.entries.length > 0),
     [runs, query],
   );
-  const pagedRuns = usePaged(shown, 5, query);
+  const pagedRuns = usePaged(shown, 4, query);
   const total = shown.reduce((n, r) => n + r.entries.length, 0);
 
   const deleteRun = async (assetName: string, entry: VnAssetDatasetEntry) => {
