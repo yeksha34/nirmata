@@ -46,7 +46,7 @@ export function standing(t: AgentToken, now = Date.now()): "revoked" | "expired"
  * only for reading and writing its adaptation data. It is shown once, when it is made; revoking it
  * stops it at once.
  */
-export function AgentAccess({ world }: { world: string }) {
+export function AgentAccess({ world, titleId }: { world: string; titleId?: string }) {
   /** undefined while loading; null when the list could not be read. */
   const [tokens, setTokens] = useState<AgentToken[] | null>();
   const [problem, setProblem] = useState<string>();
@@ -112,7 +112,7 @@ export function AgentAccess({ world }: { world: string }) {
   if (tokens === undefined) return null;
   if (tokens === null) {
     return (
-      <Panel title="Agent access">
+      <Panel title="Agent access" titleId={titleId}>
         <p className="hint">
           <T>Agent access needs the database and an author who is signed in.</T>
         </p>
@@ -126,7 +126,7 @@ export function AgentAccess({ world }: { world: string }) {
   }
 
   return (
-    <Panel title="Agent access">
+    <Panel title="Agent access" titleId={titleId}>
       <p className="hint">
         <T with={{ root: <code>{`${window.location.origin}/api/agent/`}</code> }}>
           {

@@ -14,7 +14,7 @@ import type {
   WorldDetail,
   WritingSummary,
 } from "../types";
-import { Empty, Panel } from "../ui";
+import { Empty, Modal, Panel } from "../ui";
 import { VnPlayer } from "../vn/VnPlayer";
 import {
   CardEditor,
@@ -55,6 +55,7 @@ export function Workspace({ name }: { name: string }) {
   const [dialog, setDialog] = useState<Dialog>();
   const [editing, setEditing] = useState(false);
   const [putting, setPutting] = useState(false);
+  const [agentAccess, setAgentAccess] = useState(false);
   const [reading, setReading] = useState<Book>();
   const [selectedWriting, setSelectedWriting] = useState<string>();
   const [playingVn, setPlayingVn] = useState<{
@@ -210,6 +211,13 @@ export function Workspace({ name }: { name: string }) {
             </hgroup>
             {!world.problem && (
               <menu className="title-actions">
+                <li>
+                  <Tip below text="Tokens that let an agent import or adapt this world">
+                    <button type="button" onClick={() => setAgentAccess(true)}>
+                      <T>Agent access</T>
+                    </button>
+                  </Tip>
+                </li>
                 {cards.length > 0 && (
                   <li>
                     <Tip below text="Read it as a book">
@@ -357,7 +365,6 @@ export function Workspace({ name }: { name: string }) {
                   {detail.manifest && (
                     <WorldFacts manifest={detail.manifest} onEdit={() => setEditing(true)} />
                   )}
-                  <AgentAccess world={name} />
                   <section className="world-danger">
                     <button type="button" className="danger" onClick={() => setPutting(true)}>
                       <T>Put away</T>
@@ -515,6 +522,16 @@ export function Workspace({ name }: { name: string }) {
             void load();
           }}
         />
+      )}
+      {agentAccess && (
+        <Modal titleId="agent-access-title" wide onClose={() => setAgentAccess(false)}>
+          <AgentAccess world={name} titleId="agent-access-title" />
+          <footer className="dialog-actions">
+            <button type="button" onClick={() => setAgentAccess(false)}>
+              <T>Done</T>
+            </button>
+          </footer>
+        </Modal>
       )}
       {putting && (
         <PutAway

@@ -411,6 +411,8 @@ export const HI_TEXT: Record<string, string> = {
 
   // agent access (a token for the adaptation agent)
   "Agent access": "एजेंट की पहुँच",
+  "Tokens that let an agent import or adapt this world":
+    "टोकन जिनसे कोई एजेंट इस संसार को आयात या रूपांतरित कर सकता है",
   "Agent access needs the database and an author who is signed in.":
     "एजेंट की पहुँच के लिए डेटाबेस और लॉग-इन किया हुआ एक लेखक चाहिए।",
   "A token lets an agent import into this world and adapt it, at {root}, and nothing else. It is shown once. Revoke it to stop it.":
