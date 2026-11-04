@@ -14,6 +14,7 @@ import {
   parseGraph,
   parseKind,
   parsePrep,
+  prepKey,
   prepStates,
   resolveCharacter,
   TemplateError,
@@ -301,7 +302,7 @@ export function registerAgentRoutes(
   app.put("/api/agent/worlds/:name/characters/:character/prep", async (c) => {
     const { grant, slug } = await forWorld(c, "adaptation.write");
     const card = await cardNamed(grant, slug, c.req.param("character"));
-    const name = card.name;
+    const name = prepKey(card.name);
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     // a prep is made from the card as it is now unless the agent says which version it read
     const parsed = await asHttp(async () =>
@@ -314,7 +315,7 @@ export function registerAgentRoutes(
   app.delete("/api/agent/worlds/:name/characters/:character/prep", async (c) => {
     const { grant, slug } = await forWorld(c, "adaptation.write");
     const card = await cardNamed(grant, slug, c.req.param("character"));
-    await asHttp(() => prep.remove(grant.userId, slug, card.name));
+    await asHttp(() => prep.remove(grant.userId, slug, prepKey(card.name)));
     return c.json({ ok: true });
   });
 
