@@ -54,15 +54,18 @@ export function AcceptInvite() {
           <T>Accept your invitation</T>
         </h1>
         {email && (
-          <p className="muted">
-            <T with={{ email }}>{"This invitation is for {email}. Choose a password to finish."}</T>
-          </p>
+          <>
+            <p className="muted">
+              <T>This invitation is for the address below. Only a password is left to choose.</T>
+            </p>
+            <output className="email-chip">{email}</output>
+          </>
         )}
 
         {email && (
           <>
             <label htmlFor="password">
-              <T>Password</T>
+              <T>Choose a password</T>
             </label>
             <input
               id="password"
@@ -116,7 +119,7 @@ export function AcceptInvite() {
             className="primary"
             disabled={busy || !adult || password.length < 8 || password !== again}
           >
-            <T>{busy ? "Working…" : registered ? "Try again" : "Create my account"}</T>
+            <T>{busy ? "Working…" : registered ? "Try again" : "Create account"}</T>
           </button>
         )}
       </form>
@@ -152,6 +155,9 @@ export function Login() {
         <h1>
           <T>Sign in</T>
         </h1>
+        <p className="muted">
+          <T>Come back with your address and password.</T>
+        </p>
         <label htmlFor="email">
           <T>Email</T>
         </label>
