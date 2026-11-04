@@ -37,3 +37,4 @@ world_lore/migrations/20261103000710_world_manifest.sql
 identity/migrations/20261104000100_agent_import_scopes.sql
 world_lore/migrations/20261104000200_world_skills_and_rules.sql
 identity/migrations/20261104000300_agent_token_kinds.sql
+platform/migrations/20261104000400_allow_clip_skip_node.sql
