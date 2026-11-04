@@ -32,6 +32,19 @@ The adaptation agent no longer copies workflow files into a world's folder to cu
 - `apps/adaptation/src/template-store.ts`: `TemplateStore` (list, get, adopt, override, reset) over the existing `platform.*` functions, as the author the token stands for; `WorkflowSource` is what the library asks.
 - Resolution for a generation: the database's world or visual novel copy, then the world's `assets/workflow/*.json`, then the bundled file. A database that fails raises; it is not hidden by the files. A world not in the database uses files only.
 
+## Future scope: workflows adapted for anatomy detail
+Proposed 2026-11-04 while adapting a mid-tier visual novel. None of it is built. The allow-list (`platform.allowed_node_types`) is the limit: it holds the nodes the bundled graphs use, plus `CLIPSetLastLayer` (migration `20261104000400`, added for clip skip 2).
+
+| # | Change | Needs | Why |
+|---|---|---|---|
+| 1 | A low-denoise second pass ("hires fix") on the sprite and CG workflows: upscale the latent, then a second `KSampler` at about 0.4 to 0.5 denoise | allow `VAEEncode` and `LatentUpscaleBy` (`ImageScale`, `KSampler`, `VAEDecode` are already allowed) | SD1.5 draws eyes, nipples, hands and genitals at a low base size, so a refinement pass is the cheapest gain. It roughly doubles render time on the Intel Iris Xe the owner uses, so it should be an option per workflow, not the default. |
+| 2 | Regional prompting: one prompt each for face, chest and groin | allow `ConditioningSetArea` and `ConditioningCombine`; the prompt builder emits one prompt per region from the character prep | Keeps the anatomy tags from bleeding into each other on a nude sprite. |
+| 3 | Face and hand detailers | custom ComfyUI nodes (for example the Impact Pack); allow-list them only if the owner has them installed | Fixes small features after the main render. Not assumed to be available. |
+| 4 | Anatomy LoRAs | `LoraLoader` is already allowed; needs LoRA files the owner has chosen | A LoRA trained for the characters' non-human anatomy (kitsune ears, membranes, a row of three sexes). |
+| 5 | Sprite negative prompts from the character prep | the prompt builder reads `baseNegative` from the prep; today only the positive prompt does | The prep already stores a per-character negative, and nothing uses it. |
+
+Already done on the adaptation: clip skip 2, 26 steps at cfg 7 (24 at 6.5 for backgrounds), per-character negative tags in the preps.
+
 ## Verification log
 | Date | What was run | Result |
 |---|---|---|
@@ -42,3 +55,4 @@ The adaptation agent no longer copies workflow files into a world's folder to cu
 | Date | Change |
 |---|---|
 | 2026-11-03 | Six workflow kinds and defaults, store, agent endpoints, library lookup. |
+| 2026-11-04 | Future scope for anatomy detail written down (second pass, regional prompts, detailers, LoRAs, prep negatives). Clip skip node allowed (migration 20261104000400). |
