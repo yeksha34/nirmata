@@ -42,5 +42,6 @@ Use `.agents/skills/record-decision`.
 | [0035](0035-adaptation-data-in-the-database.md) | An imported world keeps its adaptation data in the database | Proposed |
 | [0036](0036-chapters-and-drafts-as-writings.md) | Chapters and drafts as writings | Proposed |
 | [0037](0037-import-is-done-by-an-agent-one-file-at-a-time.md) | An agent imports a world, one file at a time, through the backend | Proposed |
+| [0038](0038-chapter-and-vn-scoped-cards-and-scene-state-matrix.md) | Chapter- and VN-scoped cards and scene state matrix | Proposed |
 
 "Proposed" ADRs become "Accepted" when the owner confirms; until then treat them as the working plan.
