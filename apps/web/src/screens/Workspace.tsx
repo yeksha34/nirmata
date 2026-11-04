@@ -168,6 +168,9 @@ export function Workspace({ name }: { name: string }) {
         ? around(currentWritings, currentWritings.indexOf(activeWriting), (w) => w.title, (w) => setSelectedWriting(w.path))
         : {};
 
+  const worldAt = worlds.findIndex((w) => w.name === name);
+  const worldSiblings = around(worlds, worldAt, (w) => w.title, (w) => nav.open(w.name));
+
   const playVn = async (
     slug: string,
     carriedVariables?: Record<string, number | boolean | string>,
@@ -230,52 +233,13 @@ export function Workspace({ name }: { name: string }) {
   return (
     <>
       <OpenStoryNotice />
-      <div className="ws" data-editing={editingCard ? "true" : "false"}>
-        <nav className="ws-rail" aria-label="Your worlds">
-          <ul>
-            {worlds.map((w) => (
-              <li key={w.name}>
-                <button
-                  type="button"
-                  className="rail-world"
-                  title={w.title}
-                  aria-label={w.title}
-                  aria-current={w.name === name ? "true" : undefined}
-                  onClick={() => nav.open(w.name)}
-                >
-                  {[...w.title.trim()][0]?.toUpperCase() ?? "?"}
-                </button>
-              </li>
-            ))}
-            <li>
-              <Tip text="New world">
-                <button
-                  type="button"
-                  className="rail-world rail-new"
-                  aria-label="New world"
-                  onClick={() => setCreating(true)}
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                </button>
-              </Tip>
-            </li>
-          </ul>
-        </nav>
-
-        <section className="ws-list" aria-label={world.title}>
-          <button type="button" className="plain home-link" onClick={nav.home}>
-            <T>← All worlds</T>
+      {!editingCard && (
+        <header className="level-bar">
+          <button type="button" className="back-pill" onClick={nav.home}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
+            <T>Worlds</T>
           </button>
           <Breadcrumbs
             worldTitle={world.title}
@@ -285,10 +249,14 @@ export function Workspace({ name }: { name: string }) {
                 ? activeWriting.path.replace(/\.md$/, "").split("/").pop()
                 : undefined
             }
-            cardName={selected?.fm.name}
             subView={tab === "chapters" ? nav.chapterView : undefined}
-            {...siblings}
+            {...(tab === "chapters" && activeWriting ? siblings : worldSiblings)}
           />
+        </header>
+      )}
+      <div className="ws" data-editing={editingCard ? "true" : "false"}>
+
+        <section className="ws-list" aria-label={world.title}>
           <header className="ws-title">
             <hgroup>
               <h1>

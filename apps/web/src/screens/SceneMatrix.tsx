@@ -14,6 +14,7 @@ export interface ScopeProps {
 
 export interface CardOption {
   id: string;
+  cardId?: string;
   slug?: string;
   name: string;
   kind: string;
@@ -142,13 +143,14 @@ export function SceneMatrixView({
 
   const handleAddAssignment = async (sceneId: string) => {
     if (!selectedCardId) return;
-    const card = cards.find((c) => c.id === selectedCardId);
+    const card = cards.find((c) => c.id === selectedCardId || c.cardId === selectedCardId);
+    const targetCardId = card?.cardId || selectedCardId;
     const isChar = card?.kind === "character";
     const isAttire = card?.kind === "attire" || card?.kind === "clothes";
 
     await handleSaveState(
       sceneId,
-      selectedCardId,
+      targetCardId,
       isChar ? selectedCharState : undefined,
       isAttire ? selectedClothingState : undefined,
       selectedRole.trim() || undefined,
