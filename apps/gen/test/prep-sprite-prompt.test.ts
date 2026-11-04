@@ -38,4 +38,27 @@ describe("a sprite prompt written from the character prep", () => {
   it("answers nothing for a character without prep", () => {
     expect(spritePromptFromPrep("nobody_neutral", chars)).toBeUndefined();
   });
+
+  it("wears a named set of pieces, and always wears the adornments no state claims", () => {
+    const set: PrepCharacter[] = [
+      {
+        name: "Tina-Marsh-(skin)",
+        notes: "asset-id: tina. outfit-set uniform: shrug, skirt, choker.",
+        basePositive: "1girl",
+        expressions: [{ expression: "neutral", tags: "smile" }],
+        outfits: [
+          { kind: "clothes", name: "shrug", tags: "sheer shrug" },
+          { kind: "clothes", name: "skirt", tags: "belt skirt" },
+          { kind: "adornment", name: "choker", tags: "cord choker" },
+          { kind: "adornment", name: "ring", tags: "bone ring" },
+        ],
+      },
+    ];
+    const p = spritePromptFromPrep("tina_uniform", set) ?? "";
+    expect(p).toContain("sheer shrug, belt skirt, cord choker");
+    expect(p).toContain("bone ring");
+    const bare = spritePromptFromPrep("tina_neutral", set) ?? "";
+    expect(bare).toContain("bone ring");
+    expect(bare).not.toContain("cord choker");
+  });
 });
