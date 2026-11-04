@@ -3251,3 +3251,8 @@ label.choice-opt:has(input:focus-visible) {
     white-space: nowrap;
   }
 }
+
+/* one world at a time: the rail of worlds is gone, and the grid is the list and the editor */
+.ws {
+  grid-template-columns: minmax(300px, 26rem) minmax(0, 1fr);
+}
