@@ -23,18 +23,23 @@ export function prepCharacterFor(owner: string, chars: PrepCharacter[]): PrepCha
 /** `outfit-set <state>: piece, piece` lines in the prep notes: the pieces a sprite state wears. */
 function outfitSets(notes: string): Map<string, string[]> {
   const sets = new Map<string, string[]>();
-  for (const m of notes.matchAll(/outfit-set\s+([a-z0-9_-]+)\s*:\s*([^.]*)/gi)) {
+  for (const m of notes.matchAll(/outfit-set\s+([a-z0-9_+-]+)\s*:\s*([^.]*)/gi)) {
     const state = m[1]?.toLowerCase();
     if (state) sets.set(state, (m[2] ?? "").split(",").map((s) => s.trim()).filter(Boolean));
   }
   return sets;
 }
 
-/** The pieces a sprite state stands for: a named set, else one outfit by name (`uniform` for `office-slut-uniform`). */
-function piecesFor(state: string, who: PrepCharacter): PrepCharacter["outfits"] {
+/**
+ * The pieces a sprite wears: the set named `<state>+<expression>`, else the set named `<state>`, else (no
+ * state) the set named `default`, else one outfit by name (`uniform` for `office-slut-uniform`).
+ */
+function piecesFor(state: string, expression: string, who: PrepCharacter): PrepCharacter["outfits"] {
   const sets = outfitSets(who.notes);
-  const named = sets.get(state.toLowerCase());
+  const key = state.toLowerCase();
+  const named = (key ? (sets.get(`${key}+${expression}`) ?? sets.get(key)) : sets.get("default")) ?? undefined;
   if (named) return who.outfits.filter((o) => named.includes(o.name));
+  if (!key) return [];
   const clothes = who.outfits.filter((o) => o.kind === "clothes");
   const s = state.replace(/_/g, "-");
   const one =
@@ -47,7 +52,7 @@ function piecesFor(state: string, who: PrepCharacter): PrepCharacter["outfits"] 
 
 /**
  * The prompt for a sprite named `<owner>[_<state>][_<expression>]`, written from the character's prep:
- * the base look, then what the state wears (and the adornments no state claims, which are always worn),
+ * the base look, then what the state wears (and the adornments no set claims, which are always worn),
  * then the expression's tags. `undefined` when no prepared character owns the sprite, so the caller can
  * fall back to the card-keyword prompt.
  */
@@ -62,7 +67,7 @@ export function spritePromptFromPrep(spriteName: string, chars: PrepCharacter[])
   const hit = byLength.find((e) => rest === e.expression || rest.endsWith(`_${e.expression}`));
   const expression = hit ?? who.expressions.find((e) => e.expression === "neutral");
   const state = hit ? rest.slice(0, rest.length - hit.expression.length).replace(/_$/, "") : rest;
-  const worn = state ? piecesFor(state, who) : [];
+  const worn = piecesFor(state, expression?.expression ?? "neutral", who);
   const claimed = new Set([...outfitSets(who.notes).values()].flat());
   const always = who.outfits.filter((o) => o.kind === "adornment" && !claimed.has(o.name));
   const pieces = [...worn, ...always.filter((a) => !worn.includes(a))];
