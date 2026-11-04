@@ -93,7 +93,23 @@ Branches come from the story itself, not from arbitrary options.
 
 Document the structure in a **Route Map**: common route scenes → hinge → routes → endings, with the conditions (choices and variable thresholds) for each, as a mermaid flowchart plus a table.
 
+## Step 0 — Prepare characters and the baseline (once per world, in Nirmata)
+
+Read the story from Nirmata too, not from the world's folder: `GET /api/agent/worlds/<world>` gives the world's manifest and how many chapters, scenes and drafts it has; `GET …/writings` lists them by path; `GET …/writing?path=chapters/chapter_1.md` returns one with its text. `PUT …/writing` with `{path, text}` saves a draft or a chapter (only under `chapters/` or `drafts/`).
+
+For a world that Nirmata holds in its database, do this before the first chapter. Use the endpoints with an agent token (an author makes it in Nirmata); never write to the database or to the world's folder. Send `Authorization: Bearer nga_…` to `/api/agent/…`.
+
+1. `GET /api/agent/worlds/<world>/characters` returns each character card with its prep state (`none`, `stale` or `current`).
+2. For each character, read the card and `PUT …/characters/<name>/prep` with `{basePositive, baseNegative, notes, expressions:[{expression, tags}], outfits:[{kind:"clothes"|"adornment", name, tags}]}`. Keep the characterization: the tags come from the card, not from invention. A `stale` prep means the card changed; read it again.
+3. `GET …/baseline` lists the first assets still missing: the unclad base (`<character>_naked`) and each item of clothes or adornment in the prep. `POST …/assets` each one with `{type, name, owner}`. Plan the important objects (`{type:"object", name, owner?}`) and the locations (`{type:"bg", name}`) the same way.
+
+4. **Workflows.** `GET …/workflows` shows which generation workflow each kind of asset uses and where it comes from (`platform`, `world`, `vn`). Customise only what the story needs (a checkpoint, steps, a sampler): `POST …/workflows/<type>/adopt` takes the world's own copy, `GET …/workflows/<type>` returns its `graph`, and `PUT …/workflows/<type>` with `{graph, note}` publishes the changed graph (a ComfyUI API graph; the database refuses nodes outside its allow-list and any address or file path). `DELETE …/workflows/<type>` goes back to the default. Do not copy workflow files into the world's folder.
+
+Step 6 then only adds what a chapter needs and the existing assets do not express (below).
+
 ## Step 6 — Characters and assets
+
+**Gap check.** For each chapter or draft, list the states its scenes need (character with outfit state and expression; object; background; CG) and `POST /api/agent/worlds/<world>/assets/gap` with `{needs:[{type:"sprite", character, expression?, state?} | {type:"clothes"|"adornment", character, name} | {type:"cg"|"bg"|"object", name}]}`. Plan only the `missing` ones with `POST …/assets`. A bare portrait does not count as another expression, so an expression no sprite has is missing; the neutral look is covered by `<character>` or `<character>_neutral`. Never plan an asset that already exists.
 
 Write a sheet for each sprite character within budget. Composites list which story characters they absorb. Each sheet covers:
 - role, route involvement, what they want from the MC,
@@ -105,8 +121,12 @@ Then make an **Asset List** and check it against the budget:
 - backgrounds (with time-of-day variants),
 - sprite characters and their expressions,
 - CGs, each tied to a scene and a must-keep moment,
+- clothes and adornments, each locked to one character (the unclad base `naked` is the only unlocked state),
+- objects, only those a character interacts with on screen and that the world customises so a generic prompt would fail (each names its characters and/or CGs, how it is used, and why it is custom),
 - music tracks by mood,
 - key sound effects.
+
+Clothes cover a body; adornments dress it without necessarily covering it (jewellery, body art, grown or attached ornament), so a world whose characters stay unclothed still has them. Cards live in `worlds/<world>/{clothes,adornments,objects}/`; the manifest lists them as `assets.clothes` / `assets.adornments` (`{ character: [names] }`) and `assets.objects` (`[{ name, owners?, cgs? }]`). Their art feeds the owner's sprite state or the linked CG as a reference image; there is no layer compositor. Skip anything a generic sprite or CG prompt already draws. Make one card per piece, and write its `<prompt>` as a plain visual description with no character names or story (the image model cannot use them). See ADR-0033.
 
 When the list is over budget, merge locations and drop expressions before cutting must-keep CGs.
 
@@ -116,6 +136,8 @@ Adapting is an incremental decision; you cannot anticipate upfront whether an as
 2. **Just-In-Time (JIT) Promotion:** When adapting a new slug, check existing visual novel adaptations in `worlds/<world>/vns/`. If an asset (character sprite, background, BGM, or SFX) is already present in an earlier slug and needed again, **move/promote that asset to `worlds/<world>/vns/_shared/assets/`**. Do not duplicate existing files. Both earlier and later adaptations will resolve it from `_shared/assets/`.
 3. **Expression Fallback (No Duplicate Sprites):** Never copy base portraits to simulate expression variants (e.g. duplicating `hero.png` into `hero_smile.png`, `hero_angry.png`). The presentation engine and server asset resolver automatically resolve requests for `<character>_<expression>.<ext>` to the base portrait `<character>.<ext>` (or `<character>_neutral.<ext>`) in either the local scene or `_shared/assets/sprites/`. Only add separate expression files when distinct artwork exists.
 4. **Character State & Costume Variants (`<character>_<state>_<expression>.<ext>`):** Characters frequently change wardrobe, uniforms, forms, or roles across narrative arcs (e.g. Elena as `clerk` vs `uniform`). When placing or promoting sprites to `_shared/assets/sprites/`, never overwrite an existing state with a generic `<character>.png`. Instead, use state-qualified filenames (`<character>_<state>.<ext>` and `<character>_<state>_<expression>.<ext>`, e.g. `elena_clerk.png`, `elena_uniform.png`). Script directives specify states using `[show <character>:<state> <expression> <slot>]` (e.g. `[show Elena:uniform submissive center]`), `[show <character> <state> <expression> <slot>]`, or `[show <character>_<state> <expression> <slot>]`. The engine and server resolve these hierarchically while keeping player-facing nameplates clean.
+
+5. **Clothes, adornments, objects:** stored under `assets/clothes/`, `assets/adornments/`, `assets/objects/` as `<character>_<name>.<ext>` (objects: `<name>.<ext>`); promotion to `_shared/assets/` follows the same rule as other assets. Run `node .agents/skills/world-lint/driver.mjs assets` to check owners and links.
 
 ## Step 7 — Scene list
 
@@ -207,7 +229,10 @@ For Mid and Large tiers, build in stages. Send the Story Core, Adaptation Notes,
 
 Deliver a document the user can keep and edit: a doc artifact by default, or the format they ask for (.md, .docx, .rpy). Close with one line on what was produced and one natural next step, such as "write the next route?", "add a true route?" or "export to Ren'Py?".
 
-### Scaffolding layout on disk
+### Saving to Nirmata (a world in the database)
+For a world Nirmata holds in its database, save the adaptation through the endpoints instead of writing the files below: `PUT /api/agent/worlds/<world>/vns/<slug>` with any of `{manifest, adaptationMd, slides}` (the manifest is the same `manifest.json`, and its `slug` must be `<slug>`; names are letters, digits and hyphens). The first save makes the visual novel, so the world must have been published once. `POST …/vns/<slug>/compile` turns the saved `adaptationMd` into slides and returns the compiler's diagnostics; fix them and save again. `GET …/vns` and `GET …/vns/<slug>` read them back. Do not write `vns/` files for such a world.
+
+### Scaffolding layout on disk (a world that is still a folder)
 When scaffolding or writing visual novel adaptations into a world, follow this structure with generic nondescript naming:
 
 ```text

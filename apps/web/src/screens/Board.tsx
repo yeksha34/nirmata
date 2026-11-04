@@ -41,6 +41,9 @@ export function People() {
       <ul className="people">
         {board.participants.map((p) => (
           <li key={p.nick}>
+            <i className={`seat seat-${p.seat}`} aria-hidden="true">
+              {[...p.nick][0]}
+            </i>
             <Tip text={online.has(p.nick.toLowerCase()) ? "Here" : "Not connected"}>
               <output
                 className={`dot dot-${online.has(p.nick.toLowerCase()) ? "live" : "lost"}`}

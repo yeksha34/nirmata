@@ -2,5 +2,5 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "composite": true, "noEmit": false, "emitDeclarationOnly": true, "outDir": "dist", "rootDir": ".", "types": ["node"], "lib": ["ES2023", "DOM"] },
   "include": ["src", "test"],
-  "references": [{ "path": "../../packages/core" }, { "path": "../../packages/llm" }, { "path": "../../packages/host" }, { "path": "../auth" }, { "path": "../db" }, { "path": "../gen" }, { "path": "../storage" }]
+  "references": [{ "path": "../../packages/core" }, { "path": "../../packages/llm" }, { "path": "../../packages/host" }, { "path": "../adaptation" }, { "path": "../auth" }, { "path": "../db" }, { "path": "../gen" }, { "path": "../importer" }, { "path": "../storage" }]
 }

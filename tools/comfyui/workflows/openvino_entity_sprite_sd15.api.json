@@ -1,0 +1,90 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "AOM3A1B_orangemixs.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint (AOM3 / AbyssOrangeMix)"
+    }
+  },
+  "9": {
+    "inputs": {
+      "device": "GPU",
+      "model": ["1", 0]
+    },
+    "class_type": "TorchCompileDiffusionOpenVINO",
+    "_meta": {
+      "title": "OpenVINO GPU Compiler (Intel Iris Xe)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "masterpiece, best quality, visual novel character sprite, full body portrait, standing upright, isolated on solid white background, crisp clean line art, towering Navatala vertical proportions, effortless sovereign poise, sacred unclad form, composed neutral expression",
+      "clip": ["1", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Entity Positive Prompt"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "clothes, clothing, shirt, pants, trousers, underwear, bra, panties, bikini, lingerie, dress, skirt, robes, drape, fabric covering body, wrap, toga, modern garments, modesty garments, modesty posture, arms crossed over chest, covering breasts, covering groin, hands blocking genitals, blushing in shame, embarrassed, timid covering, censored, bar censor, mosaic censor, white censor, black bar censor, squat, bulky, rotund, obese, fat rolls, hunchback, slouched, muscular strain, fatigue, sweating profusely, exhaustion, tired, calloused laborer hands, deformed limbs, extra arms, extra legs, extra digits, missing fingers, bad anatomy, blurry, low quality, worst quality, artifact, lowres, watermark, signature",
+      "clip": ["1", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Anti-Modesty Anti-Shame Negative Prompt"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 512,
+      "height": 896,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent (512x896 Navatala Vertical)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "seed": 424242,
+      "steps": 24,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": ["9", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["5", 0]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler (SD 1.5 OpenVINO GPU)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": ["6", 0],
+      "vae": ["1", 2]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "sprites/entity_base",
+      "images": ["7", 0]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Entity Sprite"
+    }
+  }
+}

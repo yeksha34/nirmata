@@ -15,7 +15,7 @@ import type {
   WorldSummary,
   WritingSummary,
 } from "../types";
-import { Empty, Panel } from "../ui";
+import { Empty, Modal, Panel } from "../ui";
 import { VnPlayer } from "../vn/VnPlayer";
 import {
   CardEditor,
@@ -26,11 +26,13 @@ import {
   useTemplates,
   WorldFacts,
 } from "./Manager";
+import { AgentAccess } from "./agent-access";
 import { WritingDetail, WritingsList } from "./Writings";
 import {
   CreateWorld,
   EditWorld,
   OpenStoryNotice,
+  PublishWorld,
   PutAway,
   StartStory,
   StoryRow,
@@ -46,9 +48,9 @@ const TABS: Array<{ id: Tab; label: string }> = [
 ];
 
 /**
- * One world, as a workspace: your worlds down the side, this world's cards and stories in the
- * middle, and the chosen card open for editing beside them. On a narrow screen the three become
- * one at a time. Nothing here opens the world; stories begun afterwards use the cards as saved.
+ * One world, as a workspace: a slim rail of your worlds (a circle each), this world's cards and
+ * stories, and the chosen card open for editing beside them. On a narrow screen the rail becomes a row
+ * above, and the cards and the editor become one at a time. Nothing here opens the world; stories begun afterwards use the cards as saved.
  */
 export function Workspace({ name }: { name: string }) {
   const nav = useNav();
@@ -59,12 +61,14 @@ export function Workspace({ name }: { name: string }) {
   /** undefined while loading; null when it could not be loaded. */
   const [detail, setDetail] = useState<WorldDetail | null>();
   const [worlds, setWorlds] = useState<WorldSummary[]>([]);
+  const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState<Tab>("cards");
   const [making, setMaking] = useState<CardKind>();
   const [dialog, setDialog] = useState<Dialog>();
   const [editing, setEditing] = useState(false);
   const [putting, setPutting] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [agentAccess, setAgentAccess] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [reading, setReading] = useState<Book>();
   const [selectedWriting, setSelectedWriting] = useState<string>();
   const [playingVn, setPlayingVn] = useState<{
@@ -80,9 +84,13 @@ export function Workspace({ name }: { name: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+  const loadWorlds = useCallback(
+    () => void act(api.worlds).then((w) => setWorlds(w ?? [])),
+    [act],
+  );
   useEffect(() => {
-    void act(api.worlds).then((w) => setWorlds(w ?? []));
-  }, [act]);
+    loadWorlds();
+  }, [loadWorlds]);
 
   const { setCards } = nav;
   useEffect(() => {
@@ -209,36 +217,52 @@ export function Workspace({ name }: { name: string }) {
     <>
       <OpenStoryNotice />
       <div className="ws" data-editing={editingCard ? "true" : "false"}>
-        <aside className="ws-rail" aria-label="Your worlds">
-          <p className="eyebrow quiet">
-            <T>Your worlds</T>
-          </p>
+        <nav className="ws-rail" aria-label="Your worlds">
           <ul>
             {worlds.map((w) => (
               <li key={w.name}>
                 <button
                   type="button"
-                  className="rail-item"
+                  className="rail-world"
+                  title={w.title}
+                  aria-label={w.title}
                   aria-current={w.name === name ? "true" : undefined}
                   onClick={() => nav.open(w.name)}
                 >
-                  {w.title}
-                  <data className="count" value={w.stories}>
-                    {w.stories}
-                  </data>
+                  {[...w.title.trim()][0]?.toUpperCase() ?? "?"}
                 </button>
               </li>
             ))}
+            <li>
+              <Tip text="New world">
+                <button
+                  type="button"
+                  className="rail-world rail-new"
+                  aria-label="New world"
+                  onClick={() => setCreating(true)}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              </Tip>
+            </li>
           </ul>
-          <button type="button" className="dashed" onClick={() => setCreating(true)}>
-            <T>New world</T>
-          </button>
-          <button type="button" className="plain home-link" onClick={nav.home}>
-            <T>← Front page</T>
-          </button>
-        </aside>
+        </nav>
 
         <section className="ws-list" aria-label={world.title}>
+          <button type="button" className="plain home-link" onClick={nav.home}>
+            <T>← All worlds</T>
+          </button>
           <header className="ws-title">
             <hgroup>
               <h1>
@@ -249,6 +273,20 @@ export function Workspace({ name }: { name: string }) {
             </hgroup>
             {!world.problem && (
               <menu className="title-actions">
+                <li>
+                  <Tip below text="Tokens that let an agent import or adapt this world">
+                    <button type="button" onClick={() => setAgentAccess(true)}>
+                      <T>Agent access</T>
+                    </button>
+                  </Tip>
+                </li>
+                <li>
+                  <Tip below text="Freeze the cards into a version that visual novels and readers use">
+                    <button type="button" disabled={busy} onClick={() => setPublishing(true)}>
+                      <T>Publish</T>
+                    </button>
+                  </Tip>
+                </li>
                 {cards.length > 0 && (
                   <li>
                     <Tip below text="Read it as a book">
@@ -551,7 +589,27 @@ export function Workspace({ name }: { name: string }) {
           onSaved={() => {
             setEditing(false);
             void load();
-            void act(api.worlds).then((w) => setWorlds(w ?? []));
+            loadWorlds();
+          }}
+        />
+      )}
+      {publishing && <PublishWorld world={world} onClose={() => setPublishing(false)} />}
+      {agentAccess && (
+        <Modal titleId="agent-access-title" wide onClose={() => setAgentAccess(false)}>
+          <AgentAccess world={name} titleId="agent-access-title" />
+          <footer className="dialog-actions">
+            <button type="button" onClick={() => setAgentAccess(false)}>
+              <T>Done</T>
+            </button>
+          </footer>
+        </Modal>
+      )}
+      {creating && (
+        <CreateWorld
+          onClose={() => setCreating(false)}
+          onCreated={(w) => {
+            setCreating(false);
+            nav.open(w.name);
           }}
         />
       )}
@@ -562,15 +620,6 @@ export function Workspace({ name }: { name: string }) {
           onDone={() => {
             setPutting(false);
             nav.home();
-          }}
-        />
-      )}
-      {creating && (
-        <CreateWorld
-          onClose={() => setCreating(false)}
-          onCreated={(w) => {
-            setCreating(false);
-            nav.open(w.name);
           }}
         />
       )}

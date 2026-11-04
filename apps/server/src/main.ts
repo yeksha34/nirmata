@@ -4,11 +4,21 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { GoTrue, SessionStore } from "@nirmata/auth";
+import {
+  PlanStore,
+  PrepStore,
+  PlanViews,
+  TemplateStore,
+  VnStore,
+  WorldStore,
+  WritingStore,
+} from "@nirmata/adaptation";
 import { connectDb, type Db } from "@nirmata/db";
 import { storesFromEnv } from "@nirmata/storage";
 import { createApp } from "./app";
 import type { AuthDeps } from "./auth-routes";
 import { ConfigError, loadConfig } from "./config";
+import { dbWorldCreator } from "./db-worlds";
 import { Library } from "./files";
 import { DbImages } from "./image-store";
 import { DbLore } from "./lore-store";
@@ -83,6 +93,30 @@ async function main(): Promise<void> {
   const library = new Library(config.libraryDir, {
     lore: db ? new DbLore(db, () => hostUser()) : undefined,
     images: db ? new DbImages(db, stores, () => hostUser()) : undefined,
+    db: db
+      ? {
+          workflows: new TemplateStore(db).source(() => hostUser()),
+          vnContent: new VnStore(db).source(() => hostUser()),
+          plan: new PlanViews(db, new PlanStore(db)).source(() => hostUser()),
+          writings: new WritingStore(db).source(() => hostUser()),
+          world: new WorldStore(db).source(() => hostUser()),
+          prep: {
+            characters: async (world: string) => {
+              const user = hostUser();
+              if (!user) return undefined;
+              const stored = await new PrepStore(db).list(user, world);
+              return [...stored].map(([name, p]) => ({
+                name,
+                notes: p.notes,
+                basePositive: p.basePositive,
+                expressions: p.expressions,
+                outfits: p.outfits,
+              }));
+            },
+          },
+        }
+      : undefined,
+    create: db ? dbWorldCreator(db, () => hostUser()) : undefined,
   });
 
   const ledger = db ? new DbGenerations(db, stores, () => hostUser(), log) : undefined;

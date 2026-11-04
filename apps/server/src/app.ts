@@ -1,8 +1,11 @@
+import { AgentTokens } from "@nirmata/adaptation";
 import { CARD_KINDS, CARD_TEMPLATES, PlayerMode } from "@nirmata/core";
+import { ASSET_KINDS, type AssetKind } from "@nirmata/gen";
 import { FLAVOR_STYLES } from "@nirmata/host";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
+import { registerAgentRoutes } from "./agent-routes";
 import { type DataDeps, registerAssetRoutes } from "./asset-routes";
 import { type AuthDeps, readProfile, registerAuthRoutes } from "./auth-routes";
 import { describeError, HttpError } from "./errors";
@@ -96,7 +99,7 @@ const PromptSpec = z.object({
 });
 
 const GenerateAsset = z.object({
-  type: z.enum(["sprite", "cg", "bg"]),
+  type: z.enum(ASSET_KINDS),
   name: z.string().trim().min(1),
   targetPath: z.string().optional(),
   positivePrompt: z.string().trim().min(1),
@@ -170,6 +173,8 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
 
   app.get("/api/health", (c) => c.json({ ok: true }));
   if (data) registerAssetRoutes(app, data, seatOf);
+  const agentTokens = data ? new AgentTokens(data.db) : undefined;
+  if (data && agentTokens) registerAgentRoutes(app, data.db, agentTokens, seatOf);
   const userOf = auth ? registerAuthRoutes(app, auth) : undefined;
   app.get("/api/comfyui/status", async (c) => c.json(await table.comfyStatus()));
   app.get("/api/table", async (c) => c.json(await table.info()));
@@ -185,7 +190,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
         seatOf(c),
         c.req.param("name"),
         c.req.param("slug"),
-        c.req.param("type") as "sprite" | "cg" | "bg",
+        c.req.param("type") as AssetKind,
         c.req.param("assetName"),
       ),
     ),
@@ -225,7 +230,7 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
     await table.saveAssetPrompt(
       seat,
       c.req.param("name"),
-      c.req.param("type") as "sprite" | "cg" | "bg",
+      c.req.param("type") as AssetKind,
       c.req.param("assetName"),
       body,
     );
@@ -239,20 +244,56 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
         seatOf(c),
         c.req.param("name"),
         c.req.param("slug"),
-        c.req.param("type") as "sprite" | "cg" | "bg",
+        c.req.param("type") as AssetKind,
         c.req.param("assetName"),
       ),
     ),
   );
 
-  // delete a single asset
+  // plan a new asset in a visual novel; its image is made later in the Studio
+  app.post("/api/worlds/:name/vns/:slug/assets", async (c) => {
+    const seat = seatOf(c);
+    const body = await json(
+      c,
+      z.object({
+        type: z.enum(ASSET_KINDS),
+        name: z.string().trim().min(1).max(64),
+        owner: z.string().trim().max(64).optional(),
+      }),
+    );
+    return c.json(
+      await table.addWorldVnAsset(seat, c.req.param("name"), c.req.param("slug"), body.type, {
+        name: body.name,
+        owner: body.owner,
+      }),
+      201,
+    );
+  });
+
+  // take an asset out of the plan and delete its image (its dataset runs stay)
+  app.delete("/api/worlds/:name/vns/:slug/assets/:type/:assetName", async (c) => {
+    const type = c.req.param("type");
+    if (!(ASSET_KINDS as readonly string[]).includes(type))
+      throw new HttpError(400, "bad_request", "That is not a kind of asset.");
+    return c.json(
+      await table.removeWorldVnAsset(
+        seatOf(c),
+        c.req.param("name"),
+        c.req.param("slug"),
+        type as AssetKind,
+        c.req.param("assetName"),
+      ),
+    );
+  });
+
+  // delete a single asset's rendered file
   app.delete("/api/worlds/:name/vns/:slug/asset-meta/:type/:assetName", async (c) =>
     c.json(
       await table.deleteWorldVnAsset(
         seatOf(c),
         c.req.param("name"),
         c.req.param("slug"),
-        c.req.param("type") as "sprite" | "cg" | "bg",
+        c.req.param("type") as AssetKind,
         c.req.param("assetName"),
       ),
     ),
@@ -366,6 +407,53 @@ export function createApp({ table, log, ui, data, auth }: AppOptions): Hono {
     );
     return c.json({ world: await table.createWorld(seat, body) }, 201);
   });
+  // Import a world: the world is made and the agents' tokens with it, in one step. The import is what
+  // fills the world, so nothing has to exist first. Needs the database and a signed-in author.
+  if (agentTokens) {
+    app.post("/api/worlds/import", async (c) => {
+      const seat = seatOf(c);
+      const body = await json(
+        c,
+        z.object({
+          title: z.string().trim().min(1, "A world needs a title.").max(120),
+          tagline: z.string().trim().max(200).default(""),
+          /** The kinds the settings worker may write; the world's own kind for its places. */
+          settingsKinds: z
+            .array(z.string().trim().min(1).max(40))
+            .min(1)
+            .max(10)
+            .default(["place"]),
+          days: z.number().int().min(1).max(365).default(30),
+        }),
+      );
+      const user = seat.account;
+      if (!user) throw new HttpError(403, "forbidden", "Sign in as an author to import a world.");
+      const world = await table.createWorld(seat, {
+        title: body.title,
+        tagline: body.tagline,
+        premise: "",
+      });
+      const make = async (label: string, kinds?: string[]) =>
+        (
+          await agentTokens.create(user, world.name, label, {
+            days: body.days,
+            ...(kinds ? { kinds } : {}),
+          })
+        ).token;
+      return c.json(
+        {
+          world,
+          tokens: {
+            full: await make("import: everything"),
+            characters: await make("import: characters", ["character"]),
+            accessories: await make("import: accessories", ["clothes", "adornment", "object"]),
+            settings: await make("import: settings", body.settingsKinds),
+          },
+        },
+        201,
+      );
+    });
+  }
   // the starting shapes for cards (a person, a place, a custom ...): the same for everyone
   app.get("/api/card-templates", (c) => c.json({ templates: CARD_TEMPLATES }));
   app.get("/api/recent", async (c) => c.json({ stories: await table.recent(seatOf(c)) }));

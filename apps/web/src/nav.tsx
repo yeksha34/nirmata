@@ -11,7 +11,7 @@ import {
 import { api } from "./api";
 import { Field } from "./controls";
 import { T } from "./i18n";
-import type { CardKind, WorldSummary } from "./types";
+import type { AssetKind, CardKind, WorldSummary } from "./types";
 import { Modal } from "./ui";
 
 /** A card the jump box can offer: only what it shows and searches. */
@@ -31,7 +31,7 @@ export interface NavState {
   card?: string;
   vnWorld?: string;
   vnSlug?: string;
-  vnAssetType?: "sprite" | "cg" | "bg";
+  vnAssetType?: AssetKind;
   vnAssetName?: string;
 }
 
@@ -80,11 +80,11 @@ export interface Nav {
   // VN Studio route parameters and navigators
   vnWorld?: string;
   vnSlug?: string;
-  vnAssetType?: "sprite" | "cg" | "bg";
+  vnAssetType?: AssetKind;
   vnAssetName?: string;
-  toVn: (world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => void;
+  toVn: (world?: string, slug?: string, type?: AssetKind, name?: string) => void;
   /** The dataset gallery: every archived render of a visual novel, or of one asset in it. */
-  toDataset: (world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => void;
+  toDataset: (world?: string, slug?: string, type?: AssetKind, name?: string) => void;
   toWorlds: (world?: string, card?: string) => void;
 }
 
@@ -101,7 +101,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toVn = useCallback(
-    (world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => {
+    (world?: string, slug?: string, type?: AssetKind, name?: string) => {
       let path = "/vn";
       if (world && slug) {
         path += `/${encodeURIComponent(world)}/${encodeURIComponent(slug)}`;
@@ -122,7 +122,7 @@ export function NavProvider({ children }: { children: ReactNode }) {
   );
 
   const toDataset = useCallback(
-    (world?: string, slug?: string, type?: "sprite" | "cg" | "bg", name?: string) => {
+    (world?: string, slug?: string, type?: AssetKind, name?: string) => {
       let path = "/dataset";
       if (world && slug) {
         path += `/${encodeURIComponent(world)}/${encodeURIComponent(slug)}`;

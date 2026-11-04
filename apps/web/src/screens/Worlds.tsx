@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { useAct, useApp } from "../app-context";
 import { T } from "../i18n";
@@ -6,6 +6,7 @@ import { useNav } from "../nav";
 import type { RecentStory, WorldSummary } from "../types";
 import { Empty, Panel } from "../ui";
 import { Workspace } from "./Workspace";
+import { ImportWorld } from "./import-world";
 import { CreateWorld, OpenStoryNotice, StoryRow } from "./world-parts";
 
 /**
@@ -31,11 +32,17 @@ function Home() {
   const [recent, setRecent] = useState<RecentStory[]>();
   const [worlds, setWorlds] = useState<WorldSummary[]>();
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const loadWorlds = useCallback(
+    () => void act(api.worlds).then((w) => setWorlds(w ?? [])),
+    [act],
+  );
 
   useEffect(() => {
     void act(api.recent).then((r) => setRecent(r ?? []));
-    void act(api.worlds).then((w) => setWorlds(w ?? []));
-  }, [act]);
+    loadWorlds();
+  }, [act, loadWorlds]);
 
   return (
     <section className="worlds">
@@ -82,14 +89,24 @@ function Home() {
         )}
       </Panel>
 
-      <Panel
-        title="Your worlds"
-        aside={
-          <button type="button" className="primary" onClick={() => setCreating(true)}>
-            <T>New world</T>
-          </button>
-        }
-      >
+      <section className="shelf" aria-labelledby="worlds-title">
+        <header className="shelf-head">
+          <h2 id="worlds-title">
+            <T>Your worlds</T>
+          </h2>
+          <menu className="shelf-actions">
+            <li>
+              <button type="button" onClick={() => setImporting(true)}>
+                <T>Import a world</T>
+              </button>
+            </li>
+            <li>
+              <button type="button" className="primary" onClick={() => setCreating(true)}>
+                <T>New world</T>
+              </button>
+            </li>
+          </menu>
+        </header>
         {!worlds ? (
           <Empty>
             <T>Looking for your worlds…</T>
@@ -127,9 +144,37 @@ function Home() {
                 </button>
               </li>
             ))}
+            <li>
+              <button type="button" className="world-new" onClick={() => setCreating(true)}>
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                <T>New world</T>
+              </button>
+            </li>
           </ul>
         )}
-      </Panel>
+      </section>
+
+      {importing && (
+        <ImportWorld
+          onMade={loadWorlds}
+          onClose={() => setImporting(false)}
+          onOpen={(name) => {
+            setImporting(false);
+            onOpen(name);
+          }}
+        />
+      )}
 
       {creating && (
         <CreateWorld

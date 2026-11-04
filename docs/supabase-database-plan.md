@@ -137,7 +137,7 @@ Conventions: every table has `id uuid primary key default gen_random_uuid()`, `c
 | `asset_kinds` (lookup) | `sprite`, `cg`, `bg`. |
 | `asset_statuses`, `asset_transitions`, `asset_status_history` | see 9 |
 | `assets` | `id`, `world_id`, `vn_id` (soft, **null = shared pool**), `kind_key fk`, `name`, `status_key fk`, `current_spec_id`, `current_render_id`. Unique `(world_id, coalesce(vn_id, '00000000-…'), kind_key, name)`. |
-| `asset_specs` | immutable prompt record: `id`, `asset_id`, `spec_no`, `positive text`, `negative text`, `seed bigint`, `steps`, `cfg numeric`, `sampler text`, `scheduler text`, `width`, `height`, `workflow_template_version_id` (soft). Sampler settings are columns, not jsonb, because the dataset compares them. |
+| `asset_specs` | immutable prompt record: `id`, `asset_id`, `spec_no`, `positive text`, `negative text`, `seed bigint`, `steps`, `cfg numeric`, `sampler text`, `scheduler text`, `width`, `height`, `workflow_template_version_id` (soft), `run_settings jsonb`. Sampler settings are columns, not jsonb, because the dataset compares them; they are null when not known. `run_settings` holds the exact workflow sent, checkpoint, LoRAs and references ([ADR-0034](decisions/0034-current-image-in-supabase-history-local.md)). |
 | `renders` | `id`, `asset_id`, `spec_id fk`, `storage_path`, `job_id` (soft), `archived_at null`. A row with `archived_at` set is the dataset entry. |
 | `feedback_choices` (lookup) | `better`, `keep`, `worse`. |
 | `render_feedback` | `(render_id, tag)` pk, `choice_key fk`. One row per tag, so a tag is queryable. |

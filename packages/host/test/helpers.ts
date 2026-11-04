@@ -35,7 +35,7 @@ function walk(dir: string): string[] {
 }
 
 export function loadWorld(name: string): { world: WorldManifest; cards: Card[] } {
-  const root = join(REPO_ROOT, "worlds", name);
+  const root = join(REPO_ROOT, "test-fixtures", "worlds", name);
   const manifest = parseWorldManifest(readFileSync(join(root, "world.json"), "utf8"));
   if (!manifest.ok) throw new Error(manifest.errors.join("; "));
   const cards: Card[] = [];

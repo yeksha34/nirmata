@@ -1,0 +1,87 @@
+import { describe, expect, it } from "vitest";
+import { type PrepCharacter, spritePromptFromPrep } from "../src/prep-sprite-prompt";
+
+const chars: PrepCharacter[] = [
+  {
+    name: "Tina-Marsh-(skin)",
+    notes: "asset-id: tina",
+    basePositive: "1girl, adult woman, small high breasts",
+    expressions: [
+      { expression: "neutral", tags: "polite smile" },
+      { expression: "flustered", tags: "blushing, lip bitten" },
+    ],
+    outfits: [
+      { kind: "clothes", name: "day-office-outfit", tags: "navy pleated skirt, blue blouse" },
+      { kind: "clothes", name: "office-slut-uniform", tags: "sheer white crop top, black mini skirt" },
+    ],
+  },
+  {
+    name: "Rani-चूषिणी-धारपंक",
+    notes: "asset-id: chushini",
+    basePositive: "1girl, pale skin, red eyes",
+    expressions: [{ expression: "in_pain", tags: "wincing" }, { expression: "neutral", tags: "half-lidded" }],
+    outfits: [],
+  },
+];
+
+describe("a sprite prompt written from the character prep", () => {
+  it("joins the base look, the state's outfit and the expression", () => {
+    const p = spritePromptFromPrep("tina_office_flustered", chars) ?? "";
+    expect(p).toBe("masterpiece, best quality, 1girl, adult woman, small high breasts, navy pleated skirt, blue blouse, blushing, lip bitten");
+    expect(spritePromptFromPrep("tina_uniform", chars)).toContain("sheer white crop top");
+    expect(spritePromptFromPrep("tina_uniform", chars)).toContain("polite smile");
+  });
+  it("finds a character by its asset-id note, and an expression with an underscore", () => {
+    expect(spritePromptFromPrep("chushini_in_pain", chars)).toContain("wincing");
+    expect(spritePromptFromPrep("chushini_neutral", chars)).toContain("red eyes");
+  });
+  it("answers nothing for a character without prep", () => {
+    expect(spritePromptFromPrep("nobody_neutral", chars)).toBeUndefined();
+  });
+
+  it("wears a named set of pieces, and always wears the adornments no state claims", () => {
+    const set: PrepCharacter[] = [
+      {
+        name: "Tina-Marsh-(skin)",
+        notes: "asset-id: tina. outfit-set uniform: shrug, skirt, choker.",
+        basePositive: "1girl",
+        expressions: [{ expression: "neutral", tags: "smile" }],
+        outfits: [
+          { kind: "clothes", name: "shrug", tags: "sheer shrug" },
+          { kind: "clothes", name: "skirt", tags: "belt skirt" },
+          { kind: "adornment", name: "choker", tags: "cord choker" },
+          { kind: "adornment", name: "ring", tags: "bone ring" },
+        ],
+      },
+    ];
+    const p = spritePromptFromPrep("tina_uniform", set) ?? "";
+    expect(p).toContain("sheer shrug, belt skirt, cord choker");
+    expect(p).toContain("bone ring");
+    const bare = spritePromptFromPrep("tina_neutral", set) ?? "";
+    expect(bare).toContain("bone ring");
+    expect(bare).not.toContain("cord choker");
+  });
+
+  it("uses a default set with no state, and a state+expression set before the state's own", () => {
+    const m: PrepCharacter[] = [
+      {
+        name: "Howard-Thorpe",
+        notes: "asset-id: thorpe. outfit-set default: suit. outfit-set naked: naked, limp. outfit-set naked+aroused: naked, erect.",
+        basePositive: "1boy",
+        expressions: [{ expression: "neutral", tags: "stiff" }, { expression: "aroused", tags: "scarlet" }],
+        outfits: [
+          { kind: "clothes", name: "suit", tags: "dark suit" },
+          { kind: "clothes", name: "naked", tags: "nude" },
+          { kind: "clothes", name: "limp", tags: "limp cock" },
+          { kind: "clothes", name: "erect", tags: "erect cock" },
+        ],
+      },
+    ];
+    expect(spritePromptFromPrep("thorpe_neutral", m)).toContain("dark suit");
+    expect(spritePromptFromPrep("thorpe_naked_neutral", m)).toContain("nude, limp cock");
+    const hard = spritePromptFromPrep("thorpe_naked_aroused", m) ?? "";
+    expect(hard).toContain("nude, erect cock");
+    expect(hard).not.toContain("limp");
+    expect(hard).not.toContain("suit");
+  });
+});

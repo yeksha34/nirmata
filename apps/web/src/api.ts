@@ -1,9 +1,11 @@
 import type {
+  AgentToken,
   CardForm,
   CardTemplate,
   ComfyUiStatus,
   GenerateAssetInput,
   GenerationJob,
+  ImportedWorld,
   Mode,
   Perspective,
   RecentStory,
@@ -23,6 +25,8 @@ import type {
   WorldSummary,
   Writing,
   You,
+  AssetKind,
+  VnAssetLists,
 } from "./types";
 
 /** A problem the server explained in plain words (or a lost connection). */
@@ -150,12 +154,28 @@ export const api = {
   closeStory: () => post("/api/story/close"),
 
   // the worlds page: every world, without opening any of them
+  agentTokens: (worldName: string) =>
+    get<{ tokens: AgentToken[] }>(`/api/worlds/${encodeURIComponent(worldName)}/agent-tokens`).then(
+      (r) => r.tokens,
+    ),
+  /** Makes a token for the adaptation agent. The token is in the answer once and cannot be read again. */
+  makeAgentToken: (worldName: string, label: string, days: number, kinds?: string[]) =>
+    post<{ id: string; token: string }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/agent-tokens`,
+      { label, days, ...(kinds ? { kinds } : {}) },
+    ),
+  revokeAgentToken: (worldName: string, id: string) =>
+    del(`/api/worlds/${encodeURIComponent(worldName)}/agent-tokens/${encodeURIComponent(id)}`),
+  publishWorld: (worldName: string) =>
+    post<{ versionId: string | null }>(`/api/worlds/${encodeURIComponent(worldName)}/publish`, {}),
   recent: () => get<{ stories: RecentStory[] }>("/api/recent").then((r) => r.stories),
   worldDetail: (name: string) => get<WorldDetail>(`/api/worlds/${encodeURIComponent(name)}`),
   writing: (name: string, path: string) =>
     get<Writing>(
       `/api/worlds/${encodeURIComponent(name)}/writing?path=${encodeURIComponent(path)}`,
     ),
+  importWorld: (args: { title: string; tagline?: string; settingsKinds: string[]; days: number }) =>
+    post<ImportedWorld>("/api/worlds/import", args),
   createWorld: (args: { title: string; tagline?: string; premise?: string }) =>
     post<{ world: WorldSummary }>("/api/worlds", args).then((r) => r.world),
   editWorld: (
@@ -249,10 +269,10 @@ export const api = {
     del<{ ok: true; database: boolean; files: boolean }>(imageUrl.replace(/\/image$/, "")),
   allVns: () => get<{ vns: VnWithAssetsSummary[] }>("/api/vns").then((r) => r.vns),
   vnAssets: (worldName: string, slug: string) =>
-    get<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }>(
+    get<VnAssetLists>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets`,
     ),
-  vnAssetDetail: (worldName: string, slug: string, type: "sprite" | "cg" | "bg", name: string) =>
+  vnAssetDetail: (worldName: string, slug: string, type: AssetKind, name: string) =>
     get<VnAssetDetail>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}`,
     ),
@@ -260,7 +280,7 @@ export const api = {
   saveAssetPrompt: (
     worldName: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
     body: {
       positivePrompt: string;
@@ -297,15 +317,30 @@ export const api = {
   archiveOneVnAsset: (
     worldName: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
   ) =>
     post<{ ok: boolean; timestamp: string }>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}/archive`,
       {},
     ),
-  deleteOneVnAsset: (worldName: string, slug: string, type: "sprite" | "cg" | "bg", name: string) =>
+  deleteOneVnAsset: (worldName: string, slug: string, type: AssetKind, name: string) =>
     del<{ ok: boolean; name: string }>(
       `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/asset-meta/${type}/${encodeURIComponent(name)}`,
+    ),
+  /** Plans a new asset in a visual novel; its image is made later. A sprite, clothes or adornment names its character as `owner`. */
+  addVnAsset: (
+    worldName: string,
+    slug: string,
+    body: { type: AssetKind; name: string; owner?: string },
+  ) =>
+    post<{ ok: boolean; name: string }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets`,
+      body,
+    ),
+  /** Takes an asset out of the plan and deletes its image; its dataset runs stay. */
+  removeVnAsset: (worldName: string, slug: string, type: AssetKind, name: string) =>
+    del<{ ok: boolean; name: string }>(
+      `/api/worlds/${encodeURIComponent(worldName)}/vns/${encodeURIComponent(slug)}/assets/${type}/${encodeURIComponent(name)}`,
     ),
 };

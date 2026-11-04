@@ -45,6 +45,7 @@ node .agents/skills/gen-assets-workflow-comfyui/driver.mjs list
 
 ## Principles & Boundaries
 
+0. **Imported worlds.** For a world Nirmata holds in its database the workflows are in the database (F-71): use the agent endpoints under `/api/agent/worlds/<world>/workflows` (see `story-to-vn-adaptation`, Step 0) instead of `scaffold`. The rest of this skill applies to worlds that are still folders.
 1. **Adaptation Ownership:** Workflows belong to the world and adaptation. The server (`apps/server`) and web client (`apps/web`) are execution harnesses; they do not synthesize diffusion graphs from scratch. The world's `assets/workflow/` directory must contain the prepared templates before generation can proceed.
 2. **Storage Location:** All customized workflows for a specific world are written to:
    `worlds/<world-slug>/assets/workflow/`
@@ -53,6 +54,7 @@ node .agents/skills/gen-assets-workflow-comfyui/driver.mjs list
    - Sprites: `sprite.api.json` (and `sprite.json`)
    - Event CGs: `cg.api.json` (and `cg.json`)
    - Backgrounds: `bg.api.json` and `background.api.json` (and `.json`)
+   - Optional, character-linked kinds (`"clothes"`, `"adornment"`, `"object"`): `clothes.api.json`, `adornment.api.json`, `object.api.json` (and `.json`). `check` does not fail when they are missing.
 
 ---
 
@@ -80,6 +82,13 @@ node .agents/skills/gen-assets-workflow-comfyui/driver.mjs list
 * **Lighting & Atmosphere:** Support prompt swapping for times of day (day, overcast, dusk, night, rainy).
 * **Geometry Preservation:** For repeated visits to the same location, use ControlNet Depth with a 0.50–0.60 denoise lock to preserve architectural line consistency across lighting changes.
 
+### 4. Clothes, Adornments, Objects (`clothes.api.json`, `adornment.api.json`, `object.api.json`)
+* **Purpose:** Reference art for things a character wears or touches, which a generic sprite/CG prompt cannot draw once the world customises them. Output feeds the owner's sprite state (`<char>_<state>`) or the linked CG as a reference image (ADR-0031); there is no layer compositor.
+* **Locks:** Clothes and adornments are locked to one character (the unclad base `naked` is the only unlocked state). Objects link to characters and/or CGs, and exist only when a character interacts with them and the world makes them non-generic.
+* **Canvas:** $768 	imes 768$, isolated item on alpha (RMBG), no person in frame.
+* **Prompts:** the prompt is only what the image model needs to draw the item, because the model has never seen the world's item and cannot use anything else. Describe it (shape, size, colour, material, surface, count, how it hangs or sits) instead of naming it, one card per piece (a top, a skirt and a necklace are three cards, not one outfit). Never put character names, owners, story or how it is used in the prompt: they are not drawn and only confuse the render. The prompt is built from the world card: its `<prompt>` part first, then material, placement, attachment and coverage. A card's optional `<reference>` names an image in the world that guides the render; crop it to the one piece so it does not pull toward a whole outfit. Names, owners and links live in the card attributes and the database, not in the prompt.
+* **Manifest:** `assets.clothes` and `assets.adornments` are `{ character: [names] }`; `assets.objects` is `[{ name, owners?, cgs? }]`. `scaffold` writes one `prompts.json` entry per name.
+
 ---
 
 ## Execution Checklist
@@ -94,6 +103,7 @@ node .agents/skills/gen-assets-workflow-comfyui/driver.mjs list
    * `sprite.api.json` (and `sprite.json`)
    * `cg.api.json` (and `cg.json`)
    * `bg.api.json` & `background.api.json` (and `.json`)
+   * `clothes.api.json`, `adornment.api.json`, `object.api.json` (and `.json`), if the world uses them
    Ensure checkpoints (`AOM3A1B_orangemixs.safetensors`, `ponyDiffusionV6XL_fp16.safetensors`, etc.) match available hardware.
 3. **Verify Compliance:**
    Run:

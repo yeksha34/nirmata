@@ -13,6 +13,7 @@ import {
 import { basename, dirname, join, posix, resolve, sep } from "node:path";
 import {
   type Card,
+  type CardKind,
   CardFrontmatter,
   checkCards,
   compileVn,
@@ -44,11 +45,35 @@ import {
   getDefaultNegativePrompt,
   synthesizeBackgroundDanbooruPrompt,
   synthesizeCgDanbooruPrompt,
+  type PrepCharacter,
+  spritePromptFromPrep,
   synthesizeSpriteDanbooruPrompt,
   type Workflow,
+  type AssetKind,
+  assetDir,
+  isLinkedKind,
+  LINKED_KINDS,
+  type LinkedKind,
+  composeLinkedPrompt,
+  type LinkedDetails,
+  parseLinkedCard,
+  templateName,
 } from "@nirmata/gen";
+import {
+  AssetPlanError,
+  addToPlan,
+  type PlannedAsset,
+  removeFromPlan,
+  type PlanSource,
+  type StudioRow,
+  type VnSource,
+  type WorkflowSource,
+  type WorldSource,
+  type WritingSource,
+  writingKind,
+} from "@nirmata/adaptation";
 import { HttpError } from "./errors";
-import { slugFor } from "./lore-rows";
+import { CARD_DIRS, type CardFile, markdownFiles, readCardFiles, slugFor } from "@nirmata/importer";
 import {
   parseReferenceSettings,
   type ReferenceSettings,
@@ -58,7 +83,7 @@ import {
 
 export interface VnAssetItem {
   id: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath: string;
   exists: boolean;
@@ -66,6 +91,19 @@ export interface VnAssetItem {
   defaultPrompt?: string;
   isShared?: boolean;
   vnSlug?: string;
+  /** Clothes, adornments and objects: the characters this asset is locked to (from the manifest). */
+  lockedTo?: string[];
+  /** Objects: the CGs this asset is linked to. */
+  linkedCgs?: string[];
+}
+
+export interface VnAssetLists {
+  sprites: VnAssetItem[];
+  cgs: VnAssetItem[];
+  backgrounds: VnAssetItem[];
+  clothes: VnAssetItem[];
+  adornments: VnAssetItem[];
+  objects: VnAssetItem[];
 }
 
 export interface VnAssetDatasetEntry {
@@ -79,7 +117,7 @@ export interface VnAssetDatasetEntry {
 
 export interface VnAssetPromptSpec {
   name: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   positivePrompt: string;
   negativePrompt?: string;
   aspectRatio?: string;
@@ -106,7 +144,7 @@ export interface PromptSpecPatch {
 
 export interface VnAssetDetail {
   id: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath: string;
   exists: boolean;
@@ -132,9 +170,6 @@ const promptWrites = new Map<string, Promise<void>>();
 
 const NO_REFERENCE_SLOT =
   "This workflow has no place for a reference image. Use a workflow with a Reference Image node.";
-
-/** Where a world keeps its cards. Same layout the editor and the linter use. */
-const CARD_DIRS = ["lore", "characters", "setting", "plot", ".agents/rules"] as const;
 
 /** Where a world keeps prose that is not a card: finished chapters, and work in progress. */
 const WRITING_DIRS = ["chapters", "drafts"] as const;
@@ -183,23 +218,6 @@ export function sanitizeSlug(raw: string): string {
   return s;
 }
 
-async function markdownFiles(dir: string): Promise<string[]> {
-  let names: string[];
-  try {
-    names = await readdir(dir);
-  } catch (e) {
-    if (isMissing(e)) return [];
-    throw e;
-  }
-  const out: string[] = [];
-  for (const name of names.sort()) {
-    const full = join(dir, name);
-    if ((await stat(full)).isDirectory()) out.push(...(await markdownFiles(full)));
-    else if (name.endsWith(".md") && !name.startsWith("_")) out.push(full);
-  }
-  return out;
-}
-
 /** A file's first heading, or its name made readable: "playground_coldbrook.md" is "Playground coldbrook". */
 function titleFrom(text: string, rel: string): string {
   const heading = /^#{1,2}[ \t]+(.+?)[ \t]*$/m.exec(text.slice(0, 2000));
@@ -221,12 +239,7 @@ async function titleOf(file: string): Promise<string> {
 }
 
 /** One card file: its text, and either the card it holds or what is wrong with it. */
-export interface CardFile {
-  path: string;
-  text: string;
-  card?: Card;
-  problems?: string[];
-}
+export type { CardFile };
 
 /** Dataset images of an imported world, from the database and its stores (see `DbImages`). */
 export interface DatasetImages {
@@ -261,6 +274,55 @@ export interface LoreCards {
   removeFile(slug: string, path: string): Promise<boolean>;
 }
 
+/** What an imported world keeps in the database besides its cards (ADR-0035). Each is optional. */
+export interface DbSources {
+  workflows?: WorkflowSource | undefined;
+  vnContent?: VnSource | undefined;
+  plan?: PlanSource | undefined;
+  writings?: WritingSource | undefined;
+  world?: WorldSource | undefined;
+  prep?: PrepSource | undefined;
+}
+
+/** The outfits and adornments a world's character preps list, with the tags that describe them. */
+export interface PrepSource {
+  characters(world: string): Promise<PrepCharacter[] | undefined>;
+}
+
+/** One planned asset, whether it came from a manifest or from the database. */
+interface PlannedItem {
+  type: AssetKind;
+  name: string;
+  owners: string[];
+  cgs: string[];
+  shared?: boolean | undefined;
+  renderId?: string | undefined;
+  prompt?: string | undefined;
+}
+
+function fromStudioRow(r: StudioRow): PlannedItem {
+  // a sprite has no link in the database: its character is the part of its name before the first "_"
+  const owners = r.type === "sprite" ? [r.name.split("_")[0] ?? r.name] : r.owners;
+  return {
+    type: r.type,
+    name: r.name,
+    owners,
+    cgs: r.cgs,
+    shared: r.shared,
+    renderId: r.renderId,
+    prompt: r.prompt,
+  };
+}
+
+/** The parts of a saved visual novel, as the database store takes them. */
+function toParts(data: { manifest?: VnManifest; adaptationMd?: string; slides?: VnSlideDeck }) {
+  return {
+    manifest: data.manifest,
+    adaptationMd: data.adaptationMd,
+    slides: data.slides,
+  };
+}
+
 /** One world on disk: `world.json` and its card folders. The source cards (ADR-0009). */
 export class WorldFiles implements SourceBackend {
   readonly root: string;
@@ -268,13 +330,27 @@ export class WorldFiles implements SourceBackend {
   constructor(
     root: string,
     private readonly lore?: LoreCards,
+    sources: DbSources = {},
   ) {
     this.root = resolve(root);
+    this.workflows = sources.workflows;
+    this.vnContent = sources.vnContent;
+    this.plan = sources.plan;
+    this.writingSource = sources.writings;
+    this.worldSource = sources.world;
+    this.prepSource = sources.prep;
   }
 
+  private readonly workflows: WorkflowSource | undefined;
+  private readonly vnContent: VnSource | undefined;
+  private readonly plan: PlanSource | undefined;
+  private readonly writingSource: WritingSource | undefined;
+  private readonly worldSource: WorldSource | undefined;
+  private readonly prepSource: PrepSource | undefined;
+
   /** The world's name in the database, when cards may live there. */
-  private async loreSlug(): Promise<string | undefined> {
-    if (!this.lore) return undefined;
+  private async loreSlug(anyStore = false): Promise<string | undefined> {
+    if (!this.lore && !anyStore) return undefined;
     try {
       return slugFor((await this.world()).name);
     } catch {
@@ -288,11 +364,20 @@ export class WorldFiles implements SourceBackend {
 
   /** True when the folder has a world.json (it may still be unreadable). */
   async exists(): Promise<boolean> {
-    return (await readIfThere(join(this.root, "world.json"))) !== undefined;
+    if ((await readIfThere(join(this.root, "world.json"))) !== undefined) return true;
+    return (await this.storedManifest()) !== undefined;
+  }
+
+  /** The manifest the database holds for this folder's world, if it holds one. */
+  private async storedManifest(): Promise<Record<string, unknown> | undefined> {
+    if (!this.worldSource) return undefined;
+    return this.worldSource.manifest(slugFor(basename(this.root)));
   }
 
   async world(): Promise<WorldManifest> {
-    const text = await readIfThere(join(this.root, "world.json"));
+    // an imported world's manifest is in the database; its folder's world.json is only the fallback
+    const stored = await this.storedManifest();
+    const text = stored ? JSON.stringify(stored) : await readIfThere(join(this.root, "world.json"));
     if (text === undefined) {
       throw new HostError("bad_state", "This world has no world.json.");
     }
@@ -314,21 +399,8 @@ export class WorldFiles implements SourceBackend {
     return { files: await this.cardFilesOnDisk(), source: "files" };
   }
 
-  private async cardFilesOnDisk(): Promise<CardFile[]> {
-    const out: CardFile[] = [];
-    for (const dir of CARD_DIRS) {
-      for (const file of await markdownFiles(join(this.root, dir))) {
-        const rel = file.slice(this.root.length + 1).replaceAll("\\", "/");
-        const text = await readFile(file, "utf8");
-        const parsed = parseCard(rel, text);
-        out.push(
-          parsed.ok
-            ? { path: rel, text, card: parsed.card }
-            : { path: rel, text, problems: parsed.errors },
-        );
-      }
-    }
-    return out;
+  private cardFilesOnDisk(): Promise<CardFile[]> {
+    return readCardFiles(this.root);
   }
 
   /**
@@ -338,6 +410,26 @@ export class WorldFiles implements SourceBackend {
   async writings(
     skip: ReadonlySet<string>,
   ): Promise<{ chapters: WritingSummary[]; drafts: WritingSummary[] }> {
+    const world = this.writingSource ? await this.loreSlug(true) : undefined;
+    const stored = world ? await this.writingSource?.list(world) : undefined;
+    if (stored) {
+      const stem = (w: WritingSummary) => w.path.replace(/\.md$/, "");
+      const byName = (a: WritingSummary, b: WritingSummary) =>
+        stem(a).localeCompare(stem(b), undefined, { numeric: true });
+      // scenes are one-line beats, not chapters; they are not listed here
+      const keep = stored.filter(
+        (w) =>
+          !skip.has(w.path) && basename(w.path) !== "index.md" && writingKind(w.path) !== "scene",
+      );
+      return {
+        chapters: keep.filter((w) => writingKind(w.path) === "chapter").sort(byName),
+        drafts: keep
+          .filter((w) => writingKind(w.path) === "draft")
+          .sort((a, b) =>
+            a.updatedAt === b.updatedAt ? byName(a, b) : a.updatedAt < b.updatedAt ? 1 : -1,
+          ),
+      };
+    }
     const found: Record<(typeof WRITING_DIRS)[number], WritingSummary[]> = {
       chapters: [],
       drafts: [],
@@ -374,6 +466,13 @@ export class WorldFiles implements SourceBackend {
     const rel = posix.normalize(path.replaceAll("\\", "/"));
     const dir = rel.split("/")[0] ?? "";
     if (!(WRITING_DIRS as readonly string[]).includes(dir) || !rel.endsWith(".md")) {
+      throw new HostError("nothing_to_do", `There is no chapter or draft at ${rel}.`);
+    }
+    const world = this.writingSource ? await this.loreSlug(true) : undefined;
+    const stored = world ? await this.writingSource?.get(world, rel) : undefined;
+    if (stored) return stored;
+    // a world in the database has no other copy: what it does not hold is not there
+    if (world && (await this.writingSource?.list(world)) !== undefined) {
       throw new HostError("nothing_to_do", `There is no chapter or draft at ${rel}.`);
     }
     const full = inside(this.root, rel);
@@ -426,7 +525,58 @@ export class WorldFiles implements SourceBackend {
     return join(this.root, "vns");
   }
 
+  /** The world's name in the database when its visual novels may live there. */
+  private async vnWorld(): Promise<string | undefined> {
+    return this.vnContent ? this.loreSlug(true) : undefined;
+  }
+
+  private summaryOf(manifest: VnManifest, slideCount: number | undefined): VnSummary {
+    return {
+      slug: manifest.slug,
+      title: manifest.title,
+      source: manifest.source,
+      mode: manifest.mode,
+      mc: manifest.mc,
+      tier: manifest.tier,
+      slideCount,
+      routes: manifest.routes,
+      updatedAt: manifest.updatedAt,
+      order: manifest.order,
+      nextSlug: manifest.nextSlug,
+    };
+  }
+
+  /** Sorted by `order`, then by name; each one points at the next unless it says otherwise. */
+  private ordered(summaries: VnSummary[]): VnSummary[] {
+    summaries.sort((a, b) => {
+      if (a.order !== undefined && b.order !== undefined) {
+        return a.order - b.order;
+      }
+      if (a.order !== undefined) return -1;
+      if (b.order !== undefined) return 1;
+      return a.slug.localeCompare(b.slug, undefined, { numeric: true, sensitivity: "base" });
+    });
+    for (let i = 0; i < summaries.length; i++) {
+      const cur = summaries[i];
+      const nxt = summaries[i + 1];
+      if (cur && !cur.nextSlug && nxt) {
+        cur.nextSlug = nxt.slug;
+      }
+    }
+    return summaries;
+  }
+
   async vns(): Promise<VnSummary[]> {
+    const world = await this.vnWorld();
+    const stored = world ? await this.vnContent?.list(world) : undefined;
+    if (stored) {
+      const summaries: VnSummary[] = [];
+      for (const rec of stored) {
+        const parsed = VnManifestSchema.safeParse(rec.manifest);
+        if (parsed.success) summaries.push(this.summaryOf(parsed.data, rec.slideCount));
+      }
+      return this.ordered(summaries);
+    }
     let slugs: string[];
     try {
       slugs = await readdir(this.vnsDir);
@@ -444,7 +594,6 @@ export class WorldFiles implements SourceBackend {
         const raw = JSON.parse(text);
         const parsed = VnManifestSchema.safeParse(raw);
         if (parsed.success) {
-          const m = parsed.data;
           let slideCount: number | undefined;
           const slidesText = await readIfThere(join(this.vnsDir, slug, "slides.json"));
           if (slidesText) {
@@ -455,64 +604,59 @@ export class WorldFiles implements SourceBackend {
               }
             } catch {}
           }
-          summaries.push({
-            slug: m.slug,
-            title: m.title,
-            source: m.source,
-            mode: m.mode,
-            mc: m.mc,
-            tier: m.tier,
-            slideCount,
-            routes: m.routes,
-            updatedAt: m.updatedAt,
-            order: m.order,
-            nextSlug: m.nextSlug,
-          });
+          summaries.push(this.summaryOf(parsed.data, slideCount));
         }
       } catch {}
     }
-
-    // Sort by order ascending if specified, then natural alphanumeric slug order
-    summaries.sort((a, b) => {
-      if (a.order !== undefined && b.order !== undefined) {
-        return a.order - b.order;
-      }
-      if (a.order !== undefined) return -1;
-      if (b.order !== undefined) return 1;
-      return a.slug.localeCompare(b.slug, undefined, { numeric: true, sensitivity: "base" });
-    });
-
-    // Populate sequential nextSlug if not explicitly set
-    for (let i = 0; i < summaries.length; i++) {
-      const cur = summaries[i];
-      const nxt = summaries[i + 1];
-      if (cur && !cur.nextSlug && nxt) {
-        cur.nextSlug = nxt.slug;
-      }
-    }
-
-    return summaries;
+    return this.ordered(summaries);
   }
 
-  /** One visual novel's manifest as written, without working out its order or what comes next. */
-  private async vnManifest(safeSlug: string): Promise<VnManifest> {
-    const text = await readIfThere(join(inside(this.root, `vns/${safeSlug}`), "manifest.json"));
-    if (!text) {
-      throw new HostError("nothing_to_do", `There is no visual novel adaptation "${safeSlug}".`);
-    }
-    return VnManifestSchema.parse(JSON.parse(text));
-  }
-
-  async vn(
+  /** One visual novel from the database (undefined for a world that is not there) or the folder. */
+  private async readVn(
+    safeSlug: string,
     slug: string,
-  ): Promise<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck }> {
-    const safeSlug = sanitizeSlug(slug);
+  ): Promise<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck | undefined }> {
+    const world = await this.vnWorld();
+    if (world && this.vnContent) {
+      const rec = await this.vnContent.get(world, safeSlug);
+      if (rec) {
+        return {
+          manifest: VnManifestSchema.parse(rec.manifest),
+          adaptationMd: rec.adaptationMd,
+          slides: rec.slides as VnSlideDeck | undefined,
+        };
+      }
+      if ((await this.vnContent.list(world)) !== undefined) {
+        throw new HostError("nothing_to_do", `There is no visual novel adaptation "${slug}".`);
+      }
+    }
     const dir = inside(this.root, `vns/${safeSlug}`);
     const manifestText = await readIfThere(join(dir, "manifest.json"));
     if (!manifestText) {
       throw new HostError("nothing_to_do", `There is no visual novel adaptation "${slug}".`);
     }
     const manifest = VnManifestSchema.parse(JSON.parse(manifestText));
+    const adaptationMd = (await readIfThere(join(dir, "adaptation.md"))) || "";
+    let slides: VnSlideDeck | undefined;
+    const slidesText = await readIfThere(join(dir, "slides.json"));
+    if (slidesText) {
+      try {
+        slides = JSON.parse(slidesText);
+      } catch {}
+    }
+    return { manifest, adaptationMd, slides };
+  }
+
+  /** One visual novel's manifest as written, without working out its order or what comes next. */
+  private async vnManifest(safeSlug: string): Promise<VnManifest> {
+    return (await this.readVn(safeSlug, safeSlug)).manifest;
+  }
+
+  async vn(
+    slug: string,
+  ): Promise<{ manifest: VnManifest; adaptationMd: string; slides?: VnSlideDeck }> {
+    const safeSlug = sanitizeSlug(slug);
+    const { manifest, adaptationMd, slides } = await this.readVn(safeSlug, slug);
     if (!manifest.nextSlug || manifest.order === undefined) {
       const all = await this.vns();
       const current = all.find((v) => v.slug === safeSlug);
@@ -525,15 +669,7 @@ export class WorldFiles implements SourceBackend {
         }
       }
     }
-    const adaptationMd = (await readIfThere(join(dir, "adaptation.md"))) || "";
-    let slides: VnSlideDeck | undefined;
-    const slidesText = await readIfThere(join(dir, "slides.json"));
-    if (slidesText) {
-      try {
-        slides = JSON.parse(slidesText);
-      } catch {}
-    }
-    return { manifest, adaptationMd, slides };
+    return { manifest, adaptationMd, ...(slides ? { slides } : {}) };
   }
 
   async saveVn(
@@ -541,6 +677,8 @@ export class WorldFiles implements SourceBackend {
     data: { manifest?: VnManifest; adaptationMd?: string; slides?: VnSlideDeck },
   ): Promise<void> {
     const safeSlug = sanitizeSlug(slug);
+    const world = await this.vnWorld();
+    if (world && (await this.vnContent?.save(world, safeSlug, toParts(data)))) return;
     const dir = inside(this.root, `vns/${safeSlug}`);
     await mkdir(dir, { recursive: true });
     if (data.manifest) {
@@ -566,13 +704,22 @@ export class WorldFiles implements SourceBackend {
   }): Promise<VnSummary> {
     const safeSlug = sanitizeSlug(options.slug);
     const dir = inside(this.root, `vns/${safeSlug}`);
-    if (await readIfThere(join(dir, "manifest.json"))) {
+    const world = await this.vnWorld();
+    const stored = world ? await this.vnContent?.list(world) : undefined;
+    const exists = stored
+      ? stored.some((v) => v.slug === safeSlug)
+      : Boolean(await readIfThere(join(dir, "manifest.json")));
+    if (exists) {
       throw new HostError("bad_state", `Visual novel adaptation "${safeSlug}" already exists.`);
     }
     const manifest = createStarterManifest({ ...options, slug: safeSlug });
     const adaptationMd = createStarterAdaptationMd({ ...options, slug: safeSlug });
     const { deck } = compileVn(adaptationMd, { manifest });
 
+    if (world && stored) {
+      await this.vnContent?.save(world, safeSlug, { manifest, adaptationMd, slides: deck });
+      return this.summaryOf(manifest, deck.slides.length);
+    }
     await mkdir(join(this.vnsDir, "_shared", "assets"), { recursive: true });
     await writeAtomic(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
     await writeAtomic(join(dir, "adaptation.md"), adaptationMd);
@@ -596,15 +743,14 @@ export class WorldFiles implements SourceBackend {
   async compileVn(slug: string): Promise<{ slides: VnSlideDeck; diagnostics: VnDiagnostic[] }> {
     const safeSlug = sanitizeSlug(slug);
     const dir = inside(this.root, `vns/${safeSlug}`);
-    const manifestText = await readIfThere(join(dir, "manifest.json"));
-    if (!manifestText) {
-      throw new HostError("nothing_to_do", `There is no visual novel adaptation "${slug}".`);
-    }
-    const manifest = VnManifestSchema.parse(JSON.parse(manifestText));
-    const adaptationMd = (await readIfThere(join(dir, "adaptation.md"))) || "";
+    const { manifest, adaptationMd } = await this.readVn(safeSlug, slug);
     const result = compileVn(adaptationMd, { manifest });
 
     manifest.updatedAt = new Date().toISOString();
+    const world = await this.vnWorld();
+    if (world && (await this.vnContent?.save(world, safeSlug, { manifest, slides: result.deck }))) {
+      return { slides: result.deck, diagnostics: result.diagnostics };
+    }
     await writeAtomic(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
     await writeAtomic(join(dir, "slides.json"), JSON.stringify(result.deck, null, 2));
 
@@ -741,11 +887,7 @@ export class WorldFiles implements SourceBackend {
    * shape (a map or a list) and every other field of the entry, the seed included. Saves to one file
    * wait for each other.
    */
-  async savePromptSpec(
-    name: string,
-    type: "sprite" | "cg" | "bg",
-    patch: PromptSpecPatch,
-  ): Promise<void> {
+  async savePromptSpec(name: string, type: AssetKind, patch: PromptSpecPatch): Promise<void> {
     const shared = inside(this.root, "vns/_shared/assets/prompts.json");
     const own = inside(this.root, "assets/workflow/prompts.json");
     const file = (await readIfThere(shared)) ? shared : own;
@@ -790,10 +932,93 @@ export class WorldFiles implements SourceBackend {
     await done;
   }
 
-  async listVnAssets(
-    slug: string,
-    options: { prompts?: boolean } = {},
-  ): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+  /** What the world's card for a clothes, adornment or object asset says (empty when it has none). */
+  async linkedDetails(kind: LinkedKind, name: string): Promise<LinkedDetails> {
+    const text = await readIfThere(inside(this.root, `${assetDir(kind)}/${sanitizeSlug(name)}.md`));
+    const details: LinkedDetails = text ? parseLinkedCard(text) : await this.linkedCardInDb(kind, name);
+    if (details.prompt) return details;
+    // an owned asset is `<owner>_<item>`: the prep that lists the item says how it looks
+    const item = kind !== "object" && name.includes("_") ? name.slice(name.indexOf("_") + 1) : name;
+    const outfit = (await this.prepOutfits()).find((o) => o.kind === kind && o.name === item);
+    return outfit?.tags ? { ...details, prompt: outfit.tags } : details;
+  }
+
+  /** The card of a clothes or adornment asset: its id ends with the item (`adornment.fellatia-black-pearl-collar`). */
+  private async linkedCardInDb(kind: LinkedKind, name: string): Promise<LinkedDetails> {
+    const item = kind !== "object" && name.includes("_") ? name.slice(name.indexOf("_") + 1) : name;
+    const dash = item.replace(/_/g, "-");
+    const cards = await this.cardFiles().catch(() => []);
+    const hits = cards.filter((c) => {
+      const id = /<card id="([^"]+)"/.exec(c.text)?.[1] ?? "";
+      return id.startsWith(`${kind}.`) && (id.endsWith(`-${dash}`) || id === `${kind}.${dash}`);
+    });
+    return hits.length === 1 && hits[0] ? parseLinkedCard(hits[0].text) : {};
+  }
+
+  private async prepOutfits(): Promise<Array<{ kind: string; name: string; tags: string }>> {
+    return (await this.prepCharacters()).flatMap((c) => c.outfits);
+  }
+
+  /** The world's character preps, which say how a character, an outfit and an expression look. */
+  private async prepCharacters(): Promise<PrepCharacter[]> {
+    const world = this.prepSource ? await this.loreSlug(true) : undefined;
+    return (world ? await this.prepSource?.characters(world) : undefined) ?? [];
+  }
+
+  /** The author's own image of such an asset (the card's `reference` part), if the card names one that exists. */
+  async linkedReference(kind: LinkedKind, name: string): Promise<Buffer | undefined> {
+    const rel = (await this.linkedDetails(kind, name)).reference;
+    if (!rel) return undefined;
+    try {
+      return await readFile(inside(this.root, rel.replaceAll("\\", "/")));
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * The assets a visual novel plans: from the database for a world that is in it, else from its
+   * manifest. The same shape either way, so the Studio lists them the same way.
+   */
+  private async plannedAssets(safeSlug: string): Promise<PlannedItem[]> {
+    const world = this.plan ? await this.loreSlug(true) : undefined;
+    const rows = world ? await this.plan?.list(world, safeSlug) : undefined;
+    if (rows) return rows.map(fromStudioRow);
+    let m: VnManifest["assets"] | undefined;
+    try {
+      m = (await this.vnManifest(safeSlug)).assets;
+    } catch {
+      return [];
+    }
+    const out: PlannedItem[] = [];
+    for (const [character, expressions] of Object.entries(m?.characters ?? {})) {
+      const list = Array.isArray(expressions) && expressions.length > 0 ? expressions : ["neutral"];
+      for (const expression of list) {
+        out.push({
+          type: "sprite",
+          name: `${character}_${expression}`,
+          owners: [character],
+          cgs: [],
+        });
+      }
+    }
+    for (const name of m?.cgs ?? []) out.push({ type: "cg", name, owners: [], cgs: [] });
+    for (const name of m?.backgrounds ?? []) out.push({ type: "bg", name, owners: [], cgs: [] });
+    for (const [owner, names] of Object.entries(m?.clothes ?? {})) {
+      for (const n of names)
+        out.push({ type: "clothes", name: `${owner}_${n}`, owners: [owner], cgs: [] });
+    }
+    for (const [owner, names] of Object.entries(m?.adornments ?? {})) {
+      for (const n of names)
+        out.push({ type: "adornment", name: `${owner}_${n}`, owners: [owner], cgs: [] });
+    }
+    for (const o of m?.objects ?? []) {
+      out.push({ type: "object", name: o.name, owners: o.owners ?? [], cgs: o.cgs ?? [] });
+    }
+    return out;
+  }
+
+  async listVnAssets(slug: string, options: { prompts?: boolean } = {}): Promise<VnAssetLists> {
     const withPrompts = options.prompts !== false;
     const safeSlug = sanitizeSlug(slug);
 
@@ -829,7 +1054,23 @@ export class WorldFiles implements SourceBackend {
           }
         }
       }
-      return { sprites: allSprites, cgs: allCgs, backgrounds: allBgs };
+      const linked = {
+        clothes: [...shared.clothes],
+        adornments: [...shared.adornments],
+        objects: [...shared.objects],
+      };
+      for (const v of vns) {
+        if (v.slug === "_shared") continue;
+        const vAssets = await this.listVnAssets(v.slug, options);
+        for (const key of ["clothes", "adornments", "objects"] as const) {
+          for (const item of vAssets[key]) {
+            if (!linked[key].some((existing) => existing.name === item.name)) {
+              linked[key].push({ ...item, vnSlug: v.slug });
+            }
+          }
+        }
+      }
+      return { sprites: allSprites, cgs: allCgs, backgrounds: allBgs, ...linked };
     }
 
     const sprites: VnAssetItem[] = [];
@@ -837,8 +1078,11 @@ export class WorldFiles implements SourceBackend {
     const backgrounds: VnAssetItem[] = [];
     const promptSpecs = withPrompts ? await this.loadPromptSpecs() : {};
     const cardFiles = withPrompts ? await this.cardFiles().catch(() => []) : [];
+    const preps = withPrompts ? await this.prepCharacters() : [];
     const sprite = (n: string) =>
-      withPrompts ? synthesizeSpriteDanbooruPrompt(n, cardFiles) : undefined;
+      withPrompts
+        ? (spritePromptFromPrep(n, preps) ?? synthesizeSpriteDanbooruPrompt(n, cardFiles))
+        : undefined;
     const cg = (n: string) => (withPrompts ? synthesizeCgDanbooruPrompt(n, cardFiles) : undefined);
     const bg = (n: string) =>
       withPrompts ? synthesizeBackgroundDanbooruPrompt(n, cardFiles) : undefined;
@@ -857,10 +1101,7 @@ export class WorldFiles implements SourceBackend {
       return { exists: false };
     };
 
-    const scanDir = async (
-      dirName: "sprites" | "cgs" | "backgrounds",
-      type: "sprite" | "cg" | "bg",
-    ) => {
+    const scanDir = async (dirName: "sprites" | "cgs" | "backgrounds", type: AssetKind) => {
       const dirs: Array<{ path: string; isShared: boolean }> = [
         { path: inside(this.root, `vns/_shared/assets/${dirName}`), isShared: true },
       ];
@@ -904,69 +1145,112 @@ export class WorldFiles implements SourceBackend {
     await scanDir("cgs", "cg");
     await scanDir("backgrounds", "bg");
 
+    // clothes, adornments and objects: reference art kept beside the stage art, named <owner>_<name>
+    const linked: Record<LinkedKind, VnAssetItem[]> = { clothes: [], adornment: [], object: [] };
+    for (const kind of LINKED_KINDS) {
+      const dirName = assetDir(kind);
+      const seen = new Set<string>();
+      for (const { path: d, isShared } of [
+        { path: inside(this.root, `vns/_shared/assets/${dirName}`), isShared: true },
+        ...(safeSlug === "_shared"
+          ? []
+          : [{ path: inside(this.root, `vns/${safeSlug}/assets/${dirName}`), isShared: false }]),
+      ]) {
+        try {
+          for (const f of await readdir(d)) {
+            if (!/\.(png|jpg|jpeg|webp)$/i.test(f)) continue;
+            const stem = f.replace(/\.[^.]+$/, "");
+            if (seen.has(stem)) continue;
+            seen.add(stem);
+            const targetPath = `${dirName}/${f}`;
+            linked[kind].push({
+              id: `${kind}:${stem}`,
+              type: kind,
+              name: stem,
+              targetPath,
+              exists: true,
+              url: `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`,
+              isShared,
+              vnSlug: isShared ? "_shared" : safeSlug,
+            });
+          }
+        } catch {}
+      }
+    }
+    const planned = await this.plannedAssets(safeSlug);
+    const assetUrl = (targetPath: string) =>
+      `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`;
+    /** The file when there is one; else the image the database holds for it. */
+    const found = async (item: PlannedItem, targetPath: string) => {
+      const check = await checkAsset(targetPath);
+      if (check.exists) return { exists: true, url: assetUrl(targetPath) };
+      if (item.renderId) return { exists: true, url: `/api/assets/renders/${item.renderId}/file` };
+      return { exists: false, url: undefined };
+    };
     try {
-      const manifestAssets = (await this.vnManifest(safeSlug)).assets;
-      if (manifestAssets?.characters) {
-        for (const [charName, expressions] of Object.entries(manifestAssets.characters)) {
-          const exprList =
-            Array.isArray(expressions) && expressions.length > 0 ? expressions : ["neutral"];
-          for (const expr of exprList) {
-            const spriteName = `${charName}_${expr}`;
-            if (!sprites.some((s) => s.name === spriteName || s.name === charName)) {
-              const targetPath = `sprites/${spriteName}.png`;
-              const check = await checkAsset(targetPath);
-              sprites.push({
-                id: `sprite:${spriteName}`,
-                type: "sprite",
-                name: spriteName,
-                targetPath,
-                exists: check.exists,
-                url: check.exists
-                  ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
-                  : undefined,
-                defaultPrompt: sprite(spriteName),
-              });
-            }
+      for (const item of planned) {
+        if (!isLinkedKind(item.type)) continue;
+        const kind = item.type;
+        if (linked[kind].some((a) => a.name === item.name)) continue;
+        const targetPath = `${assetDir(kind)}/${item.name}.png`;
+        const there = await found(item, targetPath);
+        linked[kind].push({
+          id: `${kind}:${item.name}`,
+          type: kind,
+          name: item.name,
+          targetPath,
+          exists: there.exists,
+          url: there.url,
+          ...(item.shared ? { isShared: true, vnSlug: "_shared" } : {}),
+        });
+      }
+      for (const kind of LINKED_KINDS) {
+        for (const item of linked[kind]) {
+          const link = planned.find((p) => p.type === kind && p.name === item.name);
+          if (link) {
+            item.lockedTo = link.owners;
+            if (link.cgs.length > 0) item.linkedCgs = link.cgs;
           }
         }
       }
-      if (Array.isArray(manifestAssets?.cgs)) {
-        for (const cgName of manifestAssets.cgs) {
-          if (!cgs.some((c) => c.name === cgName)) {
-            const targetPath = `cgs/${cgName}.png`;
-            const check = await checkAsset(targetPath);
-            cgs.push({
-              id: `cg:${cgName}`,
-              type: "cg",
-              name: cgName,
-              targetPath,
-              exists: check.exists,
-              url: check.exists
-                ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
-                : undefined,
-              defaultPrompt: cg(cgName),
-            });
-          }
+    } catch {}
+    if (withPrompts) {
+      for (const kind of LINKED_KINDS) {
+        for (const item of linked[kind]) {
+          const details = await this.linkedDetails(kind, item.name);
+          item.defaultPrompt ??= composeLinkedPrompt(kind, item.name, details);
         }
       }
-      if (Array.isArray(manifestAssets?.backgrounds)) {
-        for (const bgName of manifestAssets.backgrounds) {
-          if (!backgrounds.some((b) => b.name === bgName)) {
-            const targetPath = `backgrounds/${bgName}.png`;
-            const check = await checkAsset(targetPath);
-            backgrounds.push({
-              id: `bg:${bgName}`,
-              type: "bg",
-              name: bgName,
-              targetPath,
-              exists: check.exists,
-              url: check.exists
-                ? `/api/worlds/${encodeURIComponent(basename(this.root))}/vns/${encodeURIComponent(slug)}/assets/${targetPath}`
-                : undefined,
-              defaultPrompt: bg(bgName),
-            });
-          }
+    }
+
+    try {
+      for (const item of planned) {
+        if (item.type !== "sprite" && item.type !== "cg" && item.type !== "bg") continue;
+        const list = item.type === "sprite" ? sprites : item.type === "cg" ? cgs : backgrounds;
+        const owner = item.owners[0] ?? item.name;
+        if (
+          list.some((s) => s.name === item.name || (item.type === "sprite" && s.name === owner))
+        ) {
+          continue;
         }
+        const targetPath = `${assetDir(item.type)}/${item.name}.png`;
+        const there = await found(item, targetPath);
+        list.push({
+          id: `${item.type}:${item.name}`,
+          type: item.type,
+          name: item.name,
+          targetPath,
+          exists: there.exists,
+          url: there.url,
+          defaultPrompt:
+            item.prompt ??
+            (item.type === "sprite"
+              ? sprite(item.name)
+              : item.type === "cg"
+                ? cg(item.name)
+                : bg(item.name)),
+          ...(item.shared ? { isShared: true, vnSlug: "_shared" } : {}),
+        });
       }
     } catch {}
 
@@ -1018,30 +1302,51 @@ export class WorldFiles implements SourceBackend {
       });
     }
 
-    for (const item of [...sprites, ...cgs, ...backgrounds]) {
+    for (const item of [
+      ...sprites,
+      ...cgs,
+      ...backgrounds,
+      ...linked.clothes,
+      ...linked.adornment,
+      ...linked.object,
+    ]) {
       if (promptSpecs[item.name]?.positivePrompt) {
         item.defaultPrompt = promptSpecs[item.name]!.positivePrompt;
       }
     }
 
-    return { sprites, cgs, backgrounds };
+    return {
+      sprites,
+      cgs,
+      backgrounds,
+      clothes: linked.clothes,
+      adornments: linked.adornment,
+      objects: linked.object,
+    };
   }
 
-  async getVnAssetDetail(
-    slug: string,
-    type: "sprite" | "cg" | "bg",
-    name: string,
-  ): Promise<VnAssetDetail> {
+  async getVnAssetDetail(slug: string, type: AssetKind, name: string): Promise<VnAssetDetail> {
     // the list without prompts: only this asset needs one, and building every asset's reads the cards each time
     const list = await this.listVnAssets(slug, { prompts: false });
-    const pool = type === "sprite" ? list.sprites : type === "cg" ? list.cgs : list.backgrounds;
+    const pool = {
+      sprite: list.sprites,
+      cg: list.cgs,
+      bg: list.backgrounds,
+      clothes: list.clothes,
+      adornment: list.adornments,
+      object: list.objects,
+    }[type];
     const cards = await this.cardFiles().catch(() => []);
+    const details = isLinkedKind(type) ? await this.linkedDetails(type, name) : {};
+    const preps = type === "sprite" ? await this.prepCharacters() : [];
     const synth = (n: string) =>
-      type === "sprite"
-        ? synthesizeSpriteDanbooruPrompt(n, cards)
-        : type === "cg"
-          ? synthesizeCgDanbooruPrompt(n, cards)
-          : synthesizeBackgroundDanbooruPrompt(n, cards);
+      isLinkedKind(type)
+        ? composeLinkedPrompt(type, n, details)
+        : type === "sprite"
+          ? (spritePromptFromPrep(n, preps) ?? synthesizeSpriteDanbooruPrompt(n, cards))
+          : type === "cg"
+            ? synthesizeCgDanbooruPrompt(n, cards)
+            : synthesizeBackgroundDanbooruPrompt(n, cards);
     const found = pool.find((a) => a.name === name);
     const item = found
       ? { ...found, defaultPrompt: found.defaultPrompt ?? synth(name) }
@@ -1049,7 +1354,7 @@ export class WorldFiles implements SourceBackend {
           id: `${type}:${name}`,
           type,
           name,
-          targetPath: `${type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds"}/${name}.png`,
+          targetPath: `${assetDir(type)}/${name}.png`,
           exists: false,
           defaultPrompt: synth(name),
         };
@@ -1158,7 +1463,7 @@ export class WorldFiles implements SourceBackend {
 
   async archiveVnAsset(
     slug: string,
-    type: string,
+    type: AssetKind,
     name: string,
     data: {
       prompt: string;
@@ -1185,7 +1490,7 @@ export class WorldFiles implements SourceBackend {
       await writeAtomic(join(targetDir, "workflow.json"), JSON.stringify(data.workflow, null, 2));
     }
 
-    const dirName = type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds";
+    const dirName = assetDir(type);
     const exts = ["png", "jpg", "jpeg", "webp"];
     const candidates: string[] = [];
     for (const ext of exts) {
@@ -1205,7 +1510,7 @@ export class WorldFiles implements SourceBackend {
 
   async archiveOneVnAsset(
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
   ): Promise<{ ok: boolean; timestamp: string; targetDir: string }> {
     const detail = await this.getVnAssetDetail(slug, type, name);
@@ -1232,12 +1537,12 @@ export class WorldFiles implements SourceBackend {
 
   async deleteOneVnAsset(
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     name: string,
   ): Promise<{ ok: boolean; name: string }> {
     const safeSlug = sanitizeSlug(slug);
     const safeName = sanitizeSlug(name);
-    const dirName = type === "sprite" ? "sprites" : type === "cg" ? "cgs" : "backgrounds";
+    const dirName = assetDir(type);
     const exts = ["png", "jpg", "jpeg", "webp"];
     const candidates: string[] = [];
     for (const ext of exts) {
@@ -1251,6 +1556,80 @@ export class WorldFiles implements SourceBackend {
         await stat(cand);
         await rm(cand, { force: true });
       } catch {}
+    }
+    return { ok: true, name };
+  }
+
+  /** Plan a new asset in a visual novel. Its image is made later, in the Studio. */
+  async addVnAsset(
+    slug: string,
+    type: AssetKind,
+    input: PlannedAsset,
+  ): Promise<{ ok: boolean; name: string }> {
+    const safeSlug = sanitizeSlug(slug);
+    if (safeSlug === "_all" || safeSlug === "all" || safeSlug === "_shared")
+      throw new HostError("bad_state", "Pick one visual novel to plan the asset in.");
+    const world = this.plan ? await this.loreSlug(true) : undefined;
+    if (world && this.plan) {
+      try {
+        const made = await this.plan.add(world, safeSlug, type, input);
+        if (made) return { ok: true, name: made.name };
+      } catch (e) {
+        if (e instanceof AssetPlanError) throw new HostError("bad_state", e.message);
+        throw e;
+      }
+    }
+    const manifest = await this.vnManifest(safeSlug);
+    try {
+      const { assets, name } = addToPlan(manifest.assets, type, input);
+      await this.saveVn(safeSlug, {
+        manifest: { ...manifest, assets, updatedAt: new Date().toISOString() },
+      });
+      return { ok: true, name };
+    } catch (e) {
+      if (e instanceof AssetPlanError) throw new HostError("bad_state", e.message);
+      throw e;
+    }
+  }
+
+  /**
+   * Take an asset out of a visual novel's plan and delete its image there. Its runs in the dataset
+   * stay: they are what a model is trained on. An asset of the shared pool has no plan, only images.
+   */
+  async removeVnAsset(
+    slug: string,
+    type: AssetKind,
+    name: string,
+  ): Promise<{ ok: boolean; name: string }> {
+    const safeSlug = sanitizeSlug(slug);
+    if (safeSlug === "_all" || safeSlug === "all")
+      throw new HostError("bad_state", "Pick one visual novel to remove the asset from.");
+    const world = this.plan ? await this.loreSlug(true) : undefined;
+    let inDatabase = false;
+    if (world && this.plan) {
+      try {
+        inDatabase = await this.plan.remove(world, safeSlug, type, name);
+      } catch (e) {
+        if (!(e instanceof AssetPlanError)) throw e; // never planned: only its images are left to delete
+        inDatabase = true;
+      }
+    }
+    if (!inDatabase && safeSlug !== "_shared") {
+      const manifest = await this.vnManifest(safeSlug);
+      const { assets, removed } = removeFromPlan(manifest.assets, type, name);
+      if (removed)
+        await this.saveVn(safeSlug, {
+          manifest: { ...manifest, assets, updatedAt: new Date().toISOString() },
+        });
+    }
+    // the name is a file name as the Studio listed it (an owner may be capitalised), so it is checked, not rewritten
+    if (!STORED_PART.test(name) || name.includes(".."))
+      throw new HostError("invalid_card", `Invalid asset name "${name}".`);
+    const dirName = assetDir(type);
+    for (const ext of ["png", "jpg", "jpeg", "webp"]) {
+      await rm(inside(this.root, `vns/${safeSlug}/assets/${dirName}/${name}.${ext}`), {
+        force: true,
+      });
     }
     return { ok: true, name };
   }
@@ -1324,10 +1703,7 @@ export class WorldFiles implements SourceBackend {
    * world's own `<type>_ref.json` if it has one, else the world's (or the bundled) plain workflow with a
    * reference slot added, so a customised workflow keeps its customisations.
    */
-  async loadWorkflowTemplate(
-    type: "sprite" | "cg" | "bg",
-    variant?: "ref",
-  ): Promise<Record<string, unknown>> {
+  async loadWorkflowTemplate(type: AssetKind, variant?: "ref"): Promise<Record<string, unknown>> {
     if (variant) {
       if (type === "bg") {
         throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
@@ -1337,11 +1713,18 @@ export class WorldFiles implements SourceBackend {
         inside(this.root, `assets/workflow/${type}_ref.api.json`),
       ]);
       if (own) return own;
-      const derived = addReferenceSlot((await this.loadWorkflowTemplate(type)) as Workflow, type);
+      const derived = addReferenceSlot(
+        (await this.loadWorkflowTemplate(type)) as Workflow,
+        isLinkedKind(type) ? "cg" : type,
+      );
       if (!derived) throw new HttpError(409, "no_reference_slot", NO_REFERENCE_SLOT);
       return derived;
     }
-    const bundled = type === "bg" ? "background" : type;
+    // the world's own workflow in the database (its copy or a visual novel's) wins over every file
+    const slug = this.workflows ? await this.loreSlug(true) : undefined;
+    const own = slug ? await this.workflows?.find(slug, type) : undefined;
+    if (own && own.scope !== "platform") return own.graph;
+    const bundled = templateName(type);
     const found = await this.readTemplate([
       inside(this.root, `assets/workflow/${type}.json`),
       inside(this.root, `assets/workflow/${type}.api.json`),
@@ -1381,6 +1764,33 @@ export class WorldFiles implements SourceBackend {
     try {
       await writeFile(join(targetDir, "generated_image.png"), buffer);
     } catch {}
+  }
+
+  /**
+   * The run's record, kept beside its image so the pair stays one unit: `run.json` (what was asked,
+   * what the workflow applied, how it ended), `workflow.json` (the exact graph sent) and the
+   * reference images used. Written when the run starts and again when it ends. A failure to write is
+   * the caller's to log: a generation never fails because its record could not be kept.
+   */
+  async saveRunRecord(
+    targetDir: string,
+    run: {
+      record: Record<string, unknown>;
+      workflow?: unknown;
+      references?: Array<{ name: string; data: Buffer }>;
+    },
+  ): Promise<void> {
+    const base = resolve(this.root);
+    const dir = inside(base, resolve(targetDir).slice(base.length + 1));
+    await writeAtomic(join(dir, "run.json"), JSON.stringify(run.record, null, 2));
+    if (run.workflow !== undefined) {
+      await writeAtomic(join(dir, "workflow.json"), JSON.stringify(run.workflow, null, 2));
+    }
+    for (const [i, ref] of (run.references ?? []).entries()) {
+      const file = join(dir, "references", `${i + 1}-${sanitizeSlug(ref.name)}.png`);
+      await mkdir(dirname(file), { recursive: true });
+      await writeFile(file, ref.data);
+    }
   }
 
   /** The folder that holds this world and its siblings. */
@@ -1744,7 +2154,7 @@ export interface WorldDetail {
 
 /** What the manager's form sends for a card; the id, path and any extra fields stay as they were. */
 export interface CardForm {
-  kind: Card["fm"]["kind"];
+  kind: CardKind;
   name: string;
   keywords: string[];
   summary: string;
@@ -1763,7 +2173,7 @@ export type CardInput =
   | { path: string; text: string };
 
 /** The folder and id prefix a new card of each kind starts with. */
-const KIND_HOME: Record<Card["fm"]["kind"], { dir: string; prefix: string }> = {
+const KIND_HOME: Record<CardKind, { dir: string; prefix: string }> = {
   lore: { dir: "lore", prefix: "lore" },
   character: { dir: "characters", prefix: "char" },
   place: { dir: "setting/places", prefix: "place" },
@@ -1783,6 +2193,11 @@ export class Library {
     private readonly options: {
       lore?: LoreCards | undefined;
       images?: DatasetImages | undefined;
+      /** Workflows an imported world keeps in the database (ADR-0035). */
+      /** What an imported world keeps in the database besides its cards (ADR-0035). */
+      db?: DbSources | undefined;
+      /** Makes a world in the database. When set, a new world is not made as a folder at all. */
+      create?: ((input: { title: string; tagline: string; premise: string }) => Promise<WorldSummary>) | undefined;
     } = {},
   ) {
     this.root = resolve(root);
@@ -1791,7 +2206,7 @@ export class Library {
   open(name: string): WorldFiles {
     if (!LIBRARY_NAME.test(name))
       throw new HostError("nothing_to_do", `There is no world "${name}".`);
-    return new WorldFiles(join(this.root, name), this.options.lore);
+    return new WorldFiles(join(this.root, name), this.options.lore, this.options.db);
   }
 
   private readonly storyFiles = new Map<string, StoryFiles>();
@@ -1808,17 +2223,24 @@ export class Library {
 
   /** Every folder with a world.json, by title. Folders starting with "_" or "." are skipped. */
   async list(): Promise<WorldSummary[]> {
-    let names: string[];
+    let names: string[] = [];
     try {
       names = await readdir(this.root);
     } catch (e) {
-      if (isMissing(e)) return [];
-      throw e;
+      // no folder of worlds at all is a library with no folder worlds; the database may still hold some
+      if (!isMissing(e)) throw e;
     }
     const out: WorldSummary[] = [];
     for (const name of names.sort()) {
       if (!LIBRARY_NAME.test(name) || name.startsWith("_") || /\.tmp-[0-9a-f]+$/.test(name))
         continue;
+      const found = await this.summary(name);
+      if (found) out.push(found);
+    }
+    // worlds that live only in the database have no folder to find
+    const seen = new Set(out.map((w) => w.name));
+    for (const name of (await this.options.db?.world?.names?.()) ?? []) {
+      if (seen.has(name) || !LIBRARY_NAME.test(name) || name.startsWith("_")) continue;
       const found = await this.summary(name);
       if (found) out.push(found);
     }
@@ -1981,17 +2403,22 @@ export class Library {
     return result;
   }
 
-  async listVnAssets(
+  async linkedReference(
     name: string,
-    slug: string,
-  ): Promise<{ sprites: VnAssetItem[]; cgs: VnAssetItem[]; backgrounds: VnAssetItem[] }> {
+    kind: LinkedKind,
+    asset: string,
+  ): Promise<Buffer | undefined> {
+    return this.open(name).linkedReference(kind, asset);
+  }
+
+  async listVnAssets(name: string, slug: string): Promise<VnAssetLists> {
     return this.open(name).listVnAssets(slug);
   }
 
   async getVnAssetDetail(
     name: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     nameKey: string,
   ): Promise<VnAssetDetail> {
     return this.open(name).getVnAssetDetail(slug, type, nameKey);
@@ -2000,7 +2427,7 @@ export class Library {
   async archiveVnAsset(
     name: string,
     slug: string,
-    type: string,
+    type: AssetKind,
     nameKey: string,
     data: {
       prompt: string;
@@ -2015,7 +2442,7 @@ export class Library {
   async archiveOneVnAsset(
     name: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     nameKey: string,
   ): Promise<{ ok: boolean; timestamp: string; targetDir: string }> {
     return this.open(name).archiveOneVnAsset(slug, type, nameKey);
@@ -2031,10 +2458,28 @@ export class Library {
   async deleteOneVnAsset(
     name: string,
     slug: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     nameKey: string,
   ): Promise<{ ok: boolean; name: string }> {
     return this.open(name).deleteOneVnAsset(slug, type, nameKey);
+  }
+
+  async addVnAsset(
+    name: string,
+    slug: string,
+    type: AssetKind,
+    input: PlannedAsset,
+  ): Promise<{ ok: boolean; name: string }> {
+    return this.open(name).addVnAsset(slug, type, input);
+  }
+
+  async removeVnAsset(
+    name: string,
+    slug: string,
+    type: AssetKind,
+    nameKey: string,
+  ): Promise<{ ok: boolean; name: string }> {
+    return this.open(name).removeVnAsset(slug, type, nameKey);
   }
 
   async deleteAllVnAssets(
@@ -2108,9 +2553,17 @@ export class Library {
     return this.open(name).saveDatasetGeneratedImage(targetDir, buffer);
   }
 
+  async saveRunRecord(
+    name: string,
+    targetDir: string,
+    run: Parameters<WorldFiles["saveRunRecord"]>[1],
+  ): Promise<void> {
+    return this.open(name).saveRunRecord(targetDir, run);
+  }
+
   async loadWorkflowTemplate(
     name: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     variant?: "ref",
   ): Promise<Record<string, unknown>> {
     return this.open(name).loadWorkflowTemplate(type, variant);
@@ -2118,7 +2571,7 @@ export class Library {
 
   async savePromptSpec(
     name: string,
-    type: "sprite" | "cg" | "bg",
+    type: AssetKind,
     assetName: string,
     patch: PromptSpecPatch,
   ): Promise<void> {
@@ -2223,6 +2676,7 @@ export class Library {
    * title and is made unique.
    */
   async create(input: { title: string; tagline: string; premise: string }): Promise<WorldSummary> {
+    if (this.options.create) return this.options.create(input);
     const base = slugify(input.title);
     let name = base;
     for (let n = 2; await exists(join(this.root, name)); n++) {

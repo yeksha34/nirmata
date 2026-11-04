@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { cardBody } from "@nirmata/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { WorldFiles } from "../src";
-import { importStory, nameForms, partId, readParts, slug } from "../src/legacy";
+import { importStory, nameForms, partId, readParts, slug } from "@nirmata/importer";
 
 const dirs: string[] = [];
 afterEach(async () => {

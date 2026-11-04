@@ -7,6 +7,7 @@ import { isActive, type JobsState, jobForAsset, jobsActions } from "../jobs/stor
 import { useNav } from "../nav";
 import type {
   GenerateAssetInput,
+  AssetKind,
   GenerationJob,
   VnAssetDatasetEntry,
   VnAssetDetail,
@@ -24,7 +25,6 @@ interface SavedPrompt {
   scheduler: string;
 }
 
-type AssetKind = "sprite" | "cg" | "bg";
 type Filter = "all" | "shared" | AssetKind;
 
 const CHOICES: Array<{ id: Choice; mark: string; label: string }> = [
@@ -37,7 +37,95 @@ const KIND_LABEL: Record<AssetKind, string> = {
   sprite: "Sprites",
   cg: "Event CGs",
   bg: "Backgrounds",
+  clothes: "Clothes",
+  adornment: "Adornments",
+  object: "Objects",
 };
+
+/** Clothes and adornments are locked to one character (the unclad base `naked` is the exception); objects link to characters and/or CGs. */
+function lockLabel(item: VnAssetItem): string | null {
+  if (item.type !== "clothes" && item.type !== "adornment" && item.type !== "object") return null;
+  const to = [...(item.lockedTo ?? []), ...(item.linkedCgs ?? [])];
+  if (to.length > 0) return to.join(", ");
+  return /(^|_)naked$/i.test(item.name) && item.type !== "object" ? "" : null;
+}
+
+/** Whose asset it is: a sprite, clothes or an adornment belong to one character; an object may. */
+const NEEDS_OWNER: Record<AssetKind, "yes" | "maybe" | "no"> = {
+  sprite: "yes",
+  clothes: "yes",
+  adornment: "yes",
+  object: "maybe",
+  cg: "no",
+  bg: "no",
+};
+
+/** Plans one more asset in the visual novel on show. The name is a lower-case file name. */
+function AddAsset({
+  disabled,
+  onAdd,
+}: {
+  disabled: boolean;
+  onAdd: (body: { type: AssetKind; name: string; owner?: string }) => Promise<boolean>;
+}) {
+  const [type, setType] = useState<AssetKind>("sprite");
+  const [owner, setOwner] = useState("");
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const owned = NEEDS_OWNER[type];
+  return (
+    <form
+      className="vs-menu-body"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        const done = await onAdd({
+          type,
+          name: name.trim(),
+          ...(owned !== "no" && owner.trim() ? { owner: owner.trim() } : {}),
+        });
+        setBusy(false);
+        if (done) setName("");
+      }}
+    >
+      {disabled && (
+        <small className="vs-muted">
+          <T>Pick one visual novel above to add to it.</T>
+        </small>
+      )}
+      <select aria-label="Kind" value={type} onChange={(e) => setType(e.target.value as AssetKind)}>
+        {(Object.keys(KIND_LABEL) as AssetKind[]).map((k) => (
+          <option key={k} value={k}>
+            {bilingual(KIND_LABEL[k])}
+          </option>
+        ))}
+      </select>
+      {owned !== "no" && (
+        <input
+          aria-label="Character"
+          placeholder={bilingual(owned === "yes" ? "Character" : "Character (optional)")}
+          value={owner}
+          required={owned === "yes"}
+          onChange={(e) => setOwner(e.target.value)}
+        />
+      )}
+      <input
+        aria-label="Name"
+        placeholder={bilingual(
+          type === "sprite" ? "Expression, e.g. neutral" : "Name, e.g. harbour_dusk",
+        )}
+        value={name}
+        required
+        pattern="[a-z0-9][a-z0-9_\-]*"
+        title="Lower-case letters, digits, - and _"
+        onChange={(e) => setName(e.target.value)}
+      />
+      <button type="submit" className="vs-btn" disabled={disabled || busy}>
+        <T>Add</T>
+      </button>
+    </form>
+  );
+}
 
 const baseTag = (tag: string) =>
   (tag.replace(/^\(+/, "").replace(/\)+$/, "").split(":")[0] ?? "").trim();
@@ -145,6 +233,9 @@ export function VnStudio() {
     sprites: VnAssetItem[];
     cgs: VnAssetItem[];
     backgrounds: VnAssetItem[];
+    clothes: VnAssetItem[];
+    adornments: VnAssetItem[];
+    objects: VnAssetItem[];
   } | null>(null);
 
   const activeWorld = nav.vnWorld || allVns[0]?.worldName;
@@ -369,6 +460,9 @@ export function VnStudio() {
       { kind: "sprite" as const, items: pick("sprite", assets.sprites) },
       { kind: "cg" as const, items: pick("cg", assets.cgs) },
       { kind: "bg" as const, items: pick("bg", assets.backgrounds) },
+      { kind: "clothes" as const, items: pick("clothes", assets.clothes ?? []) },
+      { kind: "adornment" as const, items: pick("adornment", assets.adornments ?? []) },
+      { kind: "object" as const, items: pick("object", assets.objects ?? []) },
     ].filter((g) => g.items.length > 0);
   }, [assets, typeFilter, matches]);
 
@@ -425,7 +519,14 @@ export function VnStudio() {
   const handleGenerate = () => {
     if (!activeWorld || !activeSlug || !activeName) return;
     const selectedItem = assets
-      ? [...assets.sprites, ...assets.cgs, ...assets.backgrounds].find(
+      ? [
+          ...assets.sprites,
+          ...assets.cgs,
+          ...assets.backgrounds,
+          ...(assets.clothes ?? []),
+          ...(assets.adornments ?? []),
+          ...(assets.objects ?? []),
+        ].find(
           (a) => a.name === activeName && a.type === activeType,
         )
       : null;
@@ -444,7 +545,7 @@ export function VnStudio() {
       scheduler,
       seed: seed ?? Math.floor(Math.random() * 1000000),
       feedback,
-      ...(activeType !== "bg" && references.length > 0 ? { references } : {}),
+      ...((activeType === "sprite" || activeType === "cg") && references.length > 0 ? { references } : {}),
     };
     setMessage("");
     dispatch(jobsActions.start(activeWorld, targetSlug, payload));
@@ -486,6 +587,56 @@ export function VnStudio() {
       setPreviewUrl(undefined);
       await refreshAfterChange();
       return bilingual("Deleted {name}; back to Pending.", { name: activeName });
+    });
+
+  const allItems = (): VnAssetItem[] =>
+    assets
+      ? [
+          ...assets.sprites,
+          ...assets.cgs,
+          ...assets.backgrounds,
+          ...(assets.clothes ?? []),
+          ...(assets.adornments ?? []),
+          ...(assets.objects ?? []),
+        ]
+      : [];
+
+  /** Plans a new asset in the visual novel on show, then picks it so its prompt can be written. */
+  const handleAdd = async (body: { type: AssetKind; name: string; owner?: string }) => {
+    if (!activeWorld || !activeSlug) return false;
+    try {
+      const res = await api.addVnAsset(activeWorld, activeSlug, body);
+      await loadAssets();
+      nav.toVn(activeWorld, activeSlug, body.type, res.name);
+      setMessage(bilingual("Added {name}. Write its prompt and generate it.", { name: res.name }));
+      return true;
+    } catch (e) {
+      setMessage((e as Error).message);
+      return false;
+    }
+  };
+
+  const handleRemove = () =>
+    run(async () => {
+      if (!activeWorld || !activeSlug || !activeName) return;
+      if (
+        !window.confirm(
+          bilingual(
+            "Remove {name} from the plan and delete its image? Its earlier runs stay in the dataset.",
+            { name: activeName },
+          ),
+        )
+      )
+        return;
+      const item = allItems().find((a) => a.name === activeName && a.type === activeType);
+      const slug = item?.vnSlug ?? activeSlug;
+      const res = await act(() => api.removeVnAsset(activeWorld, slug, activeType, activeName));
+      if (!res?.ok) return;
+      setPreviewUrl(undefined);
+      const list = await loadAssets();
+      const next = list?.sprites[0] ?? list?.cgs[0] ?? list?.backgrounds[0];
+      if (next) nav.toVn(activeWorld, activeSlug, next.type, next.name);
+      return bilingual("Removed {name}.", { name: activeName });
     });
 
   const handleArchiveAll = () =>
@@ -583,6 +734,9 @@ export function VnStudio() {
               <option value="sprite">{bilingual("Sprites")}</option>
               <option value="cg">{bilingual("Event CGs")}</option>
               <option value="bg">{bilingual("Backgrounds")}</option>
+              <option value="clothes">{bilingual("Clothes")}</option>
+              <option value="adornment">{bilingual("Adornments")}</option>
+              <option value="object">{bilingual("Objects")}</option>
             </select>
           </form>
 
@@ -623,6 +777,16 @@ export function VnStudio() {
                             </small>
                             <small className="vs-item-meta">
                               {item.isShared && <em>shared</em>}
+                              {lockLabel(item) !== null &&
+                                (lockLabel(item) ? (
+                                  <em title={bilingual("Locked to")}>🔒 {lockLabel(item)}</em>
+                                ) : (
+                                  <em>{bilingual("Base")}</em>
+                                ))}
+                              {lockLabel(item) === null &&
+                                item.type !== "sprite" &&
+                                item.type !== "cg" &&
+                                item.type !== "bg" && <em>{bilingual("Not linked yet")}</em>}
                               {item.vnSlug &&
                                 item.vnSlug !== "_shared" &&
                                 activeSlug === "_all" && <em>{item.vnSlug}</em>}
@@ -639,6 +803,16 @@ export function VnStudio() {
               ))
             )}
           </nav>
+
+          <details className="vs-menu">
+            <summary>
+              <T>Add an asset</T>
+            </summary>
+            <AddAsset
+              disabled={!activeWorld || !activeSlug || activeSlug === "_all" || activeSlug === "_shared"}
+              onAdd={handleAdd}
+            />
+          </details>
 
           <details className="vs-menu">
             <summary>
@@ -669,6 +843,19 @@ export function VnStudio() {
                     <T>{KIND_LABEL[activeType]}</T>
                   </p>
                   <h2 title={activeName}>{activeName}</h2>
+                  {(() => {
+                    const cur = [
+                      ...(assets?.clothes ?? []),
+                      ...(assets?.adornments ?? []),
+                      ...(assets?.objects ?? []),
+                    ].find((a) => a.type === activeType && a.name === activeName);
+                    const label = cur ? lockLabel(cur) : null;
+                    return label ? (
+                      <p className="vs-muted">
+                        <T>Locked to</T> {label}
+                      </p>
+                    ) : null;
+                  })()}
                 </hgroup>
                 <nav className="vs-head-actions">
                   <button
@@ -686,6 +873,9 @@ export function VnStudio() {
                     onClick={handleDeleteOne}
                   >
                     <T>Delete</T>
+                  </button>
+                  <button type="button" className="vs-btn vs-btn-danger" onClick={handleRemove}>
+                    <T>Remove asset</T>
                   </button>
                 </nav>
               </header>
@@ -820,7 +1010,7 @@ export function VnStudio() {
                 </label>
               </details>
 
-              {activeType !== "bg" && (
+              {(activeType === "sprite" || activeType === "cg") && (
                 <details
                   className="vs-card vs-fold"
                   open={(detail?.references?.suggested.length ?? 0) > 0}

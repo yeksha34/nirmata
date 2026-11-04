@@ -45,7 +45,7 @@ if (process.argv.includes('--reset')) {
   if (!process.argv.includes('--yes')) { console.error('--reset drops all nine app schemas; add --yes to confirm'); process.exit(2); }
   const schemas = ['identity', 'membership', 'world_lore', 'story_run', 'reader', 'vn_content', 'assets', 'generation', 'platform'];
   try {
-    await c.query(`${schemas.map((s) => `drop schema if exists ${s} cascade;`).join(' ')} delete from supabase_migrations.schema_migrations where version like '20261102%'`);
+    await c.query(`${schemas.map((s) => `drop schema if exists ${s} cascade;`).join(' ')} delete from supabase_migrations.schema_migrations where version like '202611%'`);
     console.log('reset  dropped the nine schemas and cleared the applied list');
   } catch (e) { fail('reset', e); }
 }

@@ -1,3 +1,4 @@
+import type { AssetKind } from "./asset-kind";
 export type JobState = "queued" | "running" | "saving" | "done" | "error" | "cancelled";
 export type NodeState = "pending" | "active" | "done" | "cached";
 export type StageId = "prepare" | "queue" | "render" | "save";
@@ -18,7 +19,7 @@ export interface GenerationJob {
   id: string;
   world: string;
   slug: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   state: JobState;
   stages: JobStage[];

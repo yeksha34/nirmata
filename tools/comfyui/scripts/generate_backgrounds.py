@@ -124,7 +124,7 @@ def main():
     parser.add_argument("--lighting", default="", help="Custom lighting tokens override")
     parser.add_argument("--anchor-image", default="location_master_anchor.png", help="Filename of the master anchor image for geometry depth locking")
     parser.add_argument("--denoise", type=float, default=0.60, help="Resampling denoise factor (0.55-0.65 locks geometry, 1.0 generates new)")
-    parser.add_argument("--output-dir", default="worlds/_shared/assets/backgrounds", help="Desheroinetion folder for backgrounds")
+    parser.add_argument("--output-dir", default="worlds/_shared/assets/backgrounds", help="Destination folder for backgrounds")
     parser.add_argument("--host", default="127.0.0.1", help="ComfyUI host address")
     parser.add_argument("--port", type=int, default=8188, help="ComfyUI port")
     parser.add_argument("--steps", type=int, default=25, help="Sampling steps")

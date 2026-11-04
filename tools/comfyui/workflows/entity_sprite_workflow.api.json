@@ -1,0 +1,89 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "ponyDiffusionV6XL_fp16.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint (Pony Diffusion V6 XL)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "vae_name": "sdxl_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load SDXL VAE"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "score_9, score_8_up, score_7_up, rating_explicit, masterpiece, best quality, visual novel character sprite, full body portrait, standing upright, isolated on solid white background, crisp clean line art, towering Navatala vertical proportions, effortless sovereign poise, sacred unclad form, composed neutral expression",
+      "clip": ["1", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Entity Positive Prompt"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "score_1, score_2, score_3, clothes, clothing, shirt, pants, trousers, underwear, bra, panties, bikini, lingerie, dress, skirt, robes, drape, fabric covering body, wrap, toga, modern garments, modesty garments, modesty posture, arms crossed over chest, covering breasts, covering groin, hands blocking genitals, blushing in shame, embarrassed, timid covering, censored, bar censor, mosaic censor, white censor, black bar censor, squat, bulky, rotund, obese, fat rolls, hunchback, slouched, muscular strain, fatigue, sweating profusely, exhaustion, tired, calloused laborer hands, deformed limbs, extra arms, extra legs, extra digits, missing fingers, bad anatomy, blurry, low quality, worst quality, artifact, lowres, watermark, signature",
+      "clip": ["1", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Anti-Modesty Anti-Shame Negative Prompt"
+    }
+  },
+  "5": {
+    "inputs": {
+      "width": 832,
+      "height": 1216,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent (832x1216 SDXL Vertical)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "seed": 424242,
+      "steps": 25,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": ["1", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["5", 0]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler (SDXL Pony)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "samples": ["6", 0],
+      "vae": ["2", 0]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "8": {
+    "inputs": {
+      "filename_prefix": "sprites/entity_base",
+      "images": ["7", 0]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Entity Sprite"
+    }
+  }
+}

@@ -18,6 +18,10 @@ const WORDS: Record<string, string> = {
   Nirmata: "निर्माता",
   Worlds: "संसार",
   Host: "यजमान",
+  Admin: "प्रशासक",
+  Author: "लेखक",
+  Moderator: "संचालक",
+  Player: "सहभागी",
   Playing: "खेल रहे हैं",
   Watching: "देख रहे हैं",
   "Leave the table": "पटल छोड़ें",
@@ -235,7 +239,9 @@ const WORDS: Record<string, string> = {
   "Send it now": "अभी भेजें",
   "At the table": "पटल पर",
   "The table's turn": "पटल की बारी",
-  "No cards yet. Make the first one below.": "अभी कोई पत्रक नहीं। पहला नीचे बनाएँ।",
+  "No cards yet. Add the first one under any heading below.":
+    "अभी कोई पत्रक नहीं। नीचे किसी भी शीर्षक में पहला जोड़ें।",
+  "New {kind}": "नया {kind}",
   "Nothing matches.": "कुछ मेल नहीं खाता।",
   Object: "आपत्ति",
   Rename: "नाम बदलें",
@@ -266,7 +272,8 @@ const WORDS: Record<string, string> = {
   "Asset archived to dataset history.": "संसाधन डेटासेट इतिहास में संग्रहीत किया गया।",
   "Delete rendered file for {activeName}? It will be reset to Pending.":
     "{activeName} के लिए निर्मित फ़ाइल हटाएं? यह लंबित पर रीसेट हो जाएगी।",
-  "Deleted {activeName}. Asset reset to Pending.": "{activeName} हटा दिया गया। संसाधन लंबित पर रीसेट हो गया।",
+  "Deleted {activeName}. Asset reset to Pending.":
+    "{activeName} हटा दिया गया। संसाधन लंबित पर रीसेट हो गया।",
   "Archived {res} assets to dataset history.": "{res} संसाधन डेटासेट इतिहास में संग्रहीत किए गए।",
   "Delete all rendered assets for {activeSlug}? They will be reset to Pending.":
     "{activeSlug} के लिए सभी निर्मित संसाधन हटाएं? वे लंबित पर रीसेट हो जाएंगे।",
@@ -285,7 +292,8 @@ const WORDS: Record<string, string> = {
   "Visual Novels": "दृश्य-उपन्यास",
   "Visual Novel:": "दृश्य-उपन्यास:",
   "VN Assets": "दृश्य-उपन्यास संसाधन",
-  "No visual novels found. Adapt a chapter first.": "कोई दृश्य-उपन्यास नहीं मिला। पहले किसी अध्याय का रूपांतरण करें।",
+  "No visual novels found. Adapt a chapter first.":
+    "कोई दृश्य-उपन्यास नहीं मिला। पहले किसी अध्याय का रूपांतरण करें।",
   "Loading assets…": "संसाधन लोड हो रहे हैं…",
   "Character Sprites": "पात्र स्प्राइट्स",
   "Event CG Scenes": "घटना CG दृश्य",

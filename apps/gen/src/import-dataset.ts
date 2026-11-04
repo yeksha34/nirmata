@@ -1,3 +1,4 @@
+import type { AssetKind } from "./asset-kind";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -7,7 +8,7 @@ import { recordRender } from "./record-render";
 
 export type ImportTarget = "supabase" | "local";
 export type ImportSelect = "latest" | "all";
-type Kind = "sprite" | "cg" | "bg";
+type Kind = AssetKind;
 
 export interface ImportOptions {
   db: Db;
@@ -58,10 +59,16 @@ export interface Candidate {
 const SAFE = /^[A-Za-z0-9._-]{1,120}$/;
 const ASSET_NAME = /^[A-Za-z0-9][A-Za-z0-9 _.-]{0,119}$/;
 
-/** The kind a dataset name belongs to: `cg_…` is a CG, `bg_…` a background, anything else a sprite. */
+/**
+ * The kind a dataset name belongs to: `cg_…` is a CG, `bg_…` a background, `clothes_…`, `adornment_…`
+ * and `object_…` their kinds, anything else a sprite.
+ */
 export function kindOf(name: string): Kind {
   if (name.startsWith("cg_")) return "cg";
   if (name.startsWith("bg_")) return "bg";
+  if (name.startsWith("clothes_")) return "clothes";
+  if (name.startsWith("adornment_")) return "adornment";
+  if (name.startsWith("object_")) return "object";
   return "sprite";
 }
 
@@ -155,7 +162,7 @@ export async function importDataset(options: ImportOptions): Promise<ImportRepor
     failed: skipped.length,
     bytesUploaded: 0,
     failures: [...skipped],
-    byKind: { sprite: 0, cg: 0, bg: 0 },
+    byKind: { sprite: 0, cg: 0, bg: 0, clothes: 0, adornment: 0, object: 0 },
   };
   const seen = new Set<string>();
   let warned = false;

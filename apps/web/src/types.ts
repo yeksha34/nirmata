@@ -243,6 +243,25 @@ export type VnMode = "mode_1" | "mode_2a" | "mode_2b" | "mode_2_open";
 export type VnTier = "micro" | "short" | "mid" | "large";
 export type VnSlot = "left" | "center" | "right";
 
+/** A world made by "Import a world", with the token for each worker. Shown once. */
+export interface ImportedWorld {
+  world: WorldSummary;
+  tokens: { full: string; characters: string; accessories: string; settings: string };
+}
+
+/** A token an author made for the adaptation agent; the token itself is never listed. */
+export interface AgentToken {
+  id: string;
+  label: string;
+  scopes: string[];
+  /** The kinds of card a lane token may write; null means any. */
+  kinds: string[] | null;
+  expiresAt: string;
+  revokedAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
 export interface VnSummary {
   slug: string;
   title: string;
@@ -389,9 +408,12 @@ export interface ComfyUiStatus {
   devices: ComfyUiDevice[];
 }
 
+/** Stage art (sprite, cg, bg) and character-linked art: clothes and adornments are locked to one character, objects to characters and/or CGs. */
+export type AssetKind = "sprite" | "cg" | "bg" | "clothes" | "adornment" | "object";
+
 export interface VnAssetItem {
   id: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath: string;
   exists: boolean;
@@ -399,6 +421,17 @@ export interface VnAssetItem {
   defaultPrompt?: string;
   isShared?: boolean;
   vnSlug?: string;
+  lockedTo?: string[];
+  linkedCgs?: string[];
+}
+
+export interface VnAssetLists {
+  sprites: VnAssetItem[];
+  cgs: VnAssetItem[];
+  backgrounds: VnAssetItem[];
+  clothes: VnAssetItem[];
+  adornments: VnAssetItem[];
+  objects: VnAssetItem[];
 }
 
 export interface VnAssetDatasetEntry {
@@ -412,7 +445,7 @@ export interface VnAssetDatasetEntry {
 
 export interface VnAssetPromptSpec {
   name: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   positivePrompt: string;
   negativePrompt?: string;
   aspectRatio?: string;
@@ -429,7 +462,7 @@ export interface VnAssetPromptSpec {
 
 export interface VnAssetDetail {
   id: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath: string;
   exists: boolean;
@@ -461,7 +494,7 @@ export interface VnWithAssetsSummary extends VnSummary {
 }
 
 export interface GenerateAssetInput {
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   targetPath?: string;
   positivePrompt: string;
@@ -483,7 +516,7 @@ export interface GenerationJob {
   id: string;
   world: string;
   slug: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   state: GenerationJobState;
   stages: Array<{ id: "prepare" | "queue" | "render" | "save"; label: string; state: "pending" | "active" | "done" | "error" }>;

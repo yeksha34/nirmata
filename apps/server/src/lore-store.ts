@@ -2,7 +2,7 @@ import { type Card, CardFrontmatter, formatIssues, serializeCard } from "@nirmat
 import type { Db, Query } from "@nirmata/db";
 import { HostError } from "@nirmata/host";
 import type { CardFile, LoreCards } from "./files";
-import { cardRow, SECRETS, upsertCard, withoutStamp, writeDraft } from "./lore-rows";
+import { cardRow, SECRETS, upsertCard, withoutStamp, writeDraft } from "@nirmata/importer";
 
 interface Place {
   worldId: string;

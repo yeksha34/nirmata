@@ -19,6 +19,7 @@ Expressions keep the character and CGs show the right people.
 
 ## Non-goals
 - A strength control in the Studio.
+- (Done in F-68) Recording the references and their strength with each run.
 - References from the database store (they are read from the visual novel's sprite files).
 
 ## Design

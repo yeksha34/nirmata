@@ -14,7 +14,8 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
-const SKIP_FILES = new Set(["i18n.tsx", "i18n-text.ts", "i18n-server.ts", "i18n-templates.ts", "types.ts"]);
+// import-prompt.ts is text for an agent (a prompt and environment variable names), never shown as a label
+const SKIP_FILES = new Set(["i18n.tsx", "i18n-text.ts", "i18n-server.ts", "i18n-templates.ts", "types.ts", "import-prompt.ts"]);
 // attributes that are never shown, or are shown through a component that translates them
 const QUIET_ATTRS = new Set([
   "className", "id", "htmlFor", "type", "name", "key", "role", "href", "src", "alt", "lang", "value",

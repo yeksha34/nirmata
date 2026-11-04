@@ -75,10 +75,15 @@ export function checkWorldWorkflows(worldSlug) {
       category: "bg",
       targets: ["bg.api.json", "bg.json", "background.api.json", "background.json"],
     },
+    // character-linked kinds are optional: a world without them still passes
+    { category: "clothes", targets: ["clothes.api.json", "clothes.json"], optional: true },
+    { category: "adornment", targets: ["adornment.api.json", "adornment.json"], optional: true },
+    { category: "object", targets: ["object.api.json", "object.json"], optional: true },
   ];
 
   for (const check of checks) {
     const found = check.targets.find((name) => existsSync(join(workflowDir, name)));
+    if (!found && check.optional) continue;
     if (!found) {
       issues.push(`Missing workflow template for ${check.category} (expected one of: ${check.targets.join(", ")})`);
     } else {
@@ -156,6 +161,12 @@ export function scaffoldWorldWorkflows(worldSlug, vnSlug) {
 
   // 3. Background (both bg and background names)
   prepare(bgTpl, "bg", ["background"]);
+
+  // 3b. Character-linked kinds
+  for (const kind of ["clothes", "adornment", "object"]) {
+    const tpl = join(TEMPLATES_DIR, `${kind}.template.api.json`);
+    if (existsSync(tpl)) prepare(tpl, kind);
+  }
 
   // 4. Prompts catalog scaffolding
   const promptsPath = join(workflowDir, "prompts.json");
@@ -236,6 +247,69 @@ export function scaffoldWorldWorkflows(worldSlug, vnSlug) {
                 sampler: "dpmpp_2m",
                 scheduler: "karras",
               };
+            }
+          }
+
+          // Clothes, adornments (locked to a character) and objects (linked to characters / CGs).
+          // The model has never seen the world's item, so each prompt is described from the world's card
+          // (its <prompt> part first, then appearance, material, placement, use) rather than just named.
+          const pretty = (s) => String(s).replace(/_/g, " ");
+          const readCard = (dir, name) => {
+            const file = join(worldRoot, dir, `${name}.md`);
+            if (!existsSync(file)) return {};
+            const text = readFileSync(file, "utf8");
+            const part = (tag) => {
+              const m = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(text);
+              return m ? m[1].replace(/\s+/g, " ").trim() : "";
+            };
+            return {
+              prompt: part("prompt"),
+              appearance: part("appearance"),
+              material: part("material"),
+              frames: part("frames"),
+              coverage: part("coverage"),
+              interaction: part("interaction"),
+            };
+          };
+          const LEAD = {
+            clothes: "masterpiece, best quality, clothing product shot, garment laid flat, front view, nobody wearing it",
+            adornment: "masterpiece, best quality, accessory product shot, single piece on its own, front view, nobody wearing it",
+            object: "masterpiece, best quality, prop design sheet, single object on its own, three-quarter view",
+          };
+          const describe = (type, name, d) =>
+            [
+              LEAD[type],
+              d.prompt || d.appearance || pretty(type === "object" || !name.includes("_") ? name : name.slice(name.indexOf("_") + 1)),
+              d.prompt && d.material ? `made of ${d.material}` : "",
+              "isolated item, no person, no body, no skin, no mannequin, plain white background",
+            ]
+              .filter(Boolean)
+              .join(", ");
+          const linkedEntry = (type, entryName, cardName, extra) => ({
+            name: entryName,
+            type,
+            ...extra,
+            positivePrompt: describe(type, cardName, readCard({ clothes: "clothes", adornment: "adornments", object: "objects" }[type], cardName)),
+            negativePrompt: `1girl, 1boy, solo, person, model, mannequin, wearing, worn, body, torso, legs, feet, skin, nude, breasts, face, hands, holding, multiple items, text, watermark, blurry, lowres, worst quality`,
+            steps: 24,
+            cfg: 7.0,
+            sampler: "dpmpp_2m",
+            scheduler: "karras",
+          });
+          for (const [field, type] of [["clothes", "clothes"], ["adornments", "adornment"]]) {
+            for (const [owner, names] of Object.entries(assets[field] || {})) {
+              for (const name of Array.isArray(names) ? names : []) {
+                const cardName = `${owner}_${name}`;
+                promptsCatalog[cardName] = linkedEntry(type, cardName, cardName, { owner });
+              }
+            }
+          }
+          if (Array.isArray(assets.objects)) {
+            for (const obj of assets.objects) {
+              promptsCatalog[obj.name] = linkedEntry("object", obj.name, obj.name, {
+                owners: obj.owners || [],
+                cgs: obj.cgs || [],
+              });
             }
           }
         } catch {}

@@ -114,7 +114,7 @@ def main():
     parser.add_argument("--char-a-prompt", required=True, help="Prompt tokens for Character A (left region)")
     parser.add_argument("--char-b-prompt", required=True, help="Prompt tokens for Character B or Creature (right region)")
     parser.add_argument("--staging-image", default="cg_staging_pose.png", help="Composition pose guide image")
-    parser.add_argument("--output-dir", default="worlds/_shared/assets/cgs", help="Desheroinetion folder for CGs")
+    parser.add_argument("--output-dir", default="worlds/_shared/assets/cgs", help="Destination folder for CGs")
     parser.add_argument("--host", default="127.0.0.1", help="ComfyUI host address")
     parser.add_argument("--port", type=int, default=8188, help="ComfyUI port")
     parser.add_argument("--steps", type=int, default=28, help="Sampling steps")

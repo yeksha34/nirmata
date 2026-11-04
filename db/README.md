@@ -85,5 +85,7 @@ SQL editor (runs as `postgres`). Each file ends in `rollback`, so nothing is lef
 | `005_render_file.sql` | the file lookup: member, outsider, server, anon, unknown id |
 | `006_invitation_email.sql` | the invitation lookup: valid, wrong, expired, person, anon |
 | `007_roles.sql` | the four roles: author, moderator, player, administrator, outsider; admin is service-only; no function keeps the old names |
+| `008_asset_links.sql` | clothes, adornment and object links |
+| `009_run_settings.sql` | what a spec keeps of a run: the exact workflow, checkpoint, references; unknown values stay null; the dataset view carries them; specs are immutable |
 
 Pass on the project: `001_baseline.sql` 16 of 16, `002_flows.sql` 69 of 69. `003_render_store.sql` 27 of 27. `004_quota.sql` 12 of 12. `005_render_file.sql` 6 of 6. `006_invitation_email.sql` 5 of 5. `007_roles.sql` 12 of 12 (after 022; 001, 002 and 006 re-run and unchanged). Not covered yet: invitation acceptance end to end, the Auth hook, rebase and rollback, the dataset views.

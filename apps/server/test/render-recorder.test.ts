@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { type Client, Db, type Pool } from "@nirmata/db";
 import type { AssetStore, Stores } from "@nirmata/storage";
 import { describe, expect, it } from "vitest";
@@ -30,12 +31,24 @@ const image = (over: Partial<GeneratedImage> = {}): GeneratedImage => ({
 });
 
 function fakeDb(
-  opts: { world?: boolean; level?: string; known?: boolean; failRecord?: boolean } = {},
+  opts: {
+    world?: boolean;
+    level?: string;
+    known?: boolean;
+    failRecord?: boolean;
+    /** The asset's other renders still in Supabase. */
+    older?: Array<{ id: string; storage_path: string; sha256: string | null }>;
+    /** Shared with the stores, to check what happens in which order. */
+    events?: string[];
+  } = {},
 ) {
   const calls: Array<{ text: string; params: unknown[] }> = [];
   const client: Client = {
     async query(text, params = []) {
       calls.push({ text, params });
+      if (text.includes("set_render_store")) opts.events?.push(`row ${String(params[0])} local`);
+      if (text.includes("storage_path, sha256 from assets.renders"))
+        return { rows: opts.older ?? [] };
       if (text.includes("from world_lore.worlds"))
         return { rows: opts.world === false ? [] : [{ id: WORLD }] };
       if (text.includes("from assets.renders where world_id"))
@@ -78,17 +91,19 @@ describe("recording a new generation", () => {
     expect(where).toBe("supabase");
     expect(s.put).toEqual([`${WORLD}/ch01/ada_neutral/2026-11-03T10-00-00-000Z.png`]);
     const spec = f.calls.find((c) => c.text.includes("add_spec"));
+    // what is not known stays unknown: no made-up cfg, sampler or scheduler
     expect(spec?.params).toEqual([
       "asset-1",
       "a figure",
       "blur",
       7,
       25,
-      7,
-      "euler",
-      "normal",
+      null,
+      null,
+      null,
       512,
       768,
+      "{}",
     ]);
     const render = f.calls.find((c) => c.text.includes("record_render"));
     expect(render?.params.slice(2, 6)).toEqual([
@@ -147,5 +162,133 @@ describe("recording a new generation", () => {
     );
     await expect(rec.record(image())).rejects.toThrow("record refused");
     expect(s.removed).toEqual(s.put);
+  });
+
+  it("keeps what the run used in the spec, and takes the sampler values from it", async () => {
+    const f = fakeDb();
+    const settings = {
+      version: 1 as const,
+      seed: 99,
+      steps: 30,
+      cfg: 5.5,
+      sampler: "dpmpp_2m",
+      scheduler: "karras",
+      checkpoint: "base.safetensors",
+      loras: [],
+      references: [{ name: "naked", sha256: "abc" }],
+      workflow: { "3": { class_type: "KSampler", inputs: {} } },
+    };
+    await new DbRecorder(f.db, { supabase: fakeStore().store } as Stores, () => USER).record(
+      image({ steps: undefined, seed: undefined, runSettings: settings }),
+    );
+    const params = f.calls.find((c) => c.text.includes("add_spec"))?.params ?? [];
+    expect(params.slice(3, 8)).toEqual([99, 30, 5.5, "dpmpp_2m", "karras"]);
+    expect(JSON.parse(String(params[10]))).toEqual(settings);
+  });
+});
+
+/** An in-memory store that logs what it is asked to do, in the order it happens. */
+function memStore(name: string, events: string[], files: Record<string, Buffer> = {}, bad = false) {
+  const map = new Map<string, Uint8Array>(
+    Object.entries(files).map(([k, v]) => [k, new Uint8Array(v)]),
+  );
+  const store = {
+    put: async (path: string, data: Uint8Array) => {
+      events.push(`${name} put ${path}`);
+      map.set(path, bad ? new Uint8Array([1, 2, 3]) : data);
+    },
+    remove: async (path: string) => {
+      events.push(`${name} remove ${path}`);
+      map.delete(path);
+    },
+    get: async (path: string) => {
+      const data = map.get(path);
+      return data ? { data, contentType: "image/png" } : undefined;
+    },
+  } as unknown as AssetStore;
+  return { store, map };
+}
+
+describe("keeping only the current image in Supabase", () => {
+  const sha = (b: Buffer) => createHash("sha256").update(b).digest("hex");
+  const OLD = `${WORLD}/ch01/ada_neutral/2026-11-02T10-00-00-000Z.png`;
+  const row = (over: Partial<{ sha256: string | null }> = {}) => ({
+    id: "render-old",
+    storage_path: OLD,
+    sha256: sha(png("old")),
+    ...over,
+  });
+
+  it("copies the older image to the local store, checks it, records it, then frees Supabase", async () => {
+    const events: string[] = [];
+    const supabase = memStore("supabase", events, { [OLD]: png("old") });
+    const local = memStore("local", events);
+    const f = fakeDb({ older: [row()], events });
+    const where = await new DbRecorder(
+      f.db,
+      { supabase: supabase.store, local: local.store } as Stores,
+      () => USER,
+    ).record(image());
+    expect(where).toBe("supabase");
+    const mine = `${WORLD}/ch01/ada_neutral/2026-11-03T10-00-00-000Z.png`;
+    expect(events).toEqual([
+      `supabase put ${mine}`, // the new image is up first
+      `local put ${OLD}`,
+      "row render-old local",
+      `supabase remove ${OLD}`,
+    ]);
+    expect(local.map.get(OLD)).toEqual(new Uint8Array(png("old")));
+  });
+
+  it("leaves an older image alone when it does not match its hash, has none, or cannot be copied", async () => {
+    for (const [older, bad] of [
+      [row({ sha256: sha(png("different")) }), false],
+      [row({ sha256: null }), false],
+      [row(), true],
+    ] as const) {
+      const events: string[] = [];
+      const supabase = memStore("supabase", events, { [OLD]: png("old") });
+      const local = memStore("local", events, {}, bad);
+      const f = fakeDb({ older: [older], events });
+      await new DbRecorder(
+        f.db,
+        { supabase: supabase.store, local: local.store } as Stores,
+        () => USER,
+        () => undefined,
+      ).record(image());
+      expect(events.filter((e) => e.startsWith("row") || e.includes("remove"))).toEqual([]);
+      expect(supabase.map.has(OLD)).toBe(true);
+    }
+  });
+
+  it("moves nothing when there is no local store", async () => {
+    const f = fakeDb({ older: [row()] });
+    await new DbRecorder(f.db, { supabase: fakeStore().store } as Stores, () => USER).record(
+      image(),
+    );
+    expect(f.calls.some((c) => c.text.includes("storage_path, sha256"))).toBe(false);
+  });
+
+  it("does not fail the generation when the move fails", async () => {
+    const events: string[] = [];
+    const logs: string[] = [];
+    const supabase = memStore("supabase", events, { [OLD]: png("old") });
+    const local = {
+      put: async () => {
+        throw new Error("disk full");
+      },
+      get: async () => undefined,
+      remove: async () => undefined,
+    } as unknown as AssetStore;
+    const f = fakeDb({ older: [row()], events });
+    const where = await new DbRecorder(
+      f.db,
+      { supabase: supabase.store, local } as Stores,
+      () => USER,
+      (m) => logs.push(m),
+    ).record(image());
+    expect(where).toBe("supabase");
+    expect(logs.join(" ")).toContain("disk full");
+    expect(supabase.map.has(OLD)).toBe(true);
   });
 });

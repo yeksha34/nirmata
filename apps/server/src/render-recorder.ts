@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import type { Db } from "@nirmata/db";
-import { pngSize, recordRender } from "@nirmata/gen";
+import { type AssetKind, pngSize, type RunSettings, recordRender } from "@nirmata/gen";
 import type { Stores } from "@nirmata/storage";
 import { STORED_PART, sanitizeSlug } from "./files";
-import { slugFor } from "./lore-rows";
+import { slugFor } from "@nirmata/importer";
 
 export interface GeneratedImage {
   worldName: string;
@@ -11,7 +11,7 @@ export interface GeneratedImage {
   scope: string;
   /** The dataset folder's name for this run (a timestamp). */
   run: string;
-  type: "sprite" | "cg" | "bg";
+  type: AssetKind;
   name: string;
   /** The generation's job (in memory), so its render is linked to the job recorded for it. */
   jobKey?: string | undefined;
@@ -23,7 +23,11 @@ export interface GeneratedImage {
   sampler?: string | undefined;
   scheduler?: string | undefined;
   seed?: number | undefined;
+  /** What the run used, read from the workflow that was sent. */
+  runSettings?: RunSettings | undefined;
 }
+
+const sha256Of = (data: Uint8Array) => createHash("sha256").update(data).digest("hex");
 
 /** Keeps a new generation in the database as well as on disk. */
 export interface RenderRecorder {
@@ -104,9 +108,11 @@ export class DbRecorder implements RenderRecorder {
     const size = pngSize(g.image);
     const clamp = (n: number) => Math.min(4096, Math.max(64, n));
     await store.put(path, new Uint8Array(g.image), "image/png");
+    let recorded: { assetId: string; renderId: string };
     try {
       const existing = this.existing(g.jobKey);
-      await this.db.asUser(user, (q) =>
+      const settings = g.runSettings;
+      recorded = await this.db.asUser(user, (q) =>
         recordRender(
           q,
           {
@@ -118,11 +124,12 @@ export class DbRecorder implements RenderRecorder {
             negative: g.negative.slice(0, 8000),
             width: clamp(size?.width ?? 512),
             height: clamp(size?.height ?? 768),
-            seed: g.seed,
-            steps: g.steps,
-            cfg: g.cfg,
-            sampler: g.sampler,
-            scheduler: g.scheduler,
+            seed: g.seed ?? settings?.seed,
+            steps: g.steps ?? settings?.steps,
+            cfg: g.cfg ?? settings?.cfg,
+            sampler: g.sampler ?? settings?.sampler,
+            scheduler: g.scheduler ?? settings?.scheduler,
+            runSettings: settings,
             store: target,
             bytes,
             sha256,
@@ -137,6 +144,68 @@ export class DbRecorder implements RenderRecorder {
     if (target === "supabase") {
       await this.db.server(async (q) => q("select * from assets.storage_status(0, true)")); // the daily alert, if due
     }
+    // the new image is safe and current: only now do the older ones leave Supabase
+    await this.moveOlderToLocal(user, recorded.assetId, recorded.renderId).catch((e) =>
+      this.log(`Older images stayed in Supabase: ${e instanceof Error ? e.message : String(e)}`),
+    );
     return target;
+  }
+
+  /**
+   * Supabase holds what the game serves, the asset's current image; the history is the local dataset.
+   * Each older image of the asset still in Supabase is copied to the local store, checked against the
+   * hash the database holds, recorded as local, and only then removed from Supabase. Any step that
+   * fails leaves that image where it was, so nothing is lost and the next generation tries again.
+   * Without a local store or a recorded hash an image stays in Supabase.
+   */
+  protected async moveOlderToLocal(
+    user: string,
+    assetId: string,
+    currentRenderId: string,
+  ): Promise<void> {
+    const { supabase, local } = this.stores;
+    if (!supabase || !local) return;
+    const older = await this.db.asUser(
+      user,
+      async (q) =>
+        (
+          await q(
+            `select id, storage_path, sha256 from assets.renders
+              where asset_id = $1 and id <> $2 and store = 'supabase'`,
+            [assetId, currentRenderId],
+          )
+        ).rows,
+    );
+    for (const row of older) {
+      const path = String(row.storage_path);
+      try {
+        const want = row.sha256 ? String(row.sha256) : undefined;
+        if (!want) {
+          this.log(`${path} has no recorded hash, so it stays in Supabase.`);
+          continue;
+        }
+        const remote = await supabase.get(path);
+        if (!remote) continue; // the file is not there to move
+        if (sha256Of(remote.data) !== want) {
+          this.log(`${path} in Supabase does not match its hash, so it was not moved.`);
+          continue;
+        }
+        const have = await local.get(path);
+        if (!have || sha256Of(have.data) !== want) {
+          await local.put(path, remote.data, remote.contentType ?? "image/png");
+          const back = await local.get(path);
+          if (!back || sha256Of(back.data) !== want) {
+            this.log(`${path} was not copied cleanly to the local store, so it stays in Supabase.`);
+            continue;
+          }
+        }
+        await this.db.asUser(user, (q) =>
+          q("select assets.set_render_store($1, 'local')", [row.id]),
+        );
+        await supabase.remove(path).catch(() => undefined); // a leftover is only space
+      } catch (e) {
+        this.log(`${path} stayed in Supabase: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
   }
 }
